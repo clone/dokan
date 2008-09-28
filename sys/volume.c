@@ -35,6 +35,7 @@ DokanDispatchQueryVolumeInformation(
 	PDokanVCB			vcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	PDokanCCB			ccb;
+	ULONG               info = 0;
 
 	PAGED_CODE();
 
@@ -80,7 +81,16 @@ DokanDispatchQueryVolumeInformation(
 			break;
 	    
 		case FileFsDeviceInformation:
-			DDbgPrint("  FileFsDeviceInformation\n");
+			{
+				PFILE_FS_DEVICE_INFORMATION device;
+				DDbgPrint("  FileFsDeviceInformation\n");
+				device = (PFILE_FS_DEVICE_INFORMATION)Irp->AssociatedIrp.SystemBuffer;
+				device->DeviceType = FILE_DEVICE_NETWORK_FILE_SYSTEM;
+				device->Characteristics = FILE_REMOTE_DEVICE | FILE_DEVICE_IS_MOUNTED;
+				status = STATUS_SUCCESS;
+				info = sizeof(FILE_FS_DEVICE_INFORMATION);
+				__leave;
+			}
 			break;
 	    
 		case FileFsAttributeInformation:
@@ -164,7 +174,7 @@ DokanDispatchQueryVolumeInformation(
 
 		if (status != STATUS_PENDING) {
 			Irp->IoStatus.Status = status;
-			Irp->IoStatus.Information = 0;
+			Irp->IoStatus.Information = info;
 			IoCompleteRequest(Irp, IO_NO_INCREMENT);
 			DokanPrintNTStatus(status);
 		}

@@ -33,10 +33,24 @@ DokanSetAllocationInformation(
 {
 	PFILE_ALLOCATION_INFORMATION allocInfo =
 		(PFILE_ALLOCATION_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
-	//return -1;
 
-	// TODO: dispatch?
-	// should change end of file
+	// A file's allocation size and end-of-file position are independent of each other,
+	// with the following exception: The end-of-file position must always be less than
+	// or equal to the allocation size. If the allocation size is set to a value that
+	// is less than the end-of-file position, the end-of-file position is automatically
+	// adjusted to match the allocation size.
+
+	// How can we check the current end-of-file position?
+	if (allocInfo->AllocationSize.QuadPart == 0) {
+		return DokanOperations->SetEndOfFile(
+			EventContext->SetFile.FileName,
+			allocInfo->AllocationSize.QuadPart,
+			FileInfo);
+	} else {
+		DbgPrint("  SetAllocationInformation %I64d, can't handle this parameter.\n",
+				allocInfo->AllocationSize.QuadPart);
+	}
+
 	return 0;
 }
 
@@ -238,6 +252,8 @@ DispatchSetInformation(
 	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
 	
 	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
+
+	DbgPrint("###SetFileInfo %04d\n", openInfo->EventId);
 
 	switch (EventContext->SetFile.FileInformationClass) {
 		case FileAllocationInformation:

@@ -74,6 +74,11 @@ DokanDispatchWrite(
 		fcb			= ccb->Fcb;
 		ASSERT(fcb != NULL);
 
+		if (fcb->Flags & DOKAN_FILE_DIRECTORY) {
+			status = STATUS_INVALID_PARAMETER;
+			__leave;
+		}
+
 		if (Irp->MdlAddress) {
 			DDbgPrint("  use MdlAddress\n");
 			buffer = MmGetSystemAddressForMdlSafe(Irp->MdlAddress, NormalPagePriority);
@@ -167,11 +172,11 @@ DokanDispatchWrite(
 			ULONG	requestContextLength = max(sizeof(EVENT_CONTEXT), eventContext->Write.BufferOffset);
 			PEVENT_CONTEXT requestContext = ExAllocatePool(requestContextLength);
 
-			// no mroe memory!
+			// no more memory!
 			if (requestContext == NULL) {
 				status = STATUS_INSUFFICIENT_RESOURCES;
 				Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = 0;
-				ExFreePool(requestContext);
+				ExFreePool(eventContext);
 				__leave;
 			}
 

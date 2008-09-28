@@ -161,6 +161,10 @@ Return Value:
 	DDbgPrint("==> DriverEntry ver.%x, %s %s\n", DOKAN_VERSION, __DATE__, __TIME__);
 
 	dokanGlobal = ExAllocatePool(sizeof(DOKAN_GLOBAL));
+	if (dokanGlobal == NULL) {
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
 	RtlZeroMemory(dokanGlobal, sizeof(DOKAN_GLOBAL));
 	DokanInitIrpList(&dokanGlobal->ServiceList);
 
@@ -440,7 +444,6 @@ DokanPrintNTStatus(
 	PrintStatus(Status, STATUS_NO_MORE_FILES);
 	PrintStatus(Status, STATUS_END_OF_FILE);
 	PrintStatus(Status, STATUS_NO_SUCH_FILE);
-	PrintStatus(Status, STATUS_INVALID_PARAMETER);
 	PrintStatus(Status, STATUS_NOT_IMPLEMENTED);
 	PrintStatus(Status, STATUS_BUFFER_OVERFLOW);
 	PrintStatus(Status, STATUS_FILE_IS_A_DIRECTORY);
@@ -452,6 +455,10 @@ DokanPrintNTStatus(
 	PrintStatus(Status, STATUS_OBJECT_PATH_NOT_FOUND);
 	PrintStatus(Status, STATUS_OBJECT_PATH_SYNTAX_BAD);
 	PrintStatus(Status, STATUS_ACCESS_DENIED);
+	PrintStatus(Status, STATUS_ACCESS_VIOLATION);
+	PrintStatus(Status, STATUS_INVALID_PARAMETER);
+	PrintStatus(Status, STATUS_INVALID_USER_BUFFER);
+	PrintStatus(Status, STATUS_INVALID_HANDLE);
 }
 
 

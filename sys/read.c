@@ -131,6 +131,10 @@ Return Value:
 		fcb	= ccb->Fcb;
 		ASSERT(fcb != NULL);
 
+		if (fcb->Flags & DOKAN_FILE_DIRECTORY) {
+			status = STATUS_INVALID_PARAMETER;
+			__leave;
+		}
 
 		// length of EventContext is sum of file name length and itself
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;

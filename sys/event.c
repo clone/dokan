@@ -903,6 +903,7 @@ DokanEventStart(
 	eventStart->Version = DOKAN_VERSION;
 	eventStart->DeviceNumber = deviceExtension->Number;
 
+	KeEnterCriticalRegion();
 	ExAcquireResourceExclusiveLite(&deviceExtension->Resource, TRUE);
 
 	if (deviceExtension->Mounted) {
@@ -921,6 +922,7 @@ DokanEventStart(
 	}
 
 	ExReleaseResourceLite(&deviceExtension->Resource);
+	KeLeaveCriticalRegion();
 
 	Irp->IoStatus.Status = STATUS_SUCCESS;
 	Irp->IoStatus.Information = sizeof(EVENT_START);

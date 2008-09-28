@@ -495,6 +495,7 @@ typedef struct _FILE_FS_ATTRIBUTE_INFORMATION {
 #define FILE_WRITE_THROUGH                      0x00000002
 #define FILE_SEQUENTIAL_ONLY                    0x00000004
 #define FILE_NO_INTERMEDIATE_BUFFERING          0x00000008
+#define FILE_DELETE_ON_CLOSE                    0x00001000
 
 #define FILE_SYNCHRONOUS_IO_ALERT               0x00000010
 #define FILE_SYNCHRONOUS_IO_NONALERT            0x00000020

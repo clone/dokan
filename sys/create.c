@@ -523,7 +523,7 @@ DokanCompleteCreate(
 	ASSERT(fcb != NULL);
 
 	ccb->UserContext = EventInfo->Context;
-	DDbgPrint("   set Context %X\n", (ULONG)ccb->UserContext);
+	//DDbgPrint("   set Context %X\n", (ULONG)ccb->UserContext);
 
 	status = EventInfo->Status;
 

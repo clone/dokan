@@ -50,7 +50,7 @@ DokanCreateDiskDevice(
 	UNICODE_STRING		fsDeviceName;
 	UNICODE_STRING		symbolicLinkName;
 	NTSTATUS			status;
-	
+
 	FS_FILTER_CALLBACKS filterCallbacks;
 
 	// make DeviceName and SymboliLink
@@ -132,6 +132,7 @@ DokanCreateDiskDevice(
 	status = IoCreateDeviceSecure(DriverObject,			// DriverObject
 							sizeof(DokanVCB),			// DeviceExtensionSize
 							&deviceName,//&fsDeviceName, // DeviceName
+							//FILE_DEVICE_NETWORK_FILE_SYSTEM,
 							FILE_DEVICE_DISK_FILE_SYSTEM,// DeviceType
 							0,							// DeviceCharacteristics
 							FALSE,						// Not Exclusive

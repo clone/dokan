@@ -51,6 +51,7 @@ int DokanGetVolumeInformation(
 	*MaximumComponentLength = 256;
 	*FileSystemFlags = FILE_CASE_SENSITIVE_SEARCH | 
 						FILE_CASE_PRESERVED_NAMES | 
+						FILE_SUPPORTS_REMOTE_STORAGE |
 						FILE_UNICODE_ON_DISK;
 
 	wcscat(FileSystemNameBuffer, L"dokan");

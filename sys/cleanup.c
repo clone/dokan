@@ -185,7 +185,7 @@ DokanCompleteCleanup(
 	CcFlushCache(&fcb->SectionObjectPointers, NULL, 0, NULL);
 	CcPurgeCacheSection(&fcb->SectionObjectPointers, NULL, 0, FALSE);
 	CcUninitializeCacheMap(fileObject, NULL, NULL);
-	fileObject->Flags &= FO_CLEANUP_COMPLETE;
+	fileObject->Flags |= FO_CLEANUP_COMPLETE;
 
 
 	irp->IoStatus.Status = status;

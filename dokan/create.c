@@ -56,13 +56,12 @@ DispatchCreate(
 	// pass it to driver and when the same handle is used get it back
 	eventInfo->Context = (ULONG64)openInfo;
 
-
-	// top 8 bits is disposition info
-	disposition = EventContext->Create.CreateOptions >> 24;
+	// The high 8 bits of this parameter correspond to the Disposition parameter
+	disposition = (EventContext->Create.CreateOptions >> 24) & 0x000000ff;
 
 	status = -1; // in case being not dispatched
 	
-	// bottom 24 bits is open flag
+	// The low 24 bits of this member correspond to the CreateOptions parameter
 	options = EventContext->Create.CreateOptions & FILE_VALID_OPTION_FLAGS;
 	//DbgPrint("Create.CreateOptions 0x%x\n", options);
 
@@ -79,6 +78,10 @@ DispatchCreate(
 	// there is a case to open non directory file
 	if (options & FILE_NON_DIRECTORY_FILE) {
 		//DbgPrint("FILE_NON_DIRECTORY_FILE\n");
+	}
+
+	if (options & FILE_DELETE_ON_CLOSE) {
+		EventContext->Create.FileAttributes |= FILE_FLAG_DELETE_ON_CLOSE;
 	}
 
 	DbgPrint("###Create %04d\n", eventId);
@@ -105,9 +108,9 @@ DispatchCreate(
 	
 	// open a file
 	} else {
-		DWORD creationDisposition;
+		DWORD creationDisposition = OPEN_EXISTING;
 		fileInfo.IsDirectory = FALSE;
-
+		DbgPrint("   CreateDisposition %X\n", disposition);
 		switch(disposition) {
 			case FILE_CREATE:
 				creationDisposition = CREATE_NEW;
@@ -135,12 +138,10 @@ DispatchCreate(
 									EventContext->Create.DesiredAccess,
 									EventContext->Create.ShareAccess,
 									creationDisposition,
-									EventContext->Create.FileAttributes,				
+									EventContext->Create.FileAttributes,
 									&fileInfo);
 		}
-	
 	}
-
 
 	// save the information about this access in DOKAN_OPEN_INFO
 	openInfo->IsDirectory = fileInfo.IsDirectory;

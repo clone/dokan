@@ -41,6 +41,7 @@ DokanEventRelease(
 
 	// search CCB list to complete not completed Directory Notification 
 	vcb = deviceExtension->Vcb;
+	KeEnterCriticalRegion();
 	ExAcquireResourceExclusiveLite(&vcb->Resource, TRUE);
 
 	fcbHead = &vcb->NextFCB;
@@ -72,6 +73,7 @@ DokanEventRelease(
 	}
 
 	ExReleaseResourceLite(&vcb->Resource);
+	KeLeaveCriticalRegion();
 
 	status = DokanReleaseEventIrp(DeviceObject);
 	status = DokanReleasePendingIrp(DeviceObject);
@@ -169,8 +171,29 @@ Return Value:
 			break;
 
 		case IOCTL_EVENT_START:
-			DDbgPrint("  IOCTL_EVENT_START\n");
-			status = DokanEventStart(DeviceObject, Irp);
+			{
+				/*
+				WCHAR			deviceNameBuf[MAXIMUM_FILENAME_LENGTH];
+				HANDLE			mupHandle;
+				UNICODE_STRING	deviceName;
+				swprintf(deviceNameBuf, NTDEVICE_NAME_STRING L"%u", 0);
+				RtlInitUnicodeString(&deviceName, deviceNameBuf);
+
+				status = FsRtlRegisterUncProvider(&mupHandle, &deviceName, FALSE);
+				if (!NT_SUCCESS(status)) {
+					STATUS_ACCESS_DENIED
+					STATUS_ACCESS_VIOLATION
+					STATUS_DATATYPE_MISALIGNMENT
+					STATUS_INSUFFICIENT_RESOURCES
+					STATUS_INVALID_HANDLE
+					STATUS_INVALID_USER_BUFFER 
+					DokanPrintNTStatus(status);
+					DDbgPrint("    FsRtlRegisterUncProvider failed: 0x%X!\n", status);
+				}
+				*/
+				DDbgPrint("  IOCTL_EVENT_START\n");
+				status = DokanEventStart(DeviceObject, Irp);
+			}
 			break;
 
 		case IOCTL_EVENT_WRITE:
@@ -193,9 +216,11 @@ Return Value:
 			break;
 
 		case IOCTL_KEEPALIVE:
+			KeEnterCriticalRegion();
 			ExAcquireResourceExclusiveLite(&deviceExtension->Resource, TRUE);
 			KeQueryTickCount(&deviceExtension->TickCount);
 			ExReleaseResourceLite(&deviceExtension->Resource);
+			KeLeaveCriticalRegion();
 			status = STATUS_SUCCESS;
 			break;
 
