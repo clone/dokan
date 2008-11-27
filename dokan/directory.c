@@ -433,7 +433,7 @@ VOID
 DispatchDirectoryInformation(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	PEVENT_INFORMATION	eventInfo;
 	DOKAN_FILE_INFO		fileInfo;
@@ -446,7 +446,7 @@ DispatchDirectoryInformation(
 
 	CheckFileName(EventContext->Directory.DirectoryName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
+	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 
 	// check whether this is handled FileInfoClass
 	if (fileInfoClass != FileDirectoryInformation &&
@@ -489,7 +489,7 @@ DispatchDirectoryInformation(
 		DbgPrint("###FindFiles %04d\n", openInfo->EventId);
 
 		// if user defined FindFilesWithPattern
-		if (DokanOperations->FindFilesWithPattern) {
+		if (DokanInstance->DokanOperations->FindFilesWithPattern) {
 			LPCWSTR	pattern = L"*";
 		
 			// if search pattern is specified
@@ -500,19 +500,21 @@ DispatchDirectoryInformation(
 
 			patternCheck = FALSE; // do not recheck pattern later in MatchFiles
 
-			status = DokanOperations->FindFilesWithPattern(EventContext->Directory.DirectoryName,
-											pattern,
-											DokanFillFileData,
-											&fileInfo);
+			status = DokanInstance->DokanOperations->FindFilesWithPattern(
+						EventContext->Directory.DirectoryName,
+						pattern,
+						DokanFillFileData,
+						&fileInfo);
 	
-		} else if (DokanOperations->FindFiles) {
+		} else if (DokanInstance->DokanOperations->FindFiles) {
 
 			patternCheck = TRUE; // do pattern check later in MachFiles
 
 			// call FileSystem specifeid callback routine
-			status = DokanOperations->FindFiles(EventContext->Directory.DirectoryName,
-											DokanFillFileData,
-											&fileInfo);
+			status = DokanInstance->DokanOperations->FindFiles(
+						EventContext->Directory.DirectoryName,
+						DokanFillFileData,
+						&fileInfo);
 		} else {
 			status = -1;
 		}

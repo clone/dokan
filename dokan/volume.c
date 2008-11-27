@@ -300,7 +300,7 @@ VOID
 DispatchQueryVolumeInformation(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	PEVENT_INFORMATION		eventInfo;
 	DOKAN_FILE_INFO			fileInfo;
@@ -322,7 +322,7 @@ DispatchQueryVolumeInformation(
 	eventInfo->SerialNumber = EventContext->SerialNumber;
 
 	fileInfo.ProcessId = EventContext->ProcessId;
-
+	fileInfo.DokanOptions = DokanInstance->DokanOptions;
 
 	eventInfo->Status = STATUS_NOT_IMPLEMENTED;
 	eventInfo->BufferLength = 0;
@@ -331,16 +331,20 @@ DispatchQueryVolumeInformation(
 
 	switch (EventContext->Volume.FsInformationClass) {
 	case FileFsVolumeInformation:
-		eventInfo->Status = DokanFsVolumeInformation(eventInfo, EventContext, &fileInfo, DokanOperations);
+		eventInfo->Status = DokanFsVolumeInformation(
+								eventInfo, EventContext, &fileInfo, DokanInstance->DokanOperations);
 		break;
 	case FileFsSizeInformation:
-		eventInfo->Status = DokanFsSizeInformation(eventInfo, EventContext, &fileInfo, DokanOperations);
+		eventInfo->Status = DokanFsSizeInformation(
+								eventInfo, EventContext, &fileInfo, DokanInstance->DokanOperations);
 		break;
 	case FileFsAttributeInformation:
-		eventInfo->Status = DokanFsAttributeInformation(eventInfo, EventContext, &fileInfo, DokanOperations);
+		eventInfo->Status = DokanFsAttributeInformation(
+								eventInfo, EventContext, &fileInfo, DokanInstance->DokanOperations);
 		break;
 	case FileFsFullSizeInformation:
-		eventInfo->Status = DokanFsFullSizeInformation(eventInfo, EventContext, &fileInfo, DokanOperations);
+		eventInfo->Status = DokanFsFullSizeInformation(
+								eventInfo, EventContext, &fileInfo, DokanInstance->DokanOperations);
 		break;
 	default:
 		DbgPrint("error unknown volume info %d\n", EventContext->Volume.FsInformationClass);

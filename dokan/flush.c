@@ -26,7 +26,7 @@ VOID
 DispatchFlush(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	DOKAN_FILE_INFO		fileInfo;
 	PEVENT_INFORMATION	eventInfo;
@@ -36,16 +36,16 @@ DispatchFlush(
 
 	CheckFileName(EventContext->Flush.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
+	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
 
 	DbgPrint("###Flush %04d\n", openInfo->EventId);
 
 	eventInfo->Status = STATUS_SUCCESS;
 
-	if (DokanOperations->LockFile) {
+	if (DokanInstance->DokanOperations->FlushFileBuffers) {
 
-		status = DokanOperations->FlushFileBuffers(
+		status = DokanInstance->DokanOperations->FlushFileBuffers(
 					EventContext->Flush.FileName,
 					&fileInfo);
 

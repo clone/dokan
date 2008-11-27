@@ -35,12 +35,26 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
+typedef struct _DOKAN_OPTIONS {
+	WCHAR	DriveLetter; // drive letter to be mounted
+	USHORT	ThreadCount; // number of threads to be used
+	UCHAR	DebugMode; // ouput debug message
+	UCHAR	UseStdErr; // ouput debug message to stderr
+	UCHAR	UseAltStream; // use alternate stream
+	UCHAR	UseKeepAlive; // use auto unmount
+	UCHAR	Dummy0;
+	UCHAR	Dummy1;
+	ULONG64	GlobalContext; // FileSystem can use this variable
+
+} DOKAN_OPTIONS, *PDOKAN_OPTIONS;
+
 typedef struct _DOKAN_FILE_INFO {
 
 	ULONG64	Context;      // FileSystem can use this variable
 	ULONG64	DokanContext; // Don't touch this
 	ULONG	ProcessId;    // process id for the thread that originally requested a given I/O operation
 	BOOL	IsDirectory;  // requesting a directory file
+	PDOKAN_OPTIONS DokanOptions;
 
 } DOKAN_FILE_INFO, *PDOKAN_FILE_INFO;
 
@@ -211,18 +225,6 @@ typedef struct _DOKAN_OPERATIONS {
 
 } DOKAN_OPERATIONS, *PDOKAN_OPERATIONS;
 
-
-typedef struct _DOKAN_OPTIONS {
-	WCHAR	DriveLetter; // driver letter to be mounted
-	ULONG	ThreadCount; // number of threads to be used
-	UCHAR	DebugMode; // ouput debug message
-	UCHAR	UseStdErr; // ouput debug message to stderr
-	UCHAR	UseAltStream; // use alternate stream
-	UCHAR	UseKeepAlive; // use auto unmount
-	UCHAR	Dummy0;
-	UCHAR	Dummy1;
-
-} DOKAN_OPTIONS, *PDOKAN_OPTIONS;
 
 
 /* DokanMain returns error codes */

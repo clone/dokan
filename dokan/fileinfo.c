@@ -192,7 +192,7 @@ VOID
 DispatchQueryInformation(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	PEVENT_INFORMATION			eventInfo;
 	DOKAN_FILE_INFO				fileInfo;
@@ -207,7 +207,7 @@ DispatchQueryInformation(
 
 	ZeroMemory(&byHandleFileInfo, sizeof(BY_HANDLE_FILE_INFORMATION));
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
+	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 	
 	eventInfo->BufferLength = EventContext->File.BufferLength;
 
@@ -215,8 +215,8 @@ DispatchQueryInformation(
 
 	DbgPrint("###GetFileInfo %04d\n", openInfo->EventId);
 
-	if (DokanOperations->GetFileInformation) {
-		result = DokanOperations->GetFileInformation(EventContext->File.FileName,
+	if (DokanInstance->DokanOperations->GetFileInformation) {
+		result = DokanInstance->DokanOperations->GetFileInformation(EventContext->File.FileName,
 										&byHandleFileInfo,
 										&fileInfo);
 	} else {

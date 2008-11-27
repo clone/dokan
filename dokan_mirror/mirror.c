@@ -27,6 +27,25 @@ THE SOFTWARE.
 #include "dokan.h"
 #include "fileinfo.h"
 
+BOOL g_UseStdErr;
+BOOL g_DebugMode;
+
+static void DbgPrint(LPCWSTR format, ...)
+{
+	if (g_DebugMode) {
+		WCHAR buffer[512];
+		va_list argp;
+		va_start(argp, format);
+		vswprintf_s(buffer, sizeof(buffer)/sizeof(WCHAR), format, argp);
+		va_end(argp);
+		if (g_UseStdErr) {
+			fwprintf(stderr, buffer);
+		} else {
+			OutputDebugStringW(buffer);
+		}
+	}
+}
+
 static WCHAR RootDirectory[MAX_PATH] = L"C:";
 
 static void
@@ -44,7 +63,7 @@ GetFilePath(
 }
 
 
-#define MirrorCheckFlag(val, flag) if(val&flag) fprintf(stderr, "\t" #flag "\n")
+#define MirrorCheckFlag(val, flag) if (val&flag) { DbgPrint(L"\t" L#flag L"\n"); }
 
 static int
 MirrorCreateFile(
@@ -60,19 +79,18 @@ MirrorCreateFile(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"CreateFile : %s\n", filePath);
-
+	DbgPrint(L"CreateFile : %s\n", filePath);
 	
 	if (CreationDisposition == CREATE_NEW)
-		fprintf(stderr, "\tCREATE_NEW\n");
+		DbgPrint(L"\tCREATE_NEW\n");
 	if (CreationDisposition == OPEN_ALWAYS)
-		fprintf(stderr, "\tOPEN_ALWAYS\n");
+		DbgPrint(L"\tOPEN_ALWAYS\n");
 	if (CreationDisposition == CREATE_ALWAYS)
-		fprintf(stderr, "\tCREATE_ALWAYS\n");
+		DbgPrint(L"\tCREATE_ALWAYS\n");
 	if (CreationDisposition == OPEN_EXISTING)
-		fprintf(stderr, "\tOPEN_EXISTING\n");
+		DbgPrint(L"\tOPEN_EXISTING\n");
 	if (CreationDisposition == TRUNCATE_EXISTING)
-		fprintf(stderr, "\tTRUNCATE_EXISTING\n");
+		DbgPrint(L"\tTRUNCATE_EXISTING\n");
 
 	/*
 	if (ShareMode == 0 && AccessMode & FILE_WRITE_DATA)
@@ -81,13 +99,13 @@ MirrorCreateFile(
 		ShareMode = FILE_SHARE_READ;
 	*/
 
-	fprintf(stderr, "\tShareMode = 0x%x\n", ShareMode);
+	DbgPrint(L"\tShareMode = 0x%x\n", ShareMode);
 
 	MirrorCheckFlag(ShareMode, FILE_SHARE_READ);
 	MirrorCheckFlag(ShareMode, FILE_SHARE_WRITE);
 	MirrorCheckFlag(ShareMode, FILE_SHARE_DELETE);
 
-	fprintf(stderr, "\tAccessMode = 0x%x\n", AccessMode);
+	DbgPrint(L"\tAccessMode = 0x%x\n", AccessMode);
 
 	MirrorCheckFlag(AccessMode, GENERIC_READ);
 	MirrorCheckFlag(AccessMode, GENERIC_WRITE);
@@ -117,7 +135,7 @@ MirrorCreateFile(
 		//AccessMode = 0;
 	}
 
-	fprintf(stderr, "\tFlagsAndAttributes = 0x%x\n", FlagsAndAttributes);
+	DbgPrint(L"\tFlagsAndAttributes = 0x%x\n", FlagsAndAttributes);
 
 	MirrorCheckFlag(FlagsAndAttributes, FILE_ATTRIBUTE_ARCHIVE);
 	MirrorCheckFlag(FlagsAndAttributes, FILE_ATTRIBUTE_ENCRYPTED);
@@ -157,11 +175,11 @@ MirrorCreateFile(
 
 	if (handle == INVALID_HANDLE_VALUE) {
 		DWORD error = GetLastError();
-		fprintf(stderr, "\terror code = %d\n\n", error);
+		DbgPrint(L"\terror code = %d\n\n", error);
 		return error * -1; // error codes are negated value of Windows System Error codes
 	}
 
-	fprintf(stderr, "\n");
+	DbgPrint(L"\n");
 
 	// save the file handle in Context
 	DokanFileInfo->Context = (ULONG64)handle;
@@ -177,14 +195,14 @@ MirrorCreateDirectory(
 	WCHAR filePath[MAX_PATH];
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"CreateDirectory : %s\n", filePath);
+	DbgPrint(L"CreateDirectory : %s\n", filePath);
 	if (!CreateDirectory(filePath, NULL)) {
 		DWORD error = GetLastError();
-		fprintf(stderr, "\terror code = %d\n\n", error);
+		DbgPrint(L"\terror code = %d\n\n", error);
 		return error * -1; // error codes are negated value of Windows System Error codes
 	}
 	return 0;
-};
+}
 
 
 static int
@@ -197,12 +215,12 @@ MirrorOpenDirectory(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"OpenDirectory : %s\n", filePath);
+	DbgPrint(L"OpenDirectory : %s\n", filePath);
 
 	handle = CreateFile(
 		filePath,
 		0,
-		FILE_SHARE_READ,
+		FILE_SHARE_READ|FILE_SHARE_WRITE,
 		NULL,
 		OPEN_EXISTING,
 		FILE_FLAG_BACKUP_SEMANTICS,
@@ -210,11 +228,11 @@ MirrorOpenDirectory(
 
 	if (handle == INVALID_HANDLE_VALUE) {
 		DWORD error = GetLastError();
-		fprintf(stderr, "\terror code = %d\n\n", error);
+		DbgPrint(L"\terror code = %d\n\n", error);
 		return error * -1;
 	}
 
-	fprintf(stderr, "\n");
+	DbgPrint(L"\n");
 
 	DokanFileInfo->Context = (ULONG64)handle;
 
@@ -231,17 +249,17 @@ MirrorCloseFile(
 	GetFilePath(filePath, FileName);
 
 	if (DokanFileInfo->Context) {
-		fwprintf(stderr, L"CloseFile: %s\n", filePath);
-		fprintf(stderr, "\terror : not cleanuped file\n\n");
+		DbgPrint(L"CloseFile: %s\n", filePath);
+		DbgPrint(L"\terror : not cleanuped file\n\n");
 		CloseHandle((HANDLE)DokanFileInfo->Context);
 		DokanFileInfo->Context = 0;
 	} else {
-		//fwprintf(stderr, L"Close: %s\n\tinvalid handle\n\n", filePath);
-		fwprintf(stderr, L"Close: %s\n\n", filePath);
+		//DbgPrint(L"Close: %s\n\tinvalid handle\n\n", filePath);
+		DbgPrint(L"Close: %s\n\n", filePath);
 		return 0;
 	}
 
-	//fprintf(stderr, "\n");
+	//DbgPrint(L"\n");
 	return 0;
 }
 
@@ -255,12 +273,12 @@ MirrorCleanup(
 	GetFilePath(filePath, FileName);
 
 	if (DokanFileInfo->Context) {
-		fwprintf(stderr, L"Cleanup: %s\n\n", filePath);
+		DbgPrint(L"Cleanup: %s\n\n", filePath);
 		CloseHandle((HANDLE)DokanFileInfo->Context);
 		DokanFileInfo->Context = 0;
 	
 	} else {
-		fwprintf(stderr, L"Cleanup: %s\n\tinvalid handle\n\n", filePath);
+		DbgPrint(L"Cleanup: %s\n\tinvalid handle\n\n", filePath);
 		return -1;
 	}
 
@@ -284,10 +302,10 @@ MirrorReadFile(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"ReadFile : %s\n", filePath);
+	DbgPrint(L"ReadFile : %s\n", filePath);
 
 	if (!handle || handle == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "\tinvalid handle, cleanuped?\n");
+		DbgPrint(L"\tinvalid handle, cleanuped?\n");
 		handle = CreateFile(
 			filePath,
 			GENERIC_READ,
@@ -297,14 +315,14 @@ MirrorReadFile(
 			0,
 			NULL);
 		if (handle == INVALID_HANDLE_VALUE) {
-			fprintf(stderr, "\tCreateFile error : %d\n\n", GetLastError());
+			DbgPrint(L"\tCreateFile error : %d\n\n", GetLastError());
 			return -1;
 		}
 		opened = TRUE;
 	}
 	
 	if (SetFilePointer(handle, offset, NULL, FILE_BEGIN) == 0xFFFFFFFF) {
-		fprintf(stderr, "\tseek error, offset = %d\n\n", offset);
+		DbgPrint(L"\tseek error, offset = %d\n\n", offset);
 		if (opened)
 			CloseHandle(handle);
 		return -1;
@@ -312,14 +330,14 @@ MirrorReadFile(
 
 		
 	if (!ReadFile(handle, Buffer, BufferLength, ReadLength,NULL)) {
-		fprintf(stderr, "\tread error = %u, buffer length = %d, read length = %d\n\n",
+		DbgPrint(L"\tread error = %u, buffer length = %d, read length = %d\n\n",
 			GetLastError(), BufferLength, *ReadLength);
 		if (opened)
 			CloseHandle(handle);
 		return -1;
 
 	} else {
-		fprintf(stderr, "\tread %d, offset %d\n\n", *ReadLength, offset);
+		DbgPrint(L"\tread %d, offset %d\n\n", *ReadLength, offset);
 	}
 
 	if (opened)
@@ -345,16 +363,16 @@ MirrorWriteFile(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"WriteFile : %s, offset %I64d, length %d\n", filePath, Offset, NumberOfBytesToWrite);
-	//fprintf(stderr, "----\n%s\n----\n\n", Buffer);
+	DbgPrint(L"WriteFile : %s, offset %I64d, length %d\n", filePath, Offset, NumberOfBytesToWrite);
+	//DbgPrint(L"----\n%s\n----\n\n", Buffer);
 
-	//fprintf(stderr, "press any key?");
+	//DbgPrint(L"press any key?");
 	//getchar();
 
 
 	// reopen the file
 	if (!handle || handle == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "\tinvalid handle, cleanuped?\n");
+		DbgPrint(L"\tinvalid handle, cleanuped?\n");
 		handle = CreateFile(
 			filePath,
 			GENERIC_WRITE,
@@ -364,7 +382,7 @@ MirrorWriteFile(
 			0,
 			NULL);
 		if (handle == INVALID_HANDLE_VALUE) {
-			fprintf(stderr, "\tCreateFile error : %d\n\n", GetLastError());
+			DbgPrint(L"\tCreateFile error : %d\n\n", GetLastError());
 			return -1;
 		}
 		opened = TRUE;
@@ -373,18 +391,18 @@ MirrorWriteFile(
 	}
 
 	if (SetFilePointer(handle, offset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
-		fprintf(stderr, "\tseek error, offset = %d, error = %d\n", offset, GetLastError());
+		DbgPrint(L"\tseek error, offset = %d, error = %d\n", offset, GetLastError());
 		return -1;
 	}
 
 		
 	if (!WriteFile(handle, Buffer, NumberOfBytesToWrite, NumberOfBytesWritten, NULL)) {
-		fprintf(stderr, "\twrite error = %u, buffer length = %d, write length = %d\n",
+		DbgPrint(L"\twrite error = %u, buffer length = %d, write length = %d\n",
 			GetLastError(), NumberOfBytesToWrite, *NumberOfBytesWritten);
 		return -1;
 
 	} else {
-		fprintf(stderr, "\twrite %d, offset %d\n\n", *NumberOfBytesWritten, offset);
+		DbgPrint(L"\twrite %d, offset %d\n\n", *NumberOfBytesWritten, offset);
 	}
 
 	// close the file when it is reopened
@@ -405,17 +423,17 @@ MirrorFlushFileBuffers(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"FlushFileBuffers : %s\n", filePath);
+	DbgPrint(L"FlushFileBuffers : %s\n", filePath);
 
 	if (!handle || handle == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "\tinvalid handle\n\n");
+		DbgPrint(L"\tinvalid handle\n\n");
 		return 0;
 	}
 
 	if (FlushFileBuffers(handle)) {
 		return 0;
 	} else {
-		fprintf(stderr, "\tflush error code = %d\n", GetLastError());
+		DbgPrint(L"\tflush error code = %d\n", GetLastError());
 		return -1;
 	}
 
@@ -434,10 +452,10 @@ MirrorGetFileInformation(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"GetFileInfo : %s\n", filePath);
+	DbgPrint(L"GetFileInfo : %s\n", filePath);
 
 	if (!handle || handle == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "\tinvalid handle\n\n");
+		DbgPrint(L"\tinvalid handle\n\n");
 
 		// If CreateDirectory returned FILE_ALREADY_EXISTS and 
 		// it is called with FILE_OPEN_IF, that handle must be opened.
@@ -449,7 +467,7 @@ MirrorGetFileInformation(
 	}
 
 	if (!GetFileInformationByHandle(handle,HandleFileInformation)) {
-		fprintf(stderr, "\terror code = %d\n", GetLastError());
+		DbgPrint(L"\terror code = %d\n", GetLastError());
 
 		// FileName is a root directory
 		// in this case, FindFirstFile can't get directory information
@@ -461,7 +479,7 @@ MirrorGetFileInformation(
 			ZeroMemory(&find, sizeof(WIN32_FIND_DATAW));
 			handle = FindFirstFile(filePath, &find);
 			if (handle == INVALID_HANDLE_VALUE) {
-				fprintf(stderr, "\tFindFirstFile error code = %d\n\n", GetLastError());
+				DbgPrint(L"\tFindFirstFile error code = %d\n\n", GetLastError());
 				return -1;
 			}
 			HandleFileInformation->dwFileAttributes = find.dwFileAttributes;
@@ -470,12 +488,12 @@ MirrorGetFileInformation(
 			HandleFileInformation->ftLastWriteTime = find.ftLastWriteTime;
 			HandleFileInformation->nFileSizeHigh = find.nFileSizeHigh;
 			HandleFileInformation->nFileSizeLow = find.nFileSizeLow;
-			fprintf(stderr, "\tFindFiles OK\n");
+			DbgPrint(L"\tFindFiles OK\n");
 			CloseHandle(handle);
 		}
 	}
 
-	fprintf(stderr, "\n");
+	DbgPrint(L"\n");
 
 	if (opened)
 		CloseHandle(handle);
@@ -500,12 +518,12 @@ MirrorFindFiles(
 	GetFilePath(filePath, FileName);
 
 	wcscat(filePath, yenStar);
-	fwprintf(stderr, L"FindFiles :%s\n", filePath);
+	DbgPrint(L"FindFiles :%s\n", filePath);
 
 	hFind = FindFirstFile(filePath, &findData);
 
 	if (hFind == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "\tinvalid file handle. Error is %u\n\n", GetLastError());
+		DbgPrint(L"\tinvalid file handle. Error is %u\n\n", GetLastError());
 		return -1;
 	}
 
@@ -521,11 +539,11 @@ MirrorFindFiles(
 	FindClose(hFind);
 
 	if (error != ERROR_NO_MORE_FILES) {
-		fprintf(stderr, "\tFindNextFile error. Error is %u\n\n", error);
+		DbgPrint(L"\tFindNextFile error. Error is %u\n\n", error);
 		return -1;
 	}
 
-	fwprintf(stderr, L"\tFindFiles return %d entries in %s\n\n", count, filePath);
+	DbgPrint(L"\tFindFiles return %d entries in %s\n\n", count, filePath);
 
 	return 0;
 }
@@ -547,15 +565,15 @@ MirrorDeleteFile(
 
 	DokanFileInfo->Context = 0;
 
-	fwprintf(stderr, L"DeleteFile %s\n", filePath);
+	DbgPrint(L"DeleteFile %s\n", filePath);
 
 	if (DeleteFile(filePath) == 0) {
 		DWORD error = GetLastError();
-		fprintf(stderr, "\terror code = %d\n\n", error);
+		DbgPrint(L"\terror code = %d\n\n", error);
 		return error * -1;
 	}
 	
-	fwprintf(stderr, L"\tsuccess\n\n");
+	DbgPrint(L"\tsuccess\n\n");
 	return 0;
 }
 
@@ -576,14 +594,14 @@ MirrorDeleteDirectory(
 
 	DokanFileInfo->Context = 0;
 
-	fwprintf(stderr, L"DeleteDirectory %s\n", filePath);
+	DbgPrint(L"DeleteDirectory %s\n", filePath);
 
 	if (!RemoveDirectory(filePath)) {
 		DWORD error = GetLastError();
-		fprintf(stderr, "\terror code = %d\n\n", error);
+		DbgPrint(L"\terror code = %d\n\n", error);
 		return error * -1;
 	}
-	fwprintf(stderr, L"\tsuccess\n\n");
+	DbgPrint(L"\tsuccess\n\n");
 	return 0;
 }
 
@@ -602,7 +620,7 @@ MirrorMoveFile(
 	GetFilePath(filePath, FileName);
 	GetFilePath(newFilePath, NewFileName);
 
-	fwprintf(stderr, L"MoveFile %s -> %s\n\n", filePath, newFilePath);
+	DbgPrint(L"MoveFile %s -> %s\n\n", filePath, newFilePath);
 
 	if (DokanFileInfo->Context) {
 		// should close? or rename at closing?
@@ -615,10 +633,13 @@ MirrorMoveFile(
 	else
 		status = MoveFile(filePath, newFilePath);
 
-	if (status == 0)
-		fprintf(stderr, "\tMoveFile failed status = %d, code = %d\n", status, GetLastError());
-
-	return status == TRUE ? 0 : -1;
+	if (status == FALSE) {
+		DWORD error = GetLastError();
+		DbgPrint(L"\tMoveFile failed status = %d, code = %d\n", status, error);
+		return -(int)error;
+	} else {
+		return 0;
+	}
 }
 
 
@@ -636,11 +657,11 @@ MirrorLockFile(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"LockFile %s\n", filePath);
+	DbgPrint(L"LockFile %s\n", filePath);
 
 	handle = (HANDLE)DokanFileInfo->Context;
 	if (!handle || handle == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "\tinvalid handle\n\n");
+		DbgPrint(L"\tinvalid handle\n\n");
 		return -1;
 	}
 
@@ -648,10 +669,10 @@ MirrorLockFile(
 	offset.QuadPart = ByteOffset;
 
 	if (LockFile(handle, offset.HighPart, offset.LowPart, length.HighPart, length.LowPart)) {
-		fprintf(stderr, "\tsuccess\n\n");
+		DbgPrint(L"\tsuccess\n\n");
 		return 0;
 	} else {
-		fprintf(stderr, "\tfail\n\n");
+		DbgPrint(L"\tfail\n\n");
 		return -1;
 	}
 }
@@ -669,23 +690,23 @@ MirrorSetEndOfFile(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"SetEndOfFile %s, %I64d\n", filePath, ByteOffset);
+	DbgPrint(L"SetEndOfFile %s, %I64d\n", filePath, ByteOffset);
 
 	handle = (HANDLE)DokanFileInfo->Context;
 	if (!handle || handle == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "\tinvalid handle\n\n");
+		DbgPrint(L"\tinvalid handle\n\n");
 		return -1;
 	}
 
 	offset.QuadPart = ByteOffset;
 	if (!SetFilePointerEx(handle, offset, NULL, FILE_BEGIN)) {
-		fprintf(stderr, "\tSetFilePointer error: %d, offset = %I64d\n\n", GetLastError(), ByteOffset);
+		DbgPrint(L"\tSetFilePointer error: %d, offset = %I64d\n\n", GetLastError(), ByteOffset);
 		return GetLastError() * -1;
 	}
 
 	if (!SetEndOfFile(handle)) {
 		DWORD error = GetLastError();
-		fprintf(stderr, "\terror code = %d\n\n", error);
+		DbgPrint(L"\terror code = %d\n\n", error);
 		return error * -1;
 	}
 
@@ -703,15 +724,15 @@ MirrorSetFileAttributes(
 	
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"SetFileAttributes %s\n", filePath);
+	DbgPrint(L"SetFileAttributes %s\n", filePath);
 
 	if (!SetFileAttributes(filePath, FileAttributes)) {
 		DWORD error = GetLastError();
-		fprintf(stderr, "\terror code = %d\n\n", error);
+		DbgPrint(L"\terror code = %d\n\n", error);
 		return error * -1;
 	}
 
-	fprintf(stderr, "\n");
+	DbgPrint(L"\n");
 	return 0;
 }
 
@@ -729,22 +750,22 @@ MirrorSetFileTime(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"SetFileTime %s\n", filePath);
+	DbgPrint(L"SetFileTime %s\n", filePath);
 
 	handle = (HANDLE)DokanFileInfo->Context;
 
 	if (!handle || handle == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "\tinvalid handle\n\n");
+		DbgPrint(L"\tinvalid handle\n\n");
 		return -1;
 	}
 
 	if (!SetFileTime(handle, CreationTime, LastAccessTime, LastWriteTime)) {
 		DWORD error = GetLastError();
-		fprintf(stderr, "\terror code = %d\n\n", error);
+		DbgPrint(L"\terror code = %d\n\n", error);
 		return error * -1;
 	}
 
-	fprintf(stderr, "\n");
+	DbgPrint(L"\n");
 	return 0;
 }
 
@@ -764,11 +785,11 @@ MirrorUnlockFile(
 
 	GetFilePath(filePath, FileName);
 
-	fwprintf(stderr, L"UnlockFile %s\n", filePath);
+	DbgPrint(L"UnlockFile %s\n", filePath);
 
 	handle = (HANDLE)DokanFileInfo->Context;
 	if (!handle || handle == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "\tinvalid handle\n\n");
+		DbgPrint(L"\tinvalid handle\n\n");
 		return -1;
 	}
 
@@ -776,10 +797,10 @@ MirrorUnlockFile(
 	offset.QuadPart = ByteOffset;
 
 	if (UnlockFile(handle, offset.HighPart, offset.LowPart, length.HighPart, length.LowPart)) {
-		fprintf(stderr, "\tsuccess\n\n");
+		DbgPrint(L"\tsuccess\n\n");
 		return 0;
 	} else {
-		fprintf(stderr, "\tfail\n\n");
+		DbgPrint(L"\tfail\n\n");
 		return -1;
 	}
 }
@@ -789,7 +810,7 @@ static int
 MirrorUnmount(
 	PDOKAN_FILE_INFO	DokanFileInfo)
 {
-	fprintf(stderr, "Unmount\n");
+	DbgPrint(L"Unmount\n");
 	return 0;
 }
 
@@ -826,26 +847,54 @@ int __cdecl
 main(ULONG argc, PCHAR argv[])
 {
 	int status;
+	ULONG command;
 	PDOKAN_OPTIONS dokanOptions = (PDOKAN_OPTIONS)malloc(sizeof(DOKAN_OPTIONS));
 
-	if (argc < 3) {
-		fprintf(stderr, "mirror.exe RootDirectory DriveLetter [ThreadCount]\n");
+	if (argc < 5) {
+		fprintf(stderr, "mirror.exe\n"
+			"  /r RootDirectory (ex. /r c:\\test)\n"
+			"  /l DriveLetter (ex. /l m)\n"
+			"  /t ThreadCount (ex. /t 5)\n"
+			"  /d (enable debug output)\n"
+			"  /s (use stderr for output)");
 		return -1;
 	}
 
+	g_DebugMode = FALSE;
+	g_UseStdErr = FALSE;
+
 	ZeroMemory(dokanOptions, sizeof(DOKAN_OPTIONS));
+	dokanOptions->ThreadCount = 0; // use default
 
-	mbstowcs(RootDirectory, argv[1], strlen(argv[1]));
-	wprintf(L"RootDirectory: %ls\n", RootDirectory);
+	for (command = 1; command < argc; command++) {
+		switch (tolower(argv[command][1])) {
+		case 'r':
+			command++;
+			mbstowcs(RootDirectory, argv[command], strlen(argv[command]));
+			DbgPrint(L"RootDirectory: %ls\n", RootDirectory);
+			break;
+		case 'l':
+			command++;
+			dokanOptions->DriveLetter = argv[command][0];
+			break;
+		case 't':
+			command++;
+			dokanOptions->ThreadCount = (USHORT)atoi(argv[command]);
+			break;
+		case 'd':
+			g_DebugMode = TRUE;
+			break;
+		case 's':
+			g_UseStdErr = TRUE;
+			break;
+		default:
+			fprintf(stderr, "unknown command: %s\n", argv[command]);
+			return -1;
+		}
+	}
 
-	dokanOptions->DriveLetter = argv[2][0];
-
-	if (argc == 4)
-		dokanOptions->ThreadCount = atoi(argv[3]);
-	else
-		dokanOptions->ThreadCount = 1;
-	
-	dokanOptions->DebugMode = 1;
+	dokanOptions->DebugMode = (UCHAR)g_DebugMode;
+	dokanOptions->UseStdErr = (UCHAR)g_UseStdErr;
 	dokanOptions->UseKeepAlive = 1;
 
 	status = DokanMain(dokanOptions, &dokanOperations);

@@ -90,10 +90,11 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	char	buffer[1024];
 	PDOKAN_INSTANCE instance;
 
-	if (DokanOptions->DebugMode)
+	if (DokanOptions->DebugMode) {
 		g_DebugMode = TRUE;
-	else
+	} else {
 		g_DebugMode = FALSE;
+	}
 
 
 	if (DokanOptions->UseStdErr) {
@@ -103,11 +104,13 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 		g_UseStdErr = FALSE;
 	}
 
-	if (g_DebugMode)
+	if (g_DebugMode) {
 		DbgPrintW(L"Dokan: debug mode on\n");
+	}
 
-	if (g_UseStdErr)
+	if (g_UseStdErr) {
 		DbgPrintW(L"Dokan: use stderr\n");
+	}
 
 	if (DokanOptions->ThreadCount == 0) {
 		DokanOptions->ThreadCount = 5;
@@ -158,15 +161,14 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 
 	instance = NewDokanInstance();
 
-	instance->DriveLetter = DokanOptions->DriveLetter;
+	instance->DokanOptions = DokanOptions;
+	instance->DokanOperations = DokanOperations;
 
 	wcscpy_s(instance->DeviceName, sizeof(instance->DeviceName), 
 		DOKAN_DEVICE_NAME);
 
 
-	instance->Operations = DokanOperations;
-
-	instance->DeviceNumber = DokanStart(instance->DriveLetter);
+	instance->DeviceNumber = DokanStart(DokanOptions->DriveLetter);
 	if (instance->DeviceNumber == -1) {
 		return DOKAN_START_ERROR;
 	}
@@ -175,20 +177,20 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 		(WCHAR)(L'0' + instance->DeviceNumber);
 
 
-	if (!DokanMount(instance->DeviceNumber, instance->DriveLetter)) {
+	if (!DokanMount(instance->DeviceNumber, DokanOptions->DriveLetter)) {
 		SendReleaseIRP2(instance->DeviceNumber);
 		DokanDbgPrint("Dokan Error: DefineDosDevice Failed\n");
 		return DOKAN_MOUNT_ERROR;
 	}
 
-	DbgPrintW(L"mounted: %wc\n", instance->DriveLetter);
+	DbgPrintW(L"mounted: %wc\n", DokanOptions->DriveLetter);
 
 	if (DokanOptions->UseAltStream) {
-		DokanSendIoControl(instance->DriveLetter, IOCTL_ALTSTREAM_ON);
+		DokanSendIoControl(DokanOptions->DriveLetter, IOCTL_ALTSTREAM_ON);
 	}
 
 	if (DokanOptions->UseKeepAlive) {
-		DokanSendIoControl(instance->DriveLetter, IOCTL_KEEPALIVE_ON);
+		DokanSendIoControl(DokanOptions->DriveLetter, IOCTL_KEEPALIVE_ON);
 
 		threadIds[threadNum++] = (HANDLE)_beginthreadex(
 			NULL, // Security Atributes
@@ -271,7 +273,7 @@ GetDriverFullPath(
 
 DWORD WINAPI
 DokanLoop(
-   PDOKAN_INSTANCE Instance
+   PDOKAN_INSTANCE DokanInstance
 	)
 {
 	HANDLE	device;
@@ -281,12 +283,10 @@ DokanLoop(
 	ULONG	returnedLength;
 	DWORD	result = 0;
 
-	PDOKAN_OPERATIONS dokanOperations = Instance->Operations;
-
 	RtlZeroMemory(buffer, sizeof(buffer));
 
 	device = CreateFile(
-				Instance->DeviceName,				// lpFileName
+				DokanInstance->DeviceName,			// lpFileName
 				GENERIC_READ | GENERIC_WRITE,       // dwDesiredAccess
 				FILE_SHARE_READ | FILE_SHARE_WRITE, // dwShareMode
 				NULL,                               // lpSecurityAttributes
@@ -326,41 +326,41 @@ DokanLoop(
 
 			switch (context->MajorFunction) {
 			case IRP_MJ_CREATE:
-				DispatchCreate(device, context, dokanOperations);
+				DispatchCreate(device, context, DokanInstance);
 				break;
 			case IRP_MJ_CLEANUP:
-				DispatchCleanup(device, context, dokanOperations);
+				DispatchCleanup(device, context, DokanInstance);
 				break;
 			case IRP_MJ_CLOSE:
-				DispatchClose(device, context, dokanOperations);
+				DispatchClose(device, context, DokanInstance);
 				break;
 			case IRP_MJ_DIRECTORY_CONTROL:
-				DispatchDirectoryInformation(device, context, dokanOperations);
+				DispatchDirectoryInformation(device, context, DokanInstance);
 				break;
 			case IRP_MJ_READ:
-				DispatchRead(device, context, dokanOperations);
+				DispatchRead(device, context, DokanInstance);
 				break;
 			case IRP_MJ_WRITE:
-				DispatchWrite(device, context, dokanOperations);
+				DispatchWrite(device, context, DokanInstance);
 				break;
 			case IRP_MJ_QUERY_INFORMATION:
-				DispatchQueryInformation(device, context, dokanOperations);
+				DispatchQueryInformation(device, context, DokanInstance);
 				break;
 			case IRP_MJ_QUERY_VOLUME_INFORMATION:
-				DispatchQueryVolumeInformation(device ,context, dokanOperations);
+				DispatchQueryVolumeInformation(device ,context, DokanInstance);
 				break;
 			case IRP_MJ_LOCK_CONTROL:
-				DispatchLock(device, context, dokanOperations);
+				DispatchLock(device, context, DokanInstance);
 				break;
 			case IRP_MJ_SET_INFORMATION:
-				DispatchSetInformation(device, context, dokanOperations);
+				DispatchSetInformation(device, context, DokanInstance);
 				break;
 			case IRP_MJ_FLUSH_BUFFERS:
-				DispatchFlush(device, context, dokanOperations);
+				DispatchFlush(device, context, DokanInstance);
 				break;
 			case IRP_MJ_SHUTDOWN:
 				// this cass is used before unmount not shutdown
-				DispatchUnmount(device, context, Instance);
+				DispatchUnmount(device, context, DokanInstance);
 				break;
 			default:
 				break;
@@ -379,12 +379,14 @@ DokanLoop(
 
 DWORD WINAPI
 DokanKeepAlive(
-	PDOKAN_INSTANCE Instance)
+	PDOKAN_INSTANCE DokanInstance)
 {
 	
-	while (Instance->DriveLetter != 0) {
-		if (!DokanSendIoControl(Instance->DriveLetter, IOCTL_KEEPALIVE))
+	while (DokanInstance->DokanOptions->DriveLetter != 0) {
+		if (!DokanSendIoControl(
+				DokanInstance->DokanOptions->DriveLetter, IOCTL_KEEPALIVE)) {
 			break;
+		}
 		Sleep(DOKAN_KEEPALIVE_TIME);
 	}
 	_endthreadex(0);
@@ -447,6 +449,7 @@ PEVENT_INFORMATION
 DispatchCommon(
 	PEVENT_CONTEXT		EventContext,
 	ULONG				SizeOfEventInfo,
+	PDOKAN_INSTANCE		DokanInstance,
 	PDOKAN_FILE_INFO	DokanFileInfo)
 {
 	PEVENT_INFORMATION	eventInfo = (PEVENT_INFORMATION)malloc(SizeOfEventInfo);
@@ -472,7 +475,7 @@ DispatchCommon(
 
 	DokanFileInfo->Context		= (ULONG64)openInfo->UserContext;
 	DokanFileInfo->IsDirectory	= openInfo->IsDirectory;
-
+	DokanFileInfo->DokanOptions = DokanInstance->DokanOptions;
 
 	return eventInfo;
 }
@@ -482,16 +485,16 @@ VOID
 DispatchUnmount(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_INSTANCE		Instance)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	DOKAN_FILE_INFO			fileInfo;
 	static int count = 0;
 
 	// Unmount is called only once
-	EnterCriticalSection(&Instance->CriticalSection); 
+	EnterCriticalSection(&DokanInstance->CriticalSection); 
 	
 	if (count > 0) {
-		LeaveCriticalSection(&Instance->CriticalSection);
+		LeaveCriticalSection(&DokanInstance->CriticalSection);
 		return;
 	}
 	count++;
@@ -500,12 +503,12 @@ DispatchUnmount(
 
 	fileInfo.ProcessId = EventContext->ProcessId;
 
-	if (Instance->Operations->Unmount) {
+	if (DokanInstance->DokanOperations->Unmount) {
 		// ignore return value
-		Instance->Operations->Unmount(&fileInfo);
+		DokanInstance->DokanOperations->Unmount(&fileInfo);
 	}
 
-	LeaveCriticalSection(&Instance->CriticalSection);
+	LeaveCriticalSection(&DokanInstance->CriticalSection);
 
 	// do not notice enything to the driver
 	return;
@@ -702,7 +705,7 @@ BOOL WINAPI DllMain(
 					PDOKAN_INSTANCE instance =
 						CONTAINING_RECORD(entry, DOKAN_INSTANCE, ListEntry);
 					
-					DokanUnmount(instance->DriveLetter);
+					DokanUnmount(instance->DokanOptions->DriveLetter);
 					free(instance);
 				}
 

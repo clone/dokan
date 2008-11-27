@@ -68,10 +68,7 @@ DokanCheckKeepAlive(
 		// set drive letter
 		eventContext->Flags = mounted;
 
-		if (!NT_SUCCESS(DokanUnmountNotification(DeviceExtension, eventContext))) {
-			// failed to send unmount notification
-			DDbgPrint("  DokanUnmountNotification failed\n");
-		}
+		DokanEventNotification(&DeviceExtension->Global->NotifyService, eventContext);
 
 		DokanEventRelease(DeviceExtension->DeviceObject);
 
@@ -81,6 +78,98 @@ DokanCheckKeepAlive(
 
 	//DDbgPrint("<== DokanCheckKeepAlive\n");
 }
+
+
+
+NTSTATUS
+ReleaseTimeoutPendingIrp(
+   PDEVICE_EXTENSION	DeviceExtension
+   )
+{
+	KIRQL				oldIrql;
+    PLIST_ENTRY			thisEntry, nextEntry, listHead;
+	PIRP_ENTRY			irpEntry;
+	LARGE_INTEGER		tickCount;
+	LIST_ENTRY			completeList;
+	PIRP				irp;
+
+	DDbgPrint("==> ReleaseTimeoutPendingIRP\n");
+	InitializeListHead(&completeList);
+
+	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
+	KeAcquireSpinLock(&DeviceExtension->PendingIrp.ListLock, &oldIrql);
+
+	// when IRP queue is empty, there is nothing to do
+	if (IsListEmpty(&DeviceExtension->PendingIrp.ListHead)) {
+		KeReleaseSpinLock(&DeviceExtension->PendingIrp.ListLock, oldIrql);
+		DDbgPrint("  IrpQueue is Empty\n");
+		return STATUS_SUCCESS;
+	}
+
+	KeQueryTickCount(&tickCount);
+
+	// search timeout IRP through pending IRP list
+	listHead = &DeviceExtension->PendingIrp.ListHead;
+
+    for (thisEntry = listHead->Flink;
+		thisEntry != listHead;
+		thisEntry = nextEntry) {
+
+        nextEntry = thisEntry->Flink;
+
+        irpEntry = CONTAINING_RECORD(thisEntry, IRP_ENTRY, ListEntry);
+
+		// this IRP is NOT timeout yet
+		if ( (tickCount.QuadPart - irpEntry->TickCount.QuadPart) * KeQueryTimeIncrement()
+			< DOKAN_IPR_PENDING_TIMEOUT * 10000 * 1000) {
+			break;
+		}
+
+		RemoveEntryList(thisEntry);
+
+		DDbgPrint(" timeout Irp #%X\n", irpEntry->SerialNumber);
+
+		irp = irpEntry->Irp;
+
+		if (irp == NULL) {
+			// this IRP has already been canceled
+			ASSERT(irpEntry->CancelRoutineFreeMemory == FALSE);
+			ExFreePool(irpEntry);
+			continue;
+		}
+
+		// this IRP is not canceled yet
+		if (IoSetCancelRoutine(irp, NULL) == NULL) {
+			// Cancel routine will run as soon as we release the lock
+			InitializeListHead(&irpEntry->ListEntry);
+			irpEntry->CancelRoutineFreeMemory = TRUE;
+			continue;
+		}
+		// IrpEntry is saved here for CancelRoutine
+		// Clear it to prevent to be completed by CancelRoutine twice
+		irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_IRP_ENTRY] = NULL;
+		InsertTailList(&completeList, &irpEntry->ListEntry);
+	}
+
+	if (IsListEmpty(&DeviceExtension->PendingIrp.ListHead)) {
+		KeClearEvent(&DeviceExtension->PendingIrp.NotEmpty);
+	}
+	KeReleaseSpinLock(&DeviceExtension->PendingIrp.ListLock, oldIrql);
+	
+	while (!IsListEmpty(&completeList)) {
+		listHead = RemoveHeadList(&completeList);
+		irpEntry = CONTAINING_RECORD(listHead, IRP_ENTRY, ListEntry);
+		irp = irpEntry->Irp;
+		irp->IoStatus.Information = 0;
+		irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
+		ExFreePool(irpEntry);
+		IoCompleteRequest(irp, IO_NO_INCREMENT);
+	}
+
+	DDbgPrint("<== ReleaseTimeoutPendingIRP\n");
+	return STATUS_SUCCESS;
+}
+
 
 
 VOID
@@ -118,7 +207,7 @@ Routine Description:
 			break;
 		}
 
-		DokanReleaseTimeoutPendingIrp(DeviceExtension);
+		ReleaseTimeoutPendingIrp(DeviceExtension);
 		if (DeviceExtension->UseKeepAlive)
 			DokanCheckKeepAlive(DeviceExtension);
 	}

@@ -111,14 +111,17 @@ DokanCreateDiskDevice(
 	diskDeviceObject->Flags |= DO_DIRECT_IO;
 
 	// initialize Event and Event queue
-	DokanInitIrpList(&deviceExtension->IrpList);
-	DokanInitIrpList(&deviceExtension->EventList);
+	DokanInitIrpList(&deviceExtension->PendingIrp);
+	DokanInitIrpList(&deviceExtension->PendingEvent);
+	DokanInitIrpList(&deviceExtension->NotifyEvent);
 
+	DokanInitIrpList(&DokanGlobal->PendingService);
+	DokanInitIrpList(&DokanGlobal->NotifyService);
+
+	KeInitializeEvent(&deviceExtension->ReleaseEvent, NotificationEvent, FALSE);
 
 	// "0" means not mounted
 	deviceExtension->Mounted = 0;
-
-
 
 	ExInitializeResourceLite(&deviceExtension->Resource);
 

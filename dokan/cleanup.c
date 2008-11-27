@@ -26,7 +26,7 @@ VOID
 DispatchCleanup(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	PEVENT_INFORMATION		eventInfo;
 	DOKAN_FILE_INFO			fileInfo;	
@@ -35,7 +35,7 @@ DispatchCleanup(
 
 	CheckFileName(EventContext->Cleanup.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
+	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 
 	eventInfo->Status = STATUS_SUCCESS; // return success at any case
 	
@@ -43,9 +43,9 @@ DispatchCleanup(
 
 	DbgPrint("###Cleanup %04d\n", openInfo->EventId);
 
-	if (DokanOperations->Cleanup) {
+	if (DokanInstance->DokanOperations->Cleanup) {
 		// ignore return value
-		DokanOperations->Cleanup(EventContext->Cleanup.FileName,
+		DokanInstance->DokanOperations->Cleanup(EventContext->Cleanup.FileName,
 								&fileInfo);
 	}
 

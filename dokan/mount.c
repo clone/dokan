@@ -47,8 +47,8 @@ DokanServiceCheck(
 		return FALSE;
 	}
 	
-	CloseHandle(serviceHandle);
-	CloseHandle(controlHandle);
+	CloseServiceHandle(serviceHandle);
+	CloseServiceHandle(controlHandle);
 
 	return TRUE;
 }
@@ -111,8 +111,8 @@ DokanServiceControl(
 		}
 	}
 
-	CloseHandle(serviceHandle);
-	CloseHandle(controlHandle);
+	CloseServiceHandle(serviceHandle);
+	CloseServiceHandle(controlHandle);
 
 	Sleep(100);
 	return result;

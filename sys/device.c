@@ -21,67 +21,6 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "dokan.h"
 
-NTSTATUS
-DokanEventRelease(
-	__in PDEVICE_OBJECT DeviceObject)
-{
-	PDEVICE_EXTENSION	deviceExtension;
-	PDokanVCB			vcb;
-	PDokanFCB			fcb;
-	PDokanCCB			ccb;
-	PLIST_ENTRY			fcbEntry, fcbNext, fcbHead;
-	PLIST_ENTRY			ccbEntry, ccbNext, ccbHead;
-	NTSTATUS			status = STATUS_SUCCESS;
-
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
-
-	//ExAcquireResourceExclusiveLite(&deviceExtension->Resource, TRUE);
-	deviceExtension->Mounted = 0;
-	//ExReleaseResourceLite(&deviceExtension->Resource);
-
-	// search CCB list to complete not completed Directory Notification 
-	vcb = deviceExtension->Vcb;
-	KeEnterCriticalRegion();
-	ExAcquireResourceExclusiveLite(&vcb->Resource, TRUE);
-
-	fcbHead = &vcb->NextFCB;
-
-    for (fcbEntry = fcbHead->Flink;
-			fcbEntry != fcbHead;
-			fcbEntry = fcbNext) {
-
-		fcbNext = fcbEntry->Flink;
-
-		fcb = CONTAINING_RECORD(fcbEntry, DokanFCB, NextFCB);
-
-		ExAcquireResourceExclusiveLite(&fcb->Resource, TRUE);
-
-		ccbHead = &fcb->NextCCB;
-
-		for (ccbEntry = ccbHead->Flink;
-			ccbEntry != ccbHead;
-			ccbEntry = ccbNext) {
-
-			ccbNext = ccbEntry->Flink;
-
-			ccb = CONTAINING_RECORD(ccbEntry, DokanCCB, NextCCB);
-
-			DDbgPrint("  NotifyCleanup %X, %X\n", ccb, (ULONG)ccb->UserContext);
-			FsRtlNotifyCleanup(vcb->NotifySync, &vcb->DirNotifyList, ccb);
-		}
-		ExReleaseResourceLite(&fcb->Resource);
-	}
-
-	ExReleaseResourceLite(&vcb->Resource);
-	KeLeaveCriticalRegion();
-
-	status = DokanReleaseEventIrp(DeviceObject);
-	status = DokanReleasePendingIrp(DeviceObject);
-	DokanStopCheckThread(deviceExtension);
-
-	return status;
-}
-
 
 NTSTATUS
 DokanDispatchDeviceControl(

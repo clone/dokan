@@ -120,6 +120,8 @@ DokanSetDispositionInformation(
 	// scan NextCCB of FCB and search opening files
 	// and if other program don't open it, delete it?
 
+	DbgPrint("  DispositionInfo->DeleteFile: %d\n", dispositionInfo->DeleteFile);
+
 	//if (!dispositionInfo->DeleteFile) {
 
 	if (FileInfo->IsDirectory) {
@@ -232,7 +234,7 @@ VOID
 DispatchSetInformation(
  	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	PEVENT_INFORMATION		eventInfo;
 	PDOKAN_OPEN_INFO		openInfo;
@@ -249,7 +251,7 @@ DispatchSetInformation(
 
 	CheckFileName(EventContext->SetFile.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
+	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 	
 	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
 
@@ -257,23 +259,28 @@ DispatchSetInformation(
 
 	switch (EventContext->SetFile.FileInformationClass) {
 		case FileAllocationInformation:
-			status = DokanSetAllocationInformation(EventContext, &fileInfo, DokanOperations);
+			status = DokanSetAllocationInformation(
+						EventContext, &fileInfo, DokanInstance->DokanOperations);
 			break;
 		
 		case FileBasicInformation:
-			status = DokanSetBasicInformation(EventContext, &fileInfo, DokanOperations);
+			status = DokanSetBasicInformation(
+						EventContext, &fileInfo, DokanInstance->DokanOperations);
 			break;
 		
 		case FileDispositionInformation:
-			status = DokanSetDispositionInformation(EventContext, &fileInfo, DokanOperations);
+			status = DokanSetDispositionInformation(
+						EventContext, &fileInfo, DokanInstance->DokanOperations);
 			break;
 		
 		case FileEndOfFileInformation:
-			status = DokanSetEndOfFileInformation(EventContext, &fileInfo, DokanOperations);
+			status = DokanSetEndOfFileInformation(
+						EventContext, &fileInfo, DokanInstance->DokanOperations);
 			break;
 		
 		case FileLinkInformation:
-			status = DokanSetLinkInformation(EventContext, &fileInfo, DokanOperations);
+			status = DokanSetLinkInformation(
+						EventContext, &fileInfo, DokanInstance->DokanOperations);
 			break;
 		
 		case FilePositionInformation:
@@ -282,11 +289,13 @@ DispatchSetInformation(
 			break;
 		
 		case FileRenameInformation:
-			status = DokanSetRenameInformation(EventContext, &fileInfo, DokanOperations);
+			status = DokanSetRenameInformation(
+						EventContext, &fileInfo, DokanInstance->DokanOperations);
 			break;
 
 		case FileValidDataLengthInformation:
-			status = DokanSetValidDataLengthInformation(EventContext, &fileInfo, DokanOperations);
+			status = DokanSetValidDataLengthInformation(
+						EventContext, &fileInfo, DokanInstance->DokanOperations);
 			break;
 	}
 
@@ -297,13 +306,8 @@ DispatchSetInformation(
 	if (status < 0) {
 		int error = status * -1;
 
-		eventInfo->Status = STATUS_NOT_IMPLEMENTED;
-
-		switch (error) {
-		case ERROR_DIR_NOT_EMPTY:
-			eventInfo->Status = STATUS_DIRECTORY_NOT_EMPTY;
-			break;
-		}
+		eventInfo->Status = GetNTStatus(error);
+		
 	} else {
 		eventInfo->Status = STATUS_SUCCESS;
 

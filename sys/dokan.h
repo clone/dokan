@@ -62,7 +62,7 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 
 #define DOKAN_KEEPALIVE_TIMEOUT		15 // in seconds
 
-//#define USE_DBGPRINT 1
+#define USE_DBGPRINT 1
 
 #ifdef USE_DBGPRINT
 	#define DDbgPrint(...)		DbgPrint(__VA_ARGS__)
@@ -117,7 +117,9 @@ typedef struct _DOKAN_GLOBAL {
 	FSD_IDENTIFIER	Identifier;
 	ERESOURCE		Resource;
 	// the list of waiting IRP for mount service
-	IRP_LIST		ServiceList;
+	IRP_LIST		PendingService;
+	IRP_LIST		NotifyService;
+
 } DOKAN_GLOBAL, *PDOKAN_GLOBAL;
 
 
@@ -151,12 +153,10 @@ typedef struct _DEVICE_EXTENSION {
 	
 	PDokanVCB				Vcb;
 
-	// the list of pending IRP
-	IRP_LIST				IrpList;
-
 	// the list of waiting Event
-	IRP_LIST				EventList;
-
+	IRP_LIST				PendingIrp;
+	IRP_LIST				PendingEvent;
+	IRP_LIST				NotifyEvent;
 
 	// while mounted, Mounted is set to drive letter
 	ULONG					Mounted;
@@ -164,8 +164,12 @@ typedef struct _DEVICE_EXTENSION {
 	// When timeout is occuerd, KillEvent is triggered.
 	KEVENT					KillEvent;
 
+	KEVENT					ReleaseEvent;
+
 	// the thread to deal with timeout
 	PKTHREAD				TimeoutThread;
+
+	PKTHREAD				EventNotificationThread;
 
 	// Device Number
 	ULONG					Number;
@@ -247,7 +251,7 @@ typedef struct _IRP_ENTRY {
 	LIST_ENTRY			ListEntry;
 	ULONG				SerialNumber;
 	PDEVICE_EXTENSION	DeviceExtension;
-	PIRP				PendingIrp;
+	PIRP				Irp;
 	PIO_STACK_LOCATION	IrpSp;
 	PFILE_OBJECT		FileObject;
 	BOOLEAN				CancelRoutineFreeMemory;
@@ -256,9 +260,10 @@ typedef struct _IRP_ENTRY {
 } IRP_ENTRY, *PIRP_ENTRY;
 
 
-
-
-
+typedef struct _DRIVER_EVENT_CONTEXT {
+	LIST_ENTRY		ListEntry;
+	EVENT_CONTEXT	EventContext;
+} DRIVER_EVENT_CONTEXT, *PDRIVER_EVENT_CONTEXT;
 
 
 DRIVER_INITIALIZE DriverEntry;
@@ -310,14 +315,6 @@ DRIVER_DISPATCH DokanRegisterPendingIrpForService;
 DRIVER_DISPATCH DokanCompleteIrp;
 
 NTSTATUS
-DokanReleaseEventIrp(
-	__in PDEVICE_OBJECT DeviceObject);
-
-NTSTATUS
-DokanReleasePendingIrp(
-	__in PDEVICE_OBJECT DeviceObject);
-
-NTSTATUS
 DokanEventRelease(
 	__in PDEVICE_OBJECT DeviceObject);
 
@@ -326,18 +323,28 @@ DRIVER_DISPATCH DokanEventStart;
 
 DRIVER_DISPATCH DokanEventWrite;
 
+PEVENT_CONTEXT
+AllocateEventContext(
+	__in PDEVICE_EXTENSION	DeviceExtension,
+	__in PIRP				Irp,
+	__in ULONG				EventContextLength);
+
+VOID
+DokanFreeEventContext(
+	__in PEVENT_CONTEXT	EventContext);
+
 
 NTSTATUS
 DokanRegisterPendingIrp(
     __in PDEVICE_OBJECT DeviceObject,
     __in PIRP			Irp,
-	__in ULONG			SerialNumber);
+	__in PEVENT_CONTEXT	EventContext);
 
 
-NTSTATUS
+VOID
 DokanEventNotification(
-	__in PDEVICE_EXTENSION	DeviceExtension,
-	__in PEVENT_CONTEXT		EventContext);
+	__in PIRP_LIST		NotifyEvent,
+	__in PEVENT_CONTEXT	EventContext);
 
 
 NTSTATUS
@@ -345,10 +352,6 @@ DokanUnmountNotification(
 	__in PDEVICE_EXTENSION	DeviceExtension,
 	__in PEVENT_CONTEXT		EventContext);
 
-
-NTSTATUS
-DokanReleaseTimeoutPendingIrp(
-   PDEVICE_EXTENSION	DeviceExtension);
 
 VOID
 DokanCompleteDirectoryControl(
@@ -485,11 +488,6 @@ DokanStopCheckThread(
 	__in PDEVICE_EXTENSION	DeviceExtension);
 
 
-NTSTATUS
-DokanDequeueIrp(
-	__in PDEVICE_OBJECT DeviceObject,
-	__in PIRP Irp);
-
 BOOLEAN
 DokanCheckCCB(
 	__in PDEVICE_EXTENSION	DeviceExtension,
@@ -499,6 +497,13 @@ VOID
 DokanInitIrpList(
 	 __in PIRP_LIST		IrpList);
 
+NTSTATUS
+DokanStartEventNotificationThread(
+	__in PDEVICE_EXTENSION	DeviceExtension);
+
+VOID
+DokanStopEventNotificationThread(
+	__in PDEVICE_EXTENSION	DeviceExtension);
 
 #endif // _DOKAN_H_
 

@@ -224,16 +224,12 @@ DokanQueryDirectory(
 		eventLength += ccb->SearchPatternLength;
 	}
 		
-	eventContext = ExAllocatePool(eventLength);
+	eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
 
 	if (eventContext == NULL) {
 		return STATUS_INSUFFICIENT_RESOURCES;
 	}
 
-	RtlZeroMemory(eventContext, eventLength);
-
-	eventContext->Length = eventLength;
-	DokanSetCommonEventContext(deviceExtension, eventContext, Irp);
 	eventContext->Context = ccb->UserContext;
 	//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
 
@@ -279,18 +275,8 @@ DokanQueryDirectory(
 		DDbgPrint("    ccb->SearchPattern %ws\n", ccb->SearchPattern);
 	}
 
-	eventContext->SerialNumber = InterlockedIncrement(&deviceExtension->SerialNumber);
 
-	status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
-
-	// if it became pending status
-	if (status == STATUS_PENDING) {
-
-		// inform QueryDirectory to user mode using pending event
-		DokanEventNotification(deviceExtension, eventContext);
-	}
-
-	ExFreePool(eventContext);
+	status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
 
 	return status;
 }
@@ -361,7 +347,7 @@ DokanCompleteDirectoryControl(
 
 	DDbgPrint("==> DokanCompleteDirectoryControl\n");
 
-	irp   = IrpEntry->PendingIrp;
+	irp   = IrpEntry->Irp;
 	irpSp = IrpEntry->IrpSp;	
 
 

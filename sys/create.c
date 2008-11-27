@@ -381,7 +381,6 @@ Return Value:
 			status = STATUS_INVALID_PARAMETER;
 			info = 0;
 			__leave;
-
 		}
 			
 		// this memory is freed by DokanGetFCB if needed
@@ -394,7 +393,7 @@ Return Value:
 
 		RtlZeroMemory(fileName, fileNameLength + sizeof(WCHAR));
 
-		if( relatedFileObject != NULL ) {
+		if (relatedFileObject != NULL) {
 			DDbgPrint("  RelatedFileName:%wZ\n", &relatedFileObject->FileName);
 
 			// copy the file name of related file object
@@ -441,17 +440,13 @@ Return Value:
 		enteringFileSystem = FALSE;
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
-		eventContext = ExAllocatePool(eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
 				
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
 			__leave;
 		}
 
-		RtlZeroMemory(eventContext, eventLength);
-
-		eventContext->Length = eventLength;
-		DokanSetCommonEventContext(deviceExtension, eventContext, Irp);
 		eventContext->Context = 0;
 
 		// copy the file name
@@ -463,19 +458,8 @@ Return Value:
 		eventContext->Create.DesiredAccess  = irpSp->Parameters.Create.SecurityContext->DesiredAccess;
 		eventContext->Create.ShareAccess    = irpSp->Parameters.Create.ShareAccess;
 
-		eventContext->SerialNumber = InterlockedIncrement(&deviceExtension->SerialNumber);
-
 		// register this IRP to waiting IPR list
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
-
-		// When status of IRP is pending
-		if (status == STATUS_PENDING) {
-			// inform it to user-mode
-			DokanEventNotification(deviceExtension, eventContext);
-		}
-
-		ExFreePool(eventContext);
-
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
 
 	} __finally {
 
@@ -509,7 +493,7 @@ DokanCompleteCreate(
 	PDokanCCB			ccb;
 	PDokanFCB			fcb;
 
-	irp   = IrpEntry->PendingIrp;
+	irp   = IrpEntry->Irp;
 	irpSp = IrpEntry->IrpSp;	
 
 	FsRtlEnterFileSystem();
@@ -650,7 +634,7 @@ Return Value:
 		ASSERT(fcb != NULL);
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
-		eventContext = ExAllocatePool(eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
 
 		if (eventContext == NULL) {
 			//status = STATUS_INSUFFICIENT_RESOURCES;
@@ -658,10 +642,6 @@ Return Value:
 			__leave;
 		}
 
-		RtlZeroMemory(eventContext, eventLength);
-
-		eventContext->Length = eventLength;
-		DokanSetCommonEventContext(deviceExtension, eventContext, Irp);
 		eventContext->Context = ccb->UserContext;
 		//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
 
@@ -677,15 +657,12 @@ Return Value:
 		FsRtlExitFileSystem();
 		enteringFileSystem = FALSE;
 
-		eventContext->SerialNumber = InterlockedIncrement(&deviceExtension->SerialNumber);
-
 		// Close can not be pending status
 		// don't register this IRP
 		//status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
 
 		// inform it to user-mode
-		DokanEventNotification(deviceExtension, eventContext);
-		ExFreePool(eventContext);
+		DokanEventNotification(&deviceExtension->NotifyEvent, eventContext);
 
 		status = STATUS_SUCCESS;
 
@@ -724,7 +701,7 @@ DokanCompleteClose(
 	PDokanVCB			vcb;
 	PFILE_OBJECT		fileObject;
 
-	irp   = IrpEntry->PendingIrp;
+	irp   = IrpEntry->Irp;
 	irpSp = IrpEntry->IrpSp;	
 
 	FsRtlEnterFileSystem();

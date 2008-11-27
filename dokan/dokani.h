@@ -45,11 +45,10 @@ typedef struct _DOKAN_INSTANCE
 	// (when there are many mounts, each mount use 
 	// other DeviceName)
 	WCHAR	DeviceName[MAX_PATH];
-
-	WCHAR	DriveLetter;
 	ULONG	DeviceNumber;
 
-	PDOKAN_OPERATIONS Operations;
+	PDOKAN_OPTIONS		DokanOptions;
+	PDOKAN_OPERATIONS	DokanOperations;
 
 	LIST_ENTRY	ListEntry;
 
@@ -108,6 +107,7 @@ PEVENT_INFORMATION
 DispatchCommon(
 	PEVENT_CONTEXT		EventContext,
 	ULONG				SizeOfEventInfo,
+	PDOKAN_INSTANCE		DokanInstance,
 	PDOKAN_FILE_INFO	DokanFileInfo);
 
 
@@ -115,84 +115,84 @@ VOID
 DispatchDirectoryInformation(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchQueryInformation(
  	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchQueryVolumeInformation(
  	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchSetInformation(
  	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchRead(
  	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchWrite(
  	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchCreate(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchClose(
   	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchCleanup(
   	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchFlush(
   	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchUnmount(
   	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_INSTANCE		Instance);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 VOID
 DispatchLock(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations);
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 BOOLEAN
@@ -248,6 +248,10 @@ ClearFindData(
 DWORD WINAPI
 DokanKeepAlive(
 	PVOID	Param);
+
+
+ULONG
+GetNTStatus(DWORD ErrorCode);
 
 #ifdef __cplusplus
 }

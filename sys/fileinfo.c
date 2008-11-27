@@ -178,20 +178,13 @@ DokanDispatchQueryInformation(
 		// sum of it's size and file name length
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
 
-		// this memory must be released in this {}
-		eventContext = ExAllocatePool(eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
 				
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
 			__leave;
 		}
 			
-		RtlZeroMemory(eventContext, eventLength);
-
-		// the length of all
-		eventContext->Length = eventLength;
-
-		DokanSetCommonEventContext(deviceExtension, eventContext, Irp);
 		eventContext->Context = ccb->UserContext;
 		//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
 
@@ -207,18 +200,8 @@ DokanDispatchQueryInformation(
 						fcb->FileName.Buffer,
 						fcb->FileName.Length);
 
-		eventContext->SerialNumber = InterlockedIncrement(&deviceExtension->SerialNumber);
-
 		// register this IRP to pending IPR list
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
-
-		// if is became pending status
-		if (status == STATUS_PENDING) {			
-			// inform it to user mode using pending event
-			DokanEventNotification(deviceExtension, eventContext);
-		}
-		
-		ExFreePool(eventContext);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
 
 	} __finally {
 
@@ -258,7 +241,7 @@ DokanCompleteQueryInformation(
 
 	DDbgPrint("==> DokanCompleteQueryInformation\n");
 
-	irp = IrpEntry->PendingIrp;
+	irp = IrpEntry->Irp;
 	irpSp = IrpEntry->IrpSp;
 
 	ccb = IrpEntry->FileObject->FsContext2;
@@ -429,21 +412,13 @@ DokanDispatchSetInformation(
 			eventLength += targetFileObject->FileName.Length;
 		}
 
-
-		// this memory must be freed in this {}
-		eventContext = ExAllocatePool(eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
 	
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
 			__leave;
 		}
 	
-		RtlZeroMemory(eventContext, eventLength);
-
-		// the length of whole EventContext
-		eventContext->Length = eventLength;
-
-		DokanSetCommonEventContext(deviceExtension, eventContext, Irp);
 		eventContext->Context = ccb->UserContext;
 
 		eventContext->SetFile.FileInformationClass =
@@ -456,7 +431,6 @@ DokanDispatchSetInformation(
 		eventContext->SetFile.BufferOffset = FIELD_OFFSET(EVENT_CONTEXT, SetFile.FileName[0]) +
 												fcb->FileName.Length + sizeof(WCHAR); // the last null char
 	
-		
 		// copy FileInformation
 		RtlCopyMemory((PCHAR)eventContext + eventContext->SetFile.BufferOffset,
 						Irp->AssociatedIrp.SystemBuffer,
@@ -485,18 +459,9 @@ DokanDispatchSetInformation(
 						fcb->FileName.Buffer,
 						fcb->FileName.Length);
 
-		eventContext->SerialNumber = InterlockedIncrement(&deviceExtension->SerialNumber);
-
 		// register this IRP to waiting IRP list and make it pending status
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
 
-		// When IRP status become pending
-		if (status == STATUS_PENDING) {
-			DokanEventNotification(deviceExtension, eventContext);
-		}
-
-		ExFreePool(eventContext);
-	
 	} __finally {
 
 		if (status != STATUS_PENDING) {
@@ -541,7 +506,7 @@ DokanCompleteSetInformation(
 
 		DDbgPrint("==> DokanCompleteSetInformation\n");
 
-		irp = IrpEntry->PendingIrp;
+		irp = IrpEntry->Irp;
 		irpSp = IrpEntry->IrpSp;
 
 		ccb = IrpEntry->FileObject->FsContext2;

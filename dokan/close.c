@@ -26,7 +26,7 @@ VOID
 DispatchClose(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	PEVENT_INFORMATION		eventInfo;
 	DOKAN_FILE_INFO			fileInfo;	
@@ -35,7 +35,7 @@ DispatchClose(
 
 	CheckFileName(EventContext->Close.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
+	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 
 	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
 
@@ -43,10 +43,10 @@ DispatchClose(
 
 	DbgPrint("###Close %04d\n", openInfo->EventId);
 
-	if (DokanOperations->CloseFile) {
+	if (DokanInstance->DokanOperations->CloseFile) {
 		// ignore return value
-		DokanOperations->CloseFile(EventContext->Close.FileName,
-								&fileInfo);
+		DokanInstance->DokanOperations->CloseFile(
+			EventContext->Close.FileName, &fileInfo);
 	}
 
 	// do not send it to the driver

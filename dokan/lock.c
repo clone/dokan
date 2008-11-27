@@ -26,7 +26,7 @@ VOID
 DispatchLock(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	DOKAN_FILE_INFO		fileInfo;
 	PEVENT_INFORMATION	eventInfo;
@@ -36,7 +36,7 @@ DispatchLock(
 
 	CheckFileName(EventContext->Lock.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
+	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
 
 	DbgPrint("###Lock %04d\n", openInfo->EventId);
@@ -45,9 +45,9 @@ DispatchLock(
 
 	switch (EventContext->MinorFunction) {
 	case IRP_MN_LOCK:
-		if (DokanOperations->LockFile) {
+		if (DokanInstance->DokanOperations->LockFile) {
 
-			status = DokanOperations->LockFile(
+			status = DokanInstance->DokanOperations->LockFile(
 						EventContext->Lock.FileName,
 						EventContext->Lock.ByteOffset.QuadPart,
 						EventContext->Lock.Length.QuadPart,
@@ -63,9 +63,9 @@ DispatchLock(
 	case IRP_MN_UNLOCK_ALL_BY_KEY:
 		break;
 	case IRP_MN_UNLOCK_SINGLE:
-		if (DokanOperations->UnlockFile) {
+		if (DokanInstance->DokanOperations->UnlockFile) {
 		
-			status = DokanOperations->UnlockFile(
+			status = DokanInstance->DokanOperations->UnlockFile(
 						EventContext->Lock.FileName,
 						EventContext->Lock.ByteOffset.QuadPart,
 						EventContext->Lock.Length.QuadPart,

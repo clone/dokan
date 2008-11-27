@@ -26,7 +26,7 @@ VOID
 DispatchCreate(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	static eventId = 0;
 	ULONG					length	  = sizeof(EVENT_INFORMATION);
@@ -47,6 +47,7 @@ DispatchCreate(
 	eventInfo->SerialNumber = EventContext->SerialNumber;
 
 	fileInfo.ProcessId = EventContext->ProcessId;
+	fileInfo.DokanOptions = DokanInstance->DokanOptions;
 
 	// DOKAN_OPEN_INFO is structure for a opened file
 	// this will be freed by Close
@@ -93,14 +94,14 @@ DispatchCreate(
 		fileInfo.IsDirectory = TRUE;
 
 		if (disposition == FILE_CREATE || disposition == FILE_OPEN_IF) {
-			if (DokanOperations->CreateDirectory) {
-				status = DokanOperations->CreateDirectory(EventContext->Create.FileName,
-														&fileInfo);
+			if (DokanInstance->DokanOperations->CreateDirectory) {
+				status = DokanInstance->DokanOperations->CreateDirectory(
+							EventContext->Create.FileName, &fileInfo);
 			}
 		} else if(disposition == FILE_OPEN) {
-			if (DokanOperations->OpenDirectory) {
-				status = DokanOperations->OpenDirectory(EventContext->Create.FileName,
-														&fileInfo);
+			if (DokanInstance->DokanOperations->OpenDirectory) {
+				status = DokanInstance->DokanOperations->OpenDirectory(
+							EventContext->Create.FileName, &fileInfo);
 			}
 		} else {
 			DbgPrint("### Create other disposition : %d\n", disposition);
@@ -133,8 +134,9 @@ DispatchCreate(
 				break;
 		}
 		
-		if(DokanOperations->CreateFile) {
-			status = DokanOperations->CreateFile(EventContext->Create.FileName,
+		if(DokanInstance->DokanOperations->CreateFile) {
+			status = DokanInstance->DokanOperations->CreateFile(
+									EventContext->Create.FileName,
 									EventContext->Create.DesiredAccess,
 									EventContext->Create.ShareAccess,
 									creationDisposition,

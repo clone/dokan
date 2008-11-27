@@ -166,7 +166,8 @@ Return Value:
 	}
 
 	RtlZeroMemory(dokanGlobal, sizeof(DOKAN_GLOBAL));
-	DokanInitIrpList(&dokanGlobal->ServiceList);
+	DokanInitIrpList(&dokanGlobal->PendingService);
+	DokanInitIrpList(&dokanGlobal->NotifyService);
 
 	for (deviceNumber = 0; deviceNumber < DOKAN_DEVICE_MAX; ++deviceNumber) {
 		status = DokanCreateDiskDevice(DriverObject, deviceNumber, dokanGlobal);

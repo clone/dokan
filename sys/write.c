@@ -44,7 +44,7 @@ DokanDispatchWrite(
 
 	__try {
 
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanWrite\n");
 
@@ -99,7 +99,7 @@ DokanDispatchWrite(
 							+ irpSp->Parameters.Write.Length
 							+ fcb->FileName.Length;
 
-		eventContext = ExAllocatePool(eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
 
 		// no more memory!
 		if (eventContext == NULL) {
@@ -107,13 +107,8 @@ DokanDispatchWrite(
 			__leave;
 		}
 
-		RtlZeroMemory(eventContext, eventLength);
-		
-		eventContext->Length = eventLength;
-		DokanSetCommonEventContext(deviceExtension, eventContext, Irp);
 		eventContext->Context = ccb->UserContext;
 		//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
-		
 
 		// When the length is bigger than usual event notitfication buffer,
 		// saves pointer in DiverContext to copy EventContext after allocating
@@ -146,22 +141,13 @@ DokanDispatchWrite(
 		eventContext->Write.FileNameLength = fcb->FileName.Length;
 		RtlCopyMemory(eventContext->Write.FileName, fcb->FileName.Buffer, fcb->FileName.Length);
 		
-		eventContext->SerialNumber = InterlockedIncrement(&deviceExtension->SerialNumber);
-
 		// When eventlength is less than event notification buffer,
 		// returns it to user-mode using pending event.
 		if (eventLength <= EVENT_CONTEXT_MAX_SIZE) {
 
 			// register this IRP to IRP waiting list and make it pending status
-			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
+			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
 
-			// if the IRP became pending status, informs to user-mode
-			if (status == STATUS_PENDING) {
-				DokanEventNotification(deviceExtension, eventContext);
-			}
-
-			ExFreePool(eventContext);
-		
 			// EventContext is no longer valid, clears it
 			Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = 0;
 
@@ -170,13 +156,13 @@ DokanDispatchWrite(
 		} else {
 			// the length at lest file name can be stored
 			ULONG	requestContextLength = max(sizeof(EVENT_CONTEXT), eventContext->Write.BufferOffset);
-			PEVENT_CONTEXT requestContext = ExAllocatePool(requestContextLength);
+			PEVENT_CONTEXT requestContext = AllocateEventContext(deviceExtension, Irp, requestContextLength);
 
 			// no more memory!
 			if (requestContext == NULL) {
 				status = STATUS_INSUFFICIENT_RESOURCES;
 				Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = 0;
-				ExFreePool(eventContext);
+				DokanFreeEventContext(eventContext);
 				__leave;
 			}
 
@@ -184,18 +170,11 @@ DokanDispatchWrite(
 			RtlCopyMemory(requestContext, eventContext, eventContext->Write.BufferOffset);
 			// puts actual size of RequestContext
 			requestContext->Length = requestContextLength;
-			// reeusts enough size to copy EventContext
+			// requsts enough size to copy EventContext
 			requestContext->Write.RequestLength = eventLength;
 
 			// regiters this IRP to IRP wainting list and make it pending status
-			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
-
-			// when IRP became pending status, notify user-mode of it using notification event
-			if (status == STATUS_PENDING) {
-				DokanEventNotification(deviceExtension, requestContext);
-			}
-
-			ExFreePool(requestContext);
+			status = DokanRegisterPendingIrp(DeviceObject, Irp, requestContext);
 		}
 
 	} __finally {
@@ -212,7 +191,7 @@ DokanDispatchWrite(
 
 		DDbgPrint("<== DokanWrite\n");
 
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 
 	}
 
@@ -239,7 +218,7 @@ DokanCompleteWrite(
 
 	DDbgPrint("==> DokanCompleteWrite %wZ\n", &IrpEntry->FileObject->FileName);
 
-	irp   = IrpEntry->PendingIrp;
+	irp   = IrpEntry->Irp;
 	irpSp = IrpEntry->IrpSp;	
 
 	ccb = IrpEntry->FileObject->FsContext2;

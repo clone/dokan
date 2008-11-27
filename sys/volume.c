@@ -132,20 +132,13 @@ DokanDispatchQueryVolumeInformation(
 			}
 
 			// this memory must be freed in this {}
-			eventContext = ExAllocatePool(eventLength);
+			eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
 
 			if (eventContext == NULL) {
 				status = STATUS_INSUFFICIENT_RESOURCES;
 				__leave;
 			}
-
-			RtlZeroMemory(eventContext, eventLength);
-
-			// the length of EventContext
-			eventContext->Length = eventLength;
-
-			DokanSetCommonEventContext(deviceExtension, eventContext, Irp);
-				
+		
 			if (ccb) {
 				eventContext->Context = ccb->UserContext;
 				//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
@@ -157,17 +150,8 @@ DokanDispatchQueryVolumeInformation(
 			// the length which can be returned to user-mode
 			eventContext->Volume.BufferLength = irpSp->Parameters.QueryVolume.Length;
 
-			eventContext->SerialNumber = InterlockedIncrement(&deviceExtension->SerialNumber);
 
-			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
-
-			// if status of IRP is pending
-			if (status == STATUS_PENDING) {
-				// informs user-mode of EventContext using pending IPR for event notification
-				DokanEventNotification(deviceExtension, eventContext);
-			}
-
-			ExFreePool(eventContext);
+			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
 		}
 
 	} __finally {
@@ -206,7 +190,7 @@ DokanCompleteQueryVolumeInformation(
 
 	DDbgPrint("==> DokanCompleteQueryVolumeInformation\n");
 
-	irp = IrpEntry->PendingIrp;
+	irp = IrpEntry->Irp;
 	irpSp = IrpEntry->IrpSp;
 
 	ccb = IrpEntry->FileObject->FsContext2;

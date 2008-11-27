@@ -19,6 +19,7 @@ SOURCES=dokan.c \
 	flush.c \
 	device.c \
 	fscontrol.c \
+	notification.c \
 	dokan.rc
 
 

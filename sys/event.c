@@ -99,7 +99,7 @@ DokanIrpCancelRoutine(
 		if (irpSp->MajorFunction == IRP_MJ_WRITE) {
 			PVOID eventContext = Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT];
 			if (eventContext != NULL) {
-				ExFreePool(eventContext);
+				DokanFreeEventContext(eventContext);
 			}
 			Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = NULL;
 		}
@@ -110,7 +110,7 @@ DokanIrpCancelRoutine(
 			KeClearEvent(&irpEntry->IrpList->NotEmpty);
 		}
 
-		irpEntry->PendingIrp = NULL;
+		irpEntry->Irp = NULL;
 
 		if (irpEntry->CancelRoutineFreeMemory == FALSE) {
 			InitializeListHead(&irpEntry->ListEntry);
@@ -136,7 +136,7 @@ DokanIrpCancelRoutine(
 
 
 NTSTATUS
-DokanRegisterPendingIrpMain(
+RegisterPendingIrpMain(
     __in PDEVICE_OBJECT DeviceObject,
     __in PIRP			Irp,
 	__in ULONG			SerialNumber,
@@ -150,7 +150,7 @@ DokanRegisterPendingIrpMain(
     PIO_STACK_LOCATION	irpSp;
     KIRQL				oldIrql;
  
-	DDbgPrint("==> DokanRegisterPendingIrp\n");
+	//DDbgPrint("==> DokanRegisterPendingIrpMain\n");
 
 	vcb = DokanGetVcb(DeviceObject);
 	deviceExtension = DokanGetDeviceExtension(DeviceObject);
@@ -179,7 +179,7 @@ DokanRegisterPendingIrpMain(
 	irpEntry->SerialNumber		= SerialNumber;
     irpEntry->FileObject		= irpSp->FileObject;
     irpEntry->DeviceExtension	= deviceExtension;
-    irpEntry->PendingIrp		= Irp;
+    irpEntry->Irp				= Irp;
 	irpEntry->IrpSp				= irpSp;
 	irpEntry->IrpList			= IrpList;
 
@@ -217,7 +217,7 @@ DokanRegisterPendingIrpMain(
 	//DDbgPrint("  Release IrpList.ListLock\n");
     KeReleaseSpinLock(&IrpList->ListLock, oldIrql);
 
-	DDbgPrint("<== DokanRegisterPendingIrp\n");
+	//DDbgPrint("<== DokanRegisterPendingIrpMain\n");
     return STATUS_PENDING;;
 
 }
@@ -227,17 +227,24 @@ NTSTATUS
 DokanRegisterPendingIrp(
     __in PDEVICE_OBJECT DeviceObject,
     __in PIRP			Irp,
-	__in ULONG			SerialNumber
+	__in PEVENT_CONTEXT	EventContext
     )
 {
 	PDEVICE_EXTENSION deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
-	return DokanRegisterPendingIrpMain(
+	NTSTATUS status = RegisterPendingIrpMain(
 		DeviceObject,
 		Irp,
-		SerialNumber,
-		&deviceExtension->IrpList,
+		EventContext->SerialNumber,
+		&deviceExtension->PendingIrp,
 		TRUE);
+
+	if (status == STATUS_PENDING) {
+		DokanEventNotification(&deviceExtension->NotifyEvent, EventContext);
+	} else {
+		DokanFreeEventContext(EventContext);
+	}
+	return status;
 }
 
 
@@ -250,13 +257,13 @@ DokanRegisterPendingIrpForEvent(
 {
 	PDEVICE_EXTENSION deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
-	DDbgPrint("DokanRegisterPendingIrpForEvent\n");
+	//DDbgPrint("DokanRegisterPendingIrpForEvent\n");
 
-	return DokanRegisterPendingIrpMain(
+	return RegisterPendingIrpMain(
 		DeviceObject,
 		Irp,
 		0, // SerialNumber
-		&deviceExtension->EventList,
+		&deviceExtension->PendingEvent,
 		TRUE);
 }
 
@@ -272,253 +279,13 @@ DokanRegisterPendingIrpForService(
 
 	DDbgPrint("DokanRegisterPendingIrpForService\n");
 
-	return DokanRegisterPendingIrpMain(
+	return RegisterPendingIrpMain(
 		DeviceObject,
 		Irp,
 		0, // SerialNumber
-		&deviceExtension->Global->ServiceList,
+		&deviceExtension->Global->PendingService,
 		FALSE);
 }
-
-
-
-NTSTATUS
-DokanEventNotificationMain(
-	__in PDEVICE_EXTENSION	DeviceExtension,
-	__in PEVENT_CONTEXT		EventContext,
-	__in PIRP_LIST			IrpList,
-	__in ULONG				Timeout // in seconds
-	)
-
-/*++
-
-
---*/
-{
-	PIRP_ENTRY			eventEntry;
-	PLIST_ENTRY			listEntry;
-	PIRP				irp;
-    KIRQL				oldIrql;
-	PIO_STACK_LOCATION	irpSp;
-	LARGE_INTEGER		timeout;
-	NTSTATUS			status = STATUS_INSUFFICIENT_RESOURCES;
-	NTSTATUS			eventStatus;
-	ULONG				info	 = 0;
-	ULONG				eventLen = 0;
-	ULONG				bufferLen= 0;
-	PVOID				buffer	 = NULL;
-
-
-	//DDbgPrint("==> DokanEventNotification\n");
-
-	ASSERT(DeviceExtension);
-
-	//ExAcquireResourceSharedLite(&DeviceExtension->Resource, TRUE);
-	if (!DeviceExtension->Mounted) {
-		DDbgPrint("  device is not mounted\n");
-		//ExReleaseResourceLite(&DeviceExtension->Resource);
-		return STATUS_INSUFFICIENT_RESOURCES;
-	}
-	//ExReleaseResourceLite(&DeviceExtension->Resource);
-
-	RtlZeroMemory(&timeout, sizeof(LARGE_INTEGER));
-
-	// in 100 nano seconds units, -10000 * milliseconds
-	timeout.QuadPart = -10000 * 1000 * DOKAN_NOTIFICATION_TIMEOUT;
-
-	while (1) {
-		// wait until Event IRP come
-		ASSERT(KeGetCurrentIrql() < DISPATCH_LEVEL);
-		//DDbgPrint("   [#%X] wait for Event\n", EventContext->SerialNumber);
-
-		//ExAcquireResourceSharedLite(&DeviceExtension->Resource, TRUE);
-		if (!DeviceExtension->Mounted) {
-			//ExReleaseResourceLite(&DeviceExtension->Resource);
-			return STATUS_INSUFFICIENT_RESOURCES;
-		}
-		//ExReleaseResourceLite(&DeviceExtension->Resource);
-
-		eventStatus = KeWaitForSingleObject(&IrpList->NotEmpty, Executive, KernelMode,
-			FALSE, &timeout);
-
-		// timeout
-		if (!NT_SUCCESS(eventStatus) || eventStatus == STATUS_TIMEOUT) {
-			DDbgPrint("  wait notification event timeout\n");
-			return STATUS_INSUFFICIENT_RESOURCES;
-		}
-
-		//DDbgPrint("   [#%X] get Event\n", EventContext->SerialNumber);
-
-		//DDbgPrint("      Lock EventList.ListLock\n");
-		ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
-		KeAcquireSpinLock(&IrpList->ListLock, &oldIrql);
-
-		if (IsListEmpty(&IrpList->ListHead)) {
-			//DDbgPrint("      Release EventList.ListLock\n");
-			//DDbgPrint("      ### EventQueue is Emtpy ###\n");
-			//DDbgPrint("      ClearEvent\n");
-			KeClearEvent(&IrpList->NotEmpty);
-			KeReleaseSpinLock(&IrpList->ListLock, oldIrql);
-		} else {
-			break;
-		}
-		DDbgPrint("   try again\n");
-	}
-
-	// EventQueue must not be emtpy
-	ASSERT(!IsListEmpty(&IrpList->ListHead));
-	listEntry = RemoveHeadList(&IrpList->ListHead);
-
-	if (IsListEmpty(&IrpList->ListHead)) {
-		//DDbgPrint("    list is empty ClearEvent\n");
-		KeClearEvent(&IrpList->NotEmpty);
-	}
-
-	// eventEntry's memory must be freed in this function
-	eventEntry = CONTAINING_RECORD(listEntry, IRP_ENTRY, ListEntry);
-
-	irp = eventEntry->PendingIrp;
-	
-	if (irp == NULL) {
-		// this IRP is already canceled
-		// TODO: should do something
-		ASSERT(eventEntry->CancelRoutineFreeMemory == FALSE);
-		ExFreePool(eventEntry);
-		eventEntry = NULL;
-
-		KeReleaseSpinLock(&IrpList->ListLock, oldIrql);
-		return status;
-	}
-
-	if (IoSetCancelRoutine(irp, NULL) == NULL) {
-		// Cancel routine will run as soon as we release the lock
-		InitializeListHead(&eventEntry->ListEntry);
-		eventEntry->CancelRoutineFreeMemory = TRUE;
-		KeReleaseSpinLock(&IrpList->ListLock, oldIrql);
-		return status;
-	}
-
-	// this IRP is not canceled yet
-
-	if(EventContext != NULL)
-		eventLen = EventContext->Length;
-
-	//irpSp = IoGetCurrentIrpStackLocation(irp);
-	irpSp = eventEntry->IrpSp;
-			
-	// available size that is used for event notification
-	bufferLen = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
-			
-	// buffer that is used to inform Event
-	buffer	= irp->AssociatedIrp.SystemBuffer;
-
-	irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_IRP_ENTRY] = NULL;
-
-	//DDbgPrint("  !!EventNotification!!\n");
-			
-	// buffer is not specified or short of length
-	if (bufferLen == 0 || buffer == NULL || bufferLen < eventLen) {
-			
-		DDbgPrint("EventNotice : STATUS_INSUFFICIENT_RESOURCES\n");
-		DDbgPrint("  bufferLen: %d, eventLen: %d\n", bufferLen, eventLen);
-		info   = 0;
-		status = STATUS_INSUFFICIENT_RESOURCES;
-			
-	} else {
-			
-		// let's copy EVENT_CONTEXT
-		ASSERT(buffer != NULL);
-		ASSERT(bufferLen != 0);
-	
-		//DDbgPrint("  buffer %X\n", buffer);
-		//DDbgPrint("  bufferLen %d\n", bufferLen);
-		//DDbgPrint("  eventLen %d\n", eventLen);
-		//DDbgPrint("  copy EventContext\n");
-		RtlCopyMemory(buffer, EventContext, eventLen);
-		status = STATUS_SUCCESS;
-		info = eventLen;
-	}
-
-	KeReleaseSpinLock(&IrpList->ListLock, oldIrql);
-	irp->IoStatus.Status = status;
-	irp->IoStatus.Information = info;
-	IoCompleteRequest(irp, IO_NO_INCREMENT);
-
-	ExFreePool(eventEntry);
-	eventEntry = NULL;
-	
-	//DDbgPrint("<== DokanEventNotification\n");
-
-    return status;
-}
-
-
-
-NTSTATUS
-DokanEventNotification(
-	__in PDEVICE_EXTENSION	DeviceExtension,
-	__in PEVENT_CONTEXT		EventContext
-	)
-{
-	return DokanEventNotificationMain(
-		DeviceExtension,
-		EventContext,
-		&DeviceExtension->EventList,
-		DOKAN_NOTIFICATION_TIMEOUT);
-}
-
-
-
-NTSTATUS
-DokanUnmountNotification(
-	__in PDEVICE_EXTENSION	DeviceExtension,
-	__in PEVENT_CONTEXT		EventContext
-	)
-{
-	return DokanEventNotificationMain(
-		DeviceExtension,
-		EventContext,
-		&DeviceExtension->Global->ServiceList,
-		DOKAN_UNMOUNT_NOTIFICATION_TIMEOUT); // timeout in seconds
-}
-
-
-
-// remove IRP that is enqueued at RegisterPendingIrp
-NTSTATUS
-DokanDequeueIrp(
-	__in PDEVICE_OBJECT DeviceObject,
-	__in PIRP Irp)
-{
-	KIRQL				oldIrql;
-    PDEVICE_EXTENSION   deviceExtension;
-	PIRP_ENTRY			irpEntry;
-
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
-
-	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
-	KeAcquireSpinLock(&deviceExtension->IrpList.ListLock, &oldIrql);
-
-	irpEntry = (PIRP_ENTRY)Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_IRP_ENTRY];
-	Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_IRP_ENTRY] = NULL;
-
-	RemoveEntryList(&irpEntry->ListEntry);
-
-	if (IoSetCancelRoutine(Irp, NULL) != NULL) {
-		ExFreePool(irpEntry);
-
-	} else {
-		// this IRP is already canceled?
-		// this IRP should not be completed?
-		InitializeListHead(&irpEntry->ListEntry);
-		irpEntry->CancelRoutineFreeMemory = TRUE;
-	}
-
-	KeReleaseSpinLock(&deviceExtension->IrpList.ListLock, oldIrql);
-
-	return STATUS_SUCCESS;
-}
-
 
 
 // When user-mode file system application returns EventInformation,
@@ -546,14 +313,12 @@ DokanCompleteIrp(
 
 	//DDbgPrint("      Lock IrpList.ListLock\n");
 	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
-	KeAcquireSpinLock(&deviceExtension->IrpList.ListLock, &oldIrql);
+	KeAcquireSpinLock(&deviceExtension->PendingIrp.ListLock, &oldIrql);
 
 	// search corresponding IRP through pending IRP list
-	listHead = &deviceExtension->IrpList.ListHead;
+	listHead = &deviceExtension->PendingIrp.ListHead;
 
-    for (thisEntry = listHead->Flink;
-		thisEntry != listHead;
-		thisEntry = nextEntry) {
+    for (thisEntry = listHead->Flink; thisEntry != listHead; thisEntry = nextEntry) {
 
 		PIRP				irp;
 		PIO_STACK_LOCATION	irpSp;
@@ -570,10 +335,10 @@ DokanCompleteIrp(
 		if (irpEntry->SerialNumber != eventInfo->SerialNumber)  {
 			continue;
 		}
-			
+
 		RemoveEntryList(thisEntry);
 
-		irp = irpEntry->PendingIrp;
+		irp = irpEntry->Irp;
 	
 		if (irp == NULL) {
 			// this IRP is already canceled
@@ -598,7 +363,7 @@ DokanCompleteIrp(
 		// IrpEntry is saved here for CancelRoutine
 		// Clear it to prevent to be completed by CancelRoutine twice
 		irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_IRP_ENTRY] = NULL;
-		KeReleaseSpinLock(&deviceExtension->IrpList.ListLock, oldIrql);
+		KeReleaseSpinLock(&deviceExtension->PendingIrp.ListLock, oldIrql);
 
 		switch (irpSp->MajorFunction) {
 		case IRP_MJ_DIRECTORY_CONTROL:
@@ -646,221 +411,12 @@ DokanCompleteIrp(
 		return STATUS_SUCCESS;
 	}
 
-	KeReleaseSpinLock(&deviceExtension->IrpList.ListLock, oldIrql);
+	KeReleaseSpinLock(&deviceExtension->PendingIrp.ListLock, oldIrql);
 
     //DDbgPrint("<== AACompleteIrp [EventInfo #%X]\n", eventInfo->SerialNumber);
 
 	// TODO: should return error
     return STATUS_SUCCESS;
-}
-
-
-// release all pending IRP(for Event notificaiton)
-NTSTATUS
-DokanReleaseEventIrp(
-    __in PDEVICE_OBJECT DeviceObject)
-{
-	KIRQL				oldIrql;
-    PLIST_ENTRY			thisEntry, nextEntry, listHead;
-	PIRP_ENTRY			eventEntry;
-	PDokanVCB			vcb;
-    PDEVICE_EXTENSION   deviceExtension;
-	PEVENT_INFORMATION	eventInfo;
-
-
-	DDbgPrint("==> DokanReleaseEventIRP\n");
-
-
-	vcb = DokanGetVcb(DeviceObject);
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
-
-	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
-	KeAcquireSpinLock(&deviceExtension->EventList.ListLock, &oldIrql);
-
-	// if EventQueue is empty, nothing to do
-	if (IsListEmpty(&deviceExtension->EventList.ListHead)) {
-		KeReleaseSpinLock(&deviceExtension->EventList.ListLock, oldIrql);
-		return STATUS_SUCCESS;
-	}
-
-	// release all IRP through pending IRP list
-	listHead = &deviceExtension->EventList.ListHead;
-
-    for (thisEntry = listHead->Flink;
-		thisEntry != listHead;
-		thisEntry = nextEntry) {
-
-		PIRP	irp;
-        nextEntry = thisEntry->Flink;
-
-        eventEntry = CONTAINING_RECORD(thisEntry, IRP_ENTRY, ListEntry);
-
-		RemoveEntryList(thisEntry);
-
-		irp = eventEntry->PendingIrp;
-	
-		if (irp != NULL) {
-
-			// this IRP isn't canceled yet
-			if (IoSetCancelRoutine(irp, NULL) != NULL) {
-				
-				PIO_STACK_LOCATION	irpSp;
-				ULONG				bufferLen;
-				PVOID				buffer;
-				ULONG				info = 0;
-				NTSTATUS			status = STATUS_SUCCESS;
-
-				irpSp = eventEntry->IrpSp;	
-			
-				ASSERT(irpSp != NULL);
-					
-				// IrpEntry is saved here for CancelRoutine
-				// Clear it to prevent to be completed by CancelRoutine twice
-				irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_IRP_ENTRY] = NULL;
-		
-				// available size that is used for event notification
-				bufferLen = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
-			
-				// buffer that is used to inform event
-				buffer	= irp->AssociatedIrp.SystemBuffer;
-
-			
-				// buffer is not specified or short of length
-				if (bufferLen == 0 || buffer == NULL || bufferLen < sizeof(EVENT_CONTEXT)) {
-			
-					DDbgPrint("EventNotice : STATUS_INSUFFICIENT_RESOURCES\n");
-					DDbgPrint("  bufferLen: %d, eventLen: %d\n", bufferLen, sizeof(EVENT_CONTEXT));
-					info   = 0;
-					status = STATUS_INSUFFICIENT_RESOURCES;
-			
-				} else {
-			
-					// set EVNET_CONTEXT
-					PEVENT_CONTEXT eventContext = (PEVENT_CONTEXT)buffer;
-
-					RtlZeroMemory(buffer, sizeof(EVENT_CONTEXT));
-
-					eventContext->SerialNumber	= 0;
-					eventContext->MajorFunction = IRP_MJ_SHUTDOWN;
-					eventContext->MinorFunction = 0;
-					eventContext->Flags			= 0;
-					info = sizeof(EVENT_CONTEXT);
-				}
-
-				//
-				// must release all SpinLock before complete IRP
-				// 
-				KeReleaseSpinLock(&deviceExtension->EventList.ListLock, oldIrql);
-
-				irp->IoStatus.Status = status;
-				irp->IoStatus.Information = info;
-				IoCompleteRequest(irp, IO_NO_INCREMENT);
-
-				KeAcquireSpinLock(&deviceExtension->EventList.ListLock, &oldIrql);
-				
-				ExFreePool(eventEntry);
-				eventEntry = NULL;
-
-			} else {
-				InitializeListHead(&eventEntry->ListEntry);
-				eventEntry->CancelRoutineFreeMemory = TRUE;
-			}
-		} else {
-			ASSERT(eventEntry->CancelRoutineFreeMemory == FALSE);
-			ExFreePool(eventEntry);
-			eventEntry = NULL;
-		}
-	}
-	
-	KeReleaseSpinLock(&deviceExtension->EventList.ListLock, oldIrql);
-
-	DDbgPrint("<== DokanReleaseEventIRP\n");
-
-	return STATUS_SUCCESS;
-}
-
-
-// release all pending IRP
-NTSTATUS
-DokanReleasePendingIrp(
-    __in PDEVICE_OBJECT DeviceObject)
-{
-	KIRQL				oldIrql;
-    PLIST_ENTRY			thisEntry, nextEntry, listHead;
-	PIRP_ENTRY			irpEntry;
-	PDokanVCB			vcb;
-    PDEVICE_EXTENSION   deviceExtension;
-
-	DDbgPrint("==> DokanReleasePendingIRP\n");
-
-	vcb = DokanGetVcb(DeviceObject);
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
-
-	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
-	KeAcquireSpinLock(&deviceExtension->IrpList.ListLock, &oldIrql);
-
-	// if EventQueue is empty, nothing to do
-	if (IsListEmpty(&deviceExtension->IrpList.ListHead)) {
-		KeReleaseSpinLock(&deviceExtension->IrpList.ListLock, oldIrql);
-		return STATUS_SUCCESS;
-	}
-
-	
-	// release all IRP through pending IRP list
-	listHead = &deviceExtension->IrpList.ListHead;
-
-    for (thisEntry = listHead->Flink;
-		thisEntry != listHead;
-		thisEntry = nextEntry) {
-
-		PIRP	irp;
-        nextEntry = thisEntry->Flink;
-
-        irpEntry = CONTAINING_RECORD(thisEntry, IRP_ENTRY, ListEntry);
-
-		RemoveEntryList(thisEntry);
-
-		irp = irpEntry->PendingIrp;
-	
-		if (irp != NULL) {
-
-			// this IRP isn't canceled yet
-			if (IoSetCancelRoutine(irp, NULL) != NULL) {
-			
-				// IrpEntry is saved here for CancelRoutine
-				// Clear it to prevent to be completed by CancelRoutine twice
-				irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_IRP_ENTRY] = NULL;
-		
-				//
-				// must release all SpinLock before complete IRP
-				// 
-				KeReleaseSpinLock(&deviceExtension->IrpList.ListLock, oldIrql);
-
-				irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
-				irp->IoStatus.Information = 0;
-				IoCompleteRequest(irp, IO_NO_INCREMENT);
-
-				KeAcquireSpinLock(&deviceExtension->IrpList.ListLock, &oldIrql);
-				
-				ExFreePool(irpEntry);
-				irpEntry = NULL;
-
-			} else {
-				InitializeListHead(&irpEntry->ListEntry);
-				irpEntry->CancelRoutineFreeMemory = TRUE;
-			}
-		} else {
-			ASSERT(irpEntry->CancelRoutineFreeMemory == FALSE);
-			ExFreePool(irpEntry);
-			irpEntry = NULL;
-		}
-	}
-	
-	KeReleaseSpinLock(&deviceExtension->IrpList.ListLock, oldIrql);
-
-	DDbgPrint("<== DokanReleasePendingIRP\n");
-
-	return STATUS_SUCCESS;
 }
 
 
@@ -918,6 +474,7 @@ DokanEventStart(
 
 		deviceExtension->UseAltStream = 0;
 		deviceExtension->UseKeepAlive = 0;
+		DokanStartEventNotificationThread(deviceExtension);
 		DokanStartCheckThread(deviceExtension);
 	}
 
@@ -948,6 +505,7 @@ DokanEventWrite(
 	PDokanVCB			vcb;
     PDEVICE_EXTENSION   deviceExtension;
 	PEVENT_INFORMATION	eventInfo;
+	PIRP				writeIrp;
 
 	eventInfo		= (PEVENT_INFORMATION)Irp->AssociatedIrp.SystemBuffer;
 	ASSERT(eventInfo != NULL);
@@ -957,200 +515,94 @@ DokanEventWrite(
 	vcb = DokanGetVcb(DeviceObject);
 	deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
-	//DDbgPrint("      Lock IrpList.ListLock\n");
 	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
-	KeAcquireSpinLock(&deviceExtension->IrpList.ListLock, &oldIrql);
+	KeAcquireSpinLock(&deviceExtension->PendingIrp.ListLock, &oldIrql);
 
 	// search corresponding write IRP through pending IRP list
-	listHead = &deviceExtension->IrpList.ListHead;
+	listHead = &deviceExtension->PendingIrp.ListHead;
 
-    for (thisEntry = listHead->Flink;
-		thisEntry != listHead;
-		thisEntry = nextEntry) {
+    for (thisEntry = listHead->Flink; thisEntry != listHead; thisEntry = nextEntry) {
+
+		PIO_STACK_LOCATION writeIrpSp, eventIrpSp;
+		PEVENT_CONTEXT	eventContext;
+		ULONG			info = 0;
+		NTSTATUS		status;
 
 		nextEntry = thisEntry->Flink;
-
         irpEntry = CONTAINING_RECORD(thisEntry, IRP_ENTRY, ListEntry);
 
 		// check whehter this is corresponding IRP
 
         //DDbgPrint("SerialNumber irpEntry %X eventInfo %X\n", irpEntry->SerialNumber, eventInfo->SerialNumber);
 
-		// do NOT free irpEntry here
-		if (irpEntry->SerialNumber == eventInfo->SerialNumber)  {
-			
-			PIRP	writeIrp = irpEntry->PendingIrp;
-	
-			if (writeIrp != NULL) {
-
-				// write IRP is not canceled yet
-				// TODO: is it readly true?
-				if (IoSetCancelRoutine(writeIrp, DokanIrpCancelRoutine) != NULL) {
-				//if (IoSetCancelRoutine(writeIrp, NULL) != NULL) {
-
-					PIO_STACK_LOCATION writeIrpSp, eventIrpSp;
-					PEVENT_CONTEXT	eventContext;
-					ULONG			info = 0;
-					NTSTATUS		status;
-
-					writeIrpSp = irpEntry->IrpSp;
-					eventIrpSp = IoGetCurrentIrpStackLocation(Irp);
-			
-					ASSERT(writeIrpSp != NULL);
-					ASSERT(eventIrpSp != NULL);
-
-					eventContext = (PEVENT_CONTEXT)writeIrp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT];
-					ASSERT(eventContext != NULL);
-				
-					// short of buffer length
-					if (eventIrpSp->Parameters.DeviceIoControl.OutputBufferLength
-							< eventContext->Length) {
-						
-						DDbgPrint("  EventWrite: STATUS_INSUFFICIENT_RESOURCE\n");
-						status =  STATUS_INSUFFICIENT_RESOURCES;
-					} else {
-						PVOID buffer;
-
-						DDbgPrint("  EventWrite CopyMemory\n");
-						DDbgPrint("  EventLength %d, BufLength %d\n", eventContext->Length,
-							eventIrpSp->Parameters.DeviceIoControl.OutputBufferLength);
-
-						if (Irp->MdlAddress)
-							buffer = MmGetSystemAddressForMdlSafe(Irp->MdlAddress, NormalPagePriority);
-						else
-							buffer = Irp->AssociatedIrp.SystemBuffer;
-					
-						ASSERT(buffer != NULL);
-						RtlCopyMemory(buffer, eventContext, eventContext->Length);
-						
-						info = eventContext->Length;
-						status = STATUS_SUCCESS;
-					
-					}
-					ExFreePool(eventContext);
-					writeIrp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = 0;
-
-					KeReleaseSpinLock(&deviceExtension->IrpList.ListLock, oldIrql);
-
-					Irp->IoStatus.Status = status;
-					Irp->IoStatus.Information = info;
-
-					// this IRP will be completed by caller function
-					return Irp->IoStatus.Status;
-
-
-				} else {
-					InitializeListHead(&irpEntry->ListEntry);
-					irpEntry->CancelRoutineFreeMemory = TRUE;
-				}
-			} else {
-				ASSERT(irpEntry->CancelRoutineFreeMemory == FALSE);
-				ExFreePool(irpEntry);
-				irpEntry = NULL;
-			}
-			break;
-		}
-	}
-
-	//DDbgPrint("      Release IrpList.ListLock\n");
-	KeReleaseSpinLock(&deviceExtension->IrpList.ListLock, oldIrql);
-
-    //DDbgPrint("<== AACompleteIrp [EventInfo #%X]\n", eventInfo->SerialNumber);
-
-    return STATUS_SUCCESS;
-}
-
-
-
-
-NTSTATUS
-DokanReleaseTimeoutPendingIrp(
-   PDEVICE_EXTENSION	DeviceExtension
-   )
-{
-	KIRQL				oldIrql;
-    PLIST_ENTRY			thisEntry, nextEntry, listHead;
-	PIRP_ENTRY			irpEntry;
-	LARGE_INTEGER		tickCount;
-
-	DDbgPrint("==> DokanReleaseTimeoutPendingIRP\n");
-
-	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
-	KeAcquireSpinLock(&DeviceExtension->IrpList.ListLock, &oldIrql);
-
-	// when IRP queue is empty, there is nothing to do
-	if (IsListEmpty(&DeviceExtension->IrpList.ListHead)) {
-		KeReleaseSpinLock(&DeviceExtension->IrpList.ListLock, oldIrql);
-		DDbgPrint("  IrpQueue is Empty\n");
-		return STATUS_SUCCESS;
-	}
-
-	
-	KeQueryTickCount(&tickCount);
-
-	// search timeout IRP through pending IRP list
-	listHead = &DeviceExtension->IrpList.ListHead;
-
-    for (thisEntry = listHead->Flink;
-		thisEntry != listHead;
-		thisEntry = nextEntry) {
-
-		PIRP	irp;
-        nextEntry = thisEntry->Flink;
-
-        irpEntry = CONTAINING_RECORD(thisEntry, IRP_ENTRY, ListEntry);
-
-		// this IRP is NOT timeout yet
-		if ( (tickCount.QuadPart - irpEntry->TickCount.QuadPart) * KeQueryTimeIncrement()
-			< DOKAN_IPR_PENDING_TIMEOUT * 10000 * 1000) {
+		if (irpEntry->SerialNumber != eventInfo->SerialNumber)  {
 			continue;
 		}
-		
-		RemoveEntryList(thisEntry);
 
-		DDbgPrint(" timeout Irp #%X\n", irpEntry->SerialNumber);
-
-
-		irp = irpEntry->PendingIrp;
-	
-		if (irp != NULL) {
-
-			// this IRP is not canceled yet
-			if (IoSetCancelRoutine(irp, NULL) != NULL) {
-
-				// IrpEntry is saved here for CancelRoutine
-				// Clear it to prevent to be completed by CancelRoutine twice
-				irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_IRP_ENTRY] = NULL;
-		
-				//
-				// must release all SpinLock before complete IRP
-				// 
-				KeReleaseSpinLock(&DeviceExtension->IrpList.ListLock, oldIrql);
-
-				irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
-				irp->IoStatus.Information = 0;
-				IoCompleteRequest(irp, IO_NO_INCREMENT);
-
-				KeAcquireSpinLock(&DeviceExtension->IrpList.ListLock, &oldIrql);
-				
-				ExFreePool(irpEntry);
-				irpEntry = NULL;
-
-			} else {
-				InitializeListHead(&irpEntry->ListEntry);
-				irpEntry->CancelRoutineFreeMemory = TRUE;
-			}
-		} else {
+		// do NOT free irpEntry here
+		writeIrp = irpEntry->Irp;
+		if (writeIrp == NULL) {
+			// this IRP has already been canceled
 			ASSERT(irpEntry->CancelRoutineFreeMemory == FALSE);
 			ExFreePool(irpEntry);
-			irpEntry = NULL;
+			continue;
 		}
+
+		if (IoSetCancelRoutine(writeIrp, DokanIrpCancelRoutine) == NULL) {
+		//if (IoSetCancelRoutine(writeIrp, NULL) != NULL) {
+			// Cancel routine will run as soon as we release the lock
+			InitializeListHead(&irpEntry->ListEntry);
+			irpEntry->CancelRoutineFreeMemory = TRUE;
+			continue;
+		}
+
+		writeIrpSp = irpEntry->IrpSp;
+		eventIrpSp = IoGetCurrentIrpStackLocation(Irp);
+			
+		ASSERT(writeIrpSp != NULL);
+		ASSERT(eventIrpSp != NULL);
+
+		eventContext = (PEVENT_CONTEXT)writeIrp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT];
+		ASSERT(eventContext != NULL);
+				
+		// short of buffer length
+		if (eventIrpSp->Parameters.DeviceIoControl.OutputBufferLength
+			< eventContext->Length) {		
+			DDbgPrint("  EventWrite: STATUS_INSUFFICIENT_RESOURCE\n");
+			status =  STATUS_INSUFFICIENT_RESOURCES;
+		} else {
+			PVOID buffer;
+			//DDbgPrint("  EventWrite CopyMemory\n");
+			//DDbgPrint("  EventLength %d, BufLength %d\n", eventContext->Length,
+			//			eventIrpSp->Parameters.DeviceIoControl.OutputBufferLength);
+			if (Irp->MdlAddress)
+				buffer = MmGetSystemAddressForMdlSafe(Irp->MdlAddress, NormalPagePriority);
+			else
+				buffer = Irp->AssociatedIrp.SystemBuffer;
+					
+			ASSERT(buffer != NULL);
+			RtlCopyMemory(buffer, eventContext, eventContext->Length);
+						
+			info = eventContext->Length;
+			status = STATUS_SUCCESS;
+		}
+
+		DokanFreeEventContext(eventContext);
+		writeIrp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = 0;
+
+		KeReleaseSpinLock(&deviceExtension->PendingIrp.ListLock, oldIrql);
+
+		Irp->IoStatus.Status = status;
+		Irp->IoStatus.Information = info;
+
+		// this IRP will be completed by caller function
+		return Irp->IoStatus.Status;
 	}
-	
-	KeReleaseSpinLock(&DeviceExtension->IrpList.ListLock, oldIrql);
 
-	DDbgPrint("<== DokanReleaseTimeoutPendingIRP\n");
+	KeReleaseSpinLock(&deviceExtension->PendingIrp.ListLock, oldIrql);
 
-	return STATUS_SUCCESS;
+   return STATUS_SUCCESS;
 }
+
+
 

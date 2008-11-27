@@ -59,7 +59,7 @@ VOID
 DispatchWrite(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	PEVENT_INFORMATION		eventInfo;
 	PDOKAN_OPEN_INFO		openInfo;
@@ -70,7 +70,7 @@ DispatchWrite(
 	ULONG					sizeOfEventInfo = sizeof(EVENT_INFORMATION);
 
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
+	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 
 	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
 
@@ -88,8 +88,8 @@ DispatchWrite(
 
 	DbgPrint("###WriteFile %04d\n", openInfo->EventId);
 
-	if (DokanOperations->WriteFile) {
-		status = DokanOperations->WriteFile(
+	if (DokanInstance->DokanOperations->WriteFile) {
+		status = DokanInstance->DokanOperations->WriteFile(
 						EventContext->Write.FileName,
 						(PCHAR)EventContext + EventContext->Write.BufferOffset,
 						EventContext->Write.BufferLength,

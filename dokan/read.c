@@ -26,7 +26,7 @@ VOID
 DispatchRead(
 	HANDLE				Handle,
 	PEVENT_CONTEXT		EventContext,
-	PDOKAN_OPERATIONS	DokanOperations)
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	PEVENT_INFORMATION		eventInfo;
 	PDOKAN_OPEN_INFO		openInfo;
@@ -37,14 +37,14 @@ DispatchRead(
 
 	CheckFileName(EventContext->Read.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, &fileInfo);
+	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 
 	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
 
 	DbgPrint("###Read %04d\n", openInfo->EventId);
 
-	if (DokanOperations->ReadFile) {
-		status = DokanOperations->ReadFile(
+	if (DokanInstance->DokanOperations->ReadFile) {
+		status = DokanInstance->DokanOperations->ReadFile(
 						EventContext->Read.FileName,
 						eventInfo->Buffer,
 						EventContext->Read.BufferLength,
