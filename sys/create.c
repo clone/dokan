@@ -1,21 +1,21 @@
 /*
   Dokan : user-mode file system library for Windows
 
-  Copyright (C) 2008 Hiroki Asakawa asakaw@gmail.com
+  Copyright (C) 2008 Hiroki Asakawa info@dokan-dev.net
 
   http://dokan-dev.net/en
 
 This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 3 of the License, or (at your option) any later
-version.
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation; either version 3 of the License, or (at your option) any
+later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with
-this program. If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Lesser General Public License along
+with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
@@ -168,7 +168,7 @@ DokanFreeFCB(
 
 		RemoveEntryList(&Fcb->NextFCB);
 
-		DDbgPrint("  Free FCB\n");
+		DDbgPrint("  Free FCB:%X\n", Fcb);
 		ExFreePool(Fcb->FileName.Buffer);
 
 #if _WIN32_WINNT >= 0x0501
@@ -617,10 +617,10 @@ Return Value:
 				fcb = ccb->Fcb;
 				ASSERT(fcb != NULL);
 
-				DDbgPrint("   free CCB\n");
+				DDbgPrint("   Free CCB:%X\n", ccb);
 				DokanFreeCCB(ccb);
 
-				DokanFreeFCB(fcb);	
+				DokanFreeFCB(fcb);
 			}
 
 			status = STATUS_SUCCESS;
@@ -643,13 +643,13 @@ Return Value:
 		}
 
 		eventContext->Context = ccb->UserContext;
-		//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
+		DDbgPrint("   UserContext:%X\n", (ULONG)ccb->UserContext);
 
 		// copy the file name to be closed
 		eventContext->Close.FileNameLength = fcb->FileName.Length;
 		RtlCopyMemory(eventContext->Close.FileName, fcb->FileName.Buffer, fcb->FileName.Length);
 
-		DDbgPrint("   free CCB\n");
+		DDbgPrint("   Free CCB:%X\n", ccb);
 		DokanFreeCCB(ccb);
 
 		DokanFreeFCB(fcb);
@@ -683,55 +683,3 @@ Return Value:
 	return status;
 }
 
-
-
-// this function is never used
-VOID
-DokanCompleteClose(
-	 __in PIRP_ENTRY			IrpEntry,
-	 __in PEVENT_INFORMATION	EventInfo
-	 )
-{
-	PIRP				irp;
-	PIO_STACK_LOCATION	irpSp;
-	NTSTATUS			status   = STATUS_SUCCESS;
-	ULONG				info	 = 0;
-	PDokanCCB			ccb;
-	PDokanFCB			fcb;
-	PDokanVCB			vcb;
-	PFILE_OBJECT		fileObject;
-
-	irp   = IrpEntry->Irp;
-	irpSp = IrpEntry->IrpSp;	
-
-	FsRtlEnterFileSystem();
-
-	DDbgPrint("=> DokanCompleteClose\n");
-
-	fileObject = irpSp->FileObject;
-	ccb = fileObject->FsContext2;
-	ASSERT(ccb != NULL);
-
-	fcb = ccb->Fcb;
-	ASSERT(fcb != NULL);
-
-	vcb = fcb->Vcb;
-
-	DDbgPrint("  free CCB\n");
-	DokanFreeCCB(ccb);
-
-	if(IsListEmpty(&fcb->NextCCB)) {
-		DDbgPrint("  free FCB\n");
-		DokanFreeFCB(fcb);
-	}
-
-	status = EventInfo->Status;
-
-	irp->IoStatus.Status = status;
-	irp->IoStatus.Information = 0;
-	IoCompleteRequest(irp, IO_NO_INCREMENT);
-
-	DDbgPrint("<= DokanCompleteClose\n");
-
-	FsRtlExitFileSystem();
-}

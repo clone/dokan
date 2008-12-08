@@ -19,7 +19,7 @@ Windowsでカーネルモードで動作する，デバイスドライバを作成するのは非常に
 Dokanライブラリは複数のライセンスのプログラムから構成されています．
 
 ユーザモードライブラリ (dokan.dll) LGPL
-ドライバ (dokan.sys)               GPL
+ドライバ (dokan.sys)               LGPL
 補助プログラム (dokanctl.exe)      MIT
 マウントサービス (mounter.exe)     MIT
 
@@ -32,7 +32,7 @@ MIT  license.mit.txt
 
 ■ 動作環境
 
-Windowx XP x86版，Windows Vista x86版で動作します．
+Windowx XP x86版，Windows Vista x86版およびx64版で動作します．
 
 
 ■ 動作の仕組み

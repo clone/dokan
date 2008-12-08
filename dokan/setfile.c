@@ -1,7 +1,7 @@
 /*
   Dokan : user-mode file system library for Windows
 
-  Copyright (C) 2008 Hiroki Asakawa asakaw@gmail.com
+  Copyright (C) 2008 Hiroki Asakawa info@dokan-dev.net
 
   http://dokan-dev.net/en
 
@@ -17,6 +17,7 @@ FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along
 with this program. If not, see <http://www.gnu.org/licenses/>.
 */
+
 
 #include <windows.h>
 #include <stdio.h>
@@ -107,38 +108,22 @@ DokanSetDispositionInformation(
 	PFILE_DISPOSITION_INFORMATION dispositionInfo =
 		(PFILE_DISPOSITION_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
 
-
-	if (!DokanOperations->DeleteFile)
+	if (!DokanOperations->DeleteFile || !DokanOperations->DeleteDirectory)
 		return -1;
 
-	// when dipoInfo->DeleteFile is true, delete file when closed
-	// 1. mark CCB with delete
-	//    when file is closed, call DokanOpe->DeleteFile and DokanOpe->Close
-	// 2. add DokanOpe->DeleteFile parameter and programer takes care of deletion
-
-	// WinAPI DeleteFile can't delete file after closing all existing HANDLE
-	// scan NextCCB of FCB and search opening files
-	// and if other program don't open it, delete it?
-
-	DbgPrint("  DispositionInfo->DeleteFile: %d\n", dispositionInfo->DeleteFile);
-
-	//if (!dispositionInfo->DeleteFile) {
+	if (!dispositionInfo->DeleteFile) {
+		return 0;
+	}
 
 	if (FileInfo->IsDirectory) {
-		if (!DokanOperations->DeleteDirectory)
-			return -1;
-		else
-			return DokanOperations->DeleteDirectory(
-					EventContext->SetFile.FileName,
-					FileInfo);
+		return DokanOperations->DeleteDirectory(
+			EventContext->SetFile.FileName,
+			FileInfo);
 	} else {
 		return DokanOperations->DeleteFile(
 			EventContext->SetFile.FileName,
 			FileInfo);
 	}
-	//}
-
-	//return 0;
 }
 
 
@@ -303,20 +288,34 @@ DispatchSetInformation(
 
 	eventInfo->BufferLength = 0;
 
-	if (status < 0) {
-		int error = status * -1;
 
-		eventInfo->Status = GetNTStatus(error);
-		
+	if (EventContext->SetFile.FileInformationClass == FileDispositionInformation) {
+		if (status == 0) {
+			PFILE_DISPOSITION_INFORMATION dispositionInfo =
+				(PFILE_DISPOSITION_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
+			eventInfo->Delete.DeleteOnClose = dispositionInfo->DeleteFile ? TRUE : FALSE;
+			eventInfo->Status = STATUS_SUCCESS;
+		} else if (status == -ERROR_DIR_NOT_EMPTY) {
+			eventInfo->Status = STATUS_DIRECTORY_NOT_EMPTY;
+		} else if (status < 0) {
+			eventInfo->Status = STATUS_CANNOT_DELETE;
+		}
+
 	} else {
-		eventInfo->Status = STATUS_SUCCESS;
+		if (status < 0) {
+			int error = status * -1;
+			eventInfo->Status = GetNTStatus(error);
+		
+		} else {
+			eventInfo->Status = STATUS_SUCCESS;
 
-		// notice new file name to driver
-		if (EventContext->SetFile.FileInformationClass == FileRenameInformation) {
-			PFILE_RENAME_INFORMATION renameInfo =
-				(PFILE_RENAME_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
-			eventInfo->BufferLength = renameInfo->FileNameLength;
-			CopyMemory(eventInfo->Buffer, renameInfo->FileName, renameInfo->FileNameLength);
+			// notice new file name to driver
+			if (EventContext->SetFile.FileInformationClass == FileRenameInformation) {
+				PFILE_RENAME_INFORMATION renameInfo =
+					(PFILE_RENAME_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
+				eventInfo->BufferLength = renameInfo->FileNameLength;
+				CopyMemory(eventInfo->Buffer, renameInfo->FileName, renameInfo->FileNameLength);
+			}
 		}
 	}
 

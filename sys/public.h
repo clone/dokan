@@ -1,21 +1,21 @@
 /*
   Dokan : user-mode file system library for Windows
 
-  Copyright (C) 2008 Hiroki Asakawa asakaw@gmail.com
+  Copyright (C) 2008 Hiroki Asakawa info@dokan-dev.net
 
   http://dokan-dev.net/en
 
 This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 3 of the License, or (at your option) any later
-version.
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation; either version 3 of the License, or (at your option) any
+later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with
-this program. If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Lesser General Public License along
+with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
@@ -24,7 +24,7 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000168
+#define DOKAN_VERSION	0x0000170
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 
@@ -90,6 +90,7 @@ typedef struct _CREATE_CONTEXT {
 
 
 typedef struct _CLEANUP_CONTEXT {
+	CHAR	DeleteOnClose;
 	ULONG	FileNameLength;
 	WCHAR	FileName[1];
 
@@ -218,6 +219,9 @@ typedef struct _EVENT_INFORMATION {
 			ULONG	Flags;
 			ULONG	Information;
 		} Create;
+		struct {
+			UCHAR	DeleteOnClose;
+		} Delete;
 	};
 	ULONG64		Context;
 	ULONG		BufferLength;

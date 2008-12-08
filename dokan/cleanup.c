@@ -1,7 +1,7 @@
 /*
   Dokan : user-mode file system library for Windows
 
-  Copyright (C) 2008 Hiroki Asakawa asakaw@gmail.com
+  Copyright (C) 2008 Hiroki Asakawa info@dokan-dev.net
 
   http://dokan-dev.net/en
 
@@ -36,6 +36,10 @@ DispatchCleanup(
 	CheckFileName(EventContext->Cleanup.FileName);
 
 	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
+	
+	if (EventContext->Cleanup.DeleteOnClose) {
+		fileInfo.DeleteOnClose = TRUE;
+	}
 
 	eventInfo->Status = STATUS_SUCCESS; // return success at any case
 	

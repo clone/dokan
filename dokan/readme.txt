@@ -20,10 +20,10 @@ Windows.
 Licensing
 =========
 
-Dokan library contains GPL, LGPL, MIT licensed programs.
+Dokan library contains LGPL, MIT licensed programs.
 
 - user-mode library (dokan.dll)  LGPL
-- driver (dokan.sys)             GPL
+- driver (dokan.sys)             LGPL
 - control program (dokanctl.exe) MIT
 - mount service (mouter.exe)     MIT
 
@@ -38,7 +38,7 @@ You can obtain source files from http://dokan-dev.net/en/download
 Environment
 ===========
 
-Dokan Library works on Windowx XP x86 or Windows Vista x86.
+Dokan Library works on Windowx XP x86 or Windows Vista x86,x64.
 
 
 How it works

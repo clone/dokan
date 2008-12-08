@@ -1,7 +1,7 @@
 /*
   Dokan : user-mode file system library for Windows
 
-  Copyright (C) 2008 Hiroki Asakawa asakaw@gmail.com
+  Copyright (C) 2008 Hiroki Asakawa info@dokan-dev.net
 
   http://dokan-dev.net/en
 
@@ -17,6 +17,7 @@ FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along
 with this program. If not, see <http://www.gnu.org/licenses/>.
 */
+
 
 
 #ifndef _FILEINFO_H_
@@ -481,7 +482,7 @@ typedef struct _FILE_FS_ATTRIBUTE_INFORMATION {
 #define STATUS_LOCK_NOT_GRANTED			((ULONG)0xC0000055L)
 #define STATUS_DELETE_PENDING			((ULONG)0xC0000056L)
 #define STATUS_DIRECTORY_NOT_EMPTY		((ULONG)0xC0000101L)
-
+#define STATUS_CANNOT_DELETE			((ULONG)0xC0000121L)
 
 #define FILE_SUPERSEDE                  0x00000000
 #define FILE_OPEN                       0x00000001

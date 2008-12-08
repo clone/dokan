@@ -1,21 +1,21 @@
 /*
   Dokan : user-mode file system library for Windows
 
-  Copyright (C) 2008 Hiroki Asakawa asakaw@gmail.com
+  Copyright (C) 2008 Hiroki Asakawa info@dokan-dev.net
 
   http://dokan-dev.net/en
 
 This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 3 of the License, or (at your option) any later
-version.
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation; either version 3 of the License, or (at your option) any
+later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with
-this program. If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Lesser General Public License along
+with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
@@ -387,9 +387,6 @@ DokanCompleteIrp(
 		case IRP_MJ_CLEANUP:
 			DokanCompleteCleanup(irpEntry, eventInfo);
 			break;
-		case IRP_MJ_CLOSE:
-			DokanCompleteClose(irpEntry, eventInfo);
-			break;
 		case IRP_MJ_LOCK_CONTROL:
 			DokanCompleteLock(irpEntry, eventInfo);
 			break;
@@ -471,6 +468,7 @@ DokanEventStart(
 		deviceExtension->Mounted = driveLetter;
 		KeQueryTickCount(&deviceExtension->TickCount);
 		InterlockedIncrement(&deviceExtension->MountId);
+		DDbgPrint("  MountId:%d\n", deviceExtension->MountId);
 
 		deviceExtension->UseAltStream = 0;
 		deviceExtension->UseKeepAlive = 0;

@@ -1,21 +1,21 @@
 /*
   Dokan : user-mode file system library for Windows
 
-  Copyright (C) 2008 Hiroki Asakawa asakaw@gmail.com
+  Copyright (C) 2008 Hiroki Asakawa info@dokan-dev.net
 
   http://dokan-dev.net/en
 
 This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 3 of the License, or (at your option) any later
-version.
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation; either version 3 of the License, or (at your option) any
+later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with
-this program. If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Lesser General Public License along
+with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
@@ -532,7 +532,16 @@ DokanCompleteSetInformation(
 		if (NT_SUCCESS(status)) {
 			
 			if (infoClass == FileDispositionInformation) {
-				ccb->Flags |= DOKAN_FILE_DELETED;
+
+				if (EventInfo->Delete.DeleteOnClose) {
+					ccb->Flags |= DOKAN_DELETE_ON_CLOSE;
+					fcb->Flags |= DOKAN_DELETE_ON_CLOSE;
+					IrpEntry->FileObject->DeletePending = TRUE;
+				} else {
+					ccb->Flags &= ~DOKAN_DELETE_ON_CLOSE;
+					fcb->Flags &= ~DOKAN_DELETE_ON_CLOSE;
+					IrpEntry->FileObject->DeletePending = FALSE;
+				}
 			}
 
 			// if rename is executed, reassign the file name

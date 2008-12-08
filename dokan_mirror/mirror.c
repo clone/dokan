@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2007, 2008 Hiroki Asakawa asakaw@gmail.com
+Copyright (c) 2007, 2008 Hiroki Asakawa info@dokan-dev.net
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -54,12 +54,8 @@ GetFilePath(
 	LPCWSTR FileName)
 {
 	RtlZeroMemory(filePath, MAX_PATH);
-	wcsncpy(filePath,
-			RootDirectory,
-			wcslen(RootDirectory));
-	wcsncat(filePath,
-			FileName,
-			wcslen(FileName));
+	wcsncpy(filePath, RootDirectory, wcslen(RootDirectory));
+	wcsncat(filePath, FileName, wcslen(FileName));
 }
 
 
@@ -276,7 +272,26 @@ MirrorCleanup(
 		DbgPrint(L"Cleanup: %s\n\n", filePath);
 		CloseHandle((HANDLE)DokanFileInfo->Context);
 		DokanFileInfo->Context = 0;
-	
+
+		if (DokanFileInfo->DeleteOnClose) {
+			if (DokanFileInfo->IsDirectory) {
+				DbgPrint(L"  DeleteDirectory ");
+				if (!RemoveDirectory(filePath)) {
+					DbgPrint(L"error code = %d\n\n", GetLastError());
+				} else {
+					DbgPrint(L"success\n\n");
+				}
+			} else {
+				DbgPrint(L"  DeleteFile ");
+				if (DeleteFile(filePath) == 0) {
+					DbgPrint(L" error code = %d\n\n", GetLastError());
+				} else {
+					DbgPrint(L"success\n\n");
+				}
+			}
+		}
+
+
 	} else {
 		DbgPrint(L"Cleanup: %s\n\tinvalid handle\n\n", filePath);
 		return -1;
@@ -559,21 +574,8 @@ MirrorDeleteFile(
 
 	GetFilePath(filePath, FileName);
 
-	// file handle must be closed before deleted
-	if (handle)
-		CloseHandle(handle);
-
-	DokanFileInfo->Context = 0;
-
 	DbgPrint(L"DeleteFile %s\n", filePath);
 
-	if (DeleteFile(filePath) == 0) {
-		DWORD error = GetLastError();
-		DbgPrint(L"\terror code = %d\n\n", error);
-		return error * -1;
-	}
-	
-	DbgPrint(L"\tsuccess\n\n");
 	return 0;
 }
 
@@ -585,23 +587,25 @@ MirrorDeleteDirectory(
 {
 	WCHAR	filePath[MAX_PATH];
 	HANDLE	handle = (HANDLE)DokanFileInfo->Context;
+	HANDLE	hFind;
+	WIN32_FIND_DATAW	findData;
 
 	GetFilePath(filePath, FileName);
 
-	// file handle must be closed before deleted
-	if (handle)
-		CloseHandle(handle);
-
-	DokanFileInfo->Context = 0;
-
 	DbgPrint(L"DeleteDirectory %s\n", filePath);
 
-	if (!RemoveDirectory(filePath)) {
-		DWORD error = GetLastError();
-		DbgPrint(L"\terror code = %d\n\n", error);
-		return error * -1;
+	hFind = FindFirstFile(filePath, &findData);
+	if (hFind == INVALID_HANDLE_VALUE) {
+		if (GetLastError() == ERROR_NO_MORE_FILES) {
+			return 0;
+		} else {
+			DbgPrint(L"\tinvalid file handle. Error is %u\n\n", GetLastError());
+			return -1;
+		}
+	} else {
+		return -(int)STATUS_DIRECTORY_NOT_EMPTY;
 	}
-	DbgPrint(L"\tsuccess\n\n");
+	
 	return 0;
 }
 

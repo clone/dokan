@@ -1,7 +1,7 @@
 /*
   Dokan : user-mode file system library for Windows
 
-  Copyright (C) 2008 Hiroki Asakawa asakaw@gmail.com
+  Copyright (C) 2008 Hiroki Asakawa info@dokan-dev.net
 
   http://dokan-dev.net/en
 
@@ -17,6 +17,7 @@ FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along
 with this program. If not, see <http://www.gnu.org/licenses/>.
 */
+
 
 #ifndef _DOKAN_H_
 #define _DOKAN_H_
@@ -42,20 +43,16 @@ typedef struct _DOKAN_OPTIONS {
 	UCHAR	UseStdErr; // ouput debug message to stderr
 	UCHAR	UseAltStream; // use alternate stream
 	UCHAR	UseKeepAlive; // use auto unmount
-	UCHAR	Dummy0;
-	UCHAR	Dummy1;
 	ULONG64	GlobalContext; // FileSystem can use this variable
-
 } DOKAN_OPTIONS, *PDOKAN_OPTIONS;
 
 typedef struct _DOKAN_FILE_INFO {
-
 	ULONG64	Context;      // FileSystem can use this variable
 	ULONG64	DokanContext; // Don't touch this
 	ULONG	ProcessId;    // process id for the thread that originally requested a given I/O operation
-	BOOL	IsDirectory;  // requesting a directory file
+	UCHAR	IsDirectory;  // requesting a directory file
+	UCHAR	DeleteOnClose; // Delete on when "cleanup" is called
 	PDOKAN_OPTIONS DokanOptions;
-
 } DOKAN_FILE_INFO, *PDOKAN_FILE_INFO;
 
 
@@ -94,6 +91,7 @@ typedef struct _DOKAN_OPERATIONS {
 		LPCWSTR,				// FileName
 		PDOKAN_FILE_INFO);
 
+	// When FileInfo->DeleteOnClose is true, you must delete the file in Cleanup.
 	int (DOKAN_CALLBACK *Cleanup) (
 		LPCWSTR,      // FileName
 		PDOKAN_FILE_INFO);
@@ -158,10 +156,17 @@ typedef struct _DOKAN_OPERATIONS {
 		CONST FILETIME*, // LastWriteTime
 		PDOKAN_FILE_INFO);
 
+
+	// You should not delete file on DeleteFile or DeleteDirectory.
+	// When DeleteFile or DeleteDirectory, you must check whether
+	// you can delete or not, and return 0 (when you can delete it)
+	// or appropriate error codes such as -ERROR_DIR_NOT_EMPTY,
+	// -ERROR_SHARING_VIOLATION.
+	// When you return 0 (ERROR_SUCCESS), you get Cleanup with
+	// FileInfo->DeleteOnClose set TRUE, you delete the file.
 	int (DOKAN_CALLBACK *DeleteFile) (
 		LPCWSTR, // FileName
 		PDOKAN_FILE_INFO);
-
 
 	int (DOKAN_CALLBACK *DeleteDirectory) ( 
 		LPCWSTR, // FileName
