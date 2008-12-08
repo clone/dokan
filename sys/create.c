@@ -514,8 +514,9 @@ DokanCompleteCreate(
 	info = EventInfo->Create.Information;
 
 	ExAcquireResourceExclusiveLite(&fcb->Resource, TRUE);
-	if (irpSp->Parameters.Create.Options & FILE_DIRECTORY_FILE ||
-		EventInfo->Create.Flags & DOKAN_FILE_DIRECTORY) {
+	if (NT_SUCCESS(status) &&
+		(irpSp->Parameters.Create.Options & FILE_DIRECTORY_FILE ||
+		EventInfo->Create.Flags & DOKAN_FILE_DIRECTORY)) {
 		fcb->Flags |= DOKAN_FILE_DIRECTORY;
 	}
 	ExReleaseResourceLite(&fcb->Resource);
