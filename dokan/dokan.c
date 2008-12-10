@@ -475,7 +475,7 @@ DispatchCommon(
 	}
 
 	DokanFileInfo->Context		= (ULONG64)openInfo->UserContext;
-	DokanFileInfo->IsDirectory	= openInfo->IsDirectory;
+	DokanFileInfo->IsDirectory	= (UCHAR)openInfo->IsDirectory;
 	DokanFileInfo->DokanOptions = DokanInstance->DokanOptions;
 
 	return eventInfo;
