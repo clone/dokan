@@ -168,9 +168,7 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	wcscpy_s(instance->DeviceName, sizeof(instance->DeviceName), 
 		DOKAN_DEVICE_NAME);
 
-
-	instance->DeviceNumber = DokanStart(DokanOptions->DriveLetter);
-	if (instance->DeviceNumber == -1) {
+	if (!DokanStart(instance)) {
 		return DOKAN_START_ERROR;
 	}
 	
@@ -184,15 +182,9 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 		return DOKAN_MOUNT_ERROR;
 	}
 
-	DbgPrintW(L"mounted: %wc\n", DokanOptions->DriveLetter);
-
-	if (DokanOptions->UseAltStream) {
-		DokanSendIoControl(DokanOptions->DriveLetter, IOCTL_ALTSTREAM_ON);
-	}
+	DbgPrintW(L"mounted: %wc,%d\n", DokanOptions->DriveLetter, instance->MountId);
 
 	if (DokanOptions->UseKeepAlive) {
-		DokanSendIoControl(DokanOptions->DriveLetter, IOCTL_KEEPALIVE_ON);
-
 		threadIds[threadNum++] = (HANDLE)_beginthreadex(
 			NULL, // Security Atributes
 			0, //stack size
@@ -324,6 +316,11 @@ DokanLoop(
 
 		if(returnedLength > 0) {
 			PEVENT_CONTEXT context = (PEVENT_CONTEXT)buffer;
+			if (context->MountId != DokanInstance->MountId) {
+				DbgPrint("Dokan Error: Invalid MountId (expected:%d, acctual:%d)\n",
+						DokanInstance->MountId, context->MountId);
+				continue;
+			}
 
 			switch (context->MajorFunction) {
 			case IRP_MJ_CREATE:
@@ -477,6 +474,7 @@ DispatchCommon(
 	DokanFileInfo->Context		= (ULONG64)openInfo->UserContext;
 	DokanFileInfo->IsDirectory	= (UCHAR)openInfo->IsDirectory;
 	DokanFileInfo->DokanOptions = DokanInstance->DokanOptions;
+	DokanFileInfo->DeleteOnClose = (UCHAR)(EventContext->FileFlags & DOKAN_DELETE_ON_CLOSE);
 
 	return eventInfo;
 }
@@ -564,26 +562,34 @@ SendReleaseIRP2(
 }
 
 
-ULONG
-DokanStart(WCHAR DriveLetter)
+BOOL
+DokanStart(PDOKAN_INSTANCE Instance)
 {
 	WCHAR		deviceName[] = DOKAN_DEVICE_NAME;
 	ULONG		deviceNumber = 0;
 	EVENT_START	eventStart;
 	ULONG		returnedLength = 0;
 
+	ZeroMemory(&eventStart, sizeof(EVENT_START));
+	eventStart.DriveLetter = Instance->DokanOptions->DriveLetter;
+	if (Instance->DokanOptions->UseAltStream) {
+		eventStart.Flags |= DOKAN_EVENT_ALTERNATIVE_STREAM_ON;
+	}
+	if (Instance->DokanOptions->UseKeepAlive) {
+		eventStart.Flags |= DOKAN_EVENT_KEEP_ALIVE_ON;
+	}
+
 	for (; deviceNumber < DOKAN_DEVICE_MAX; ++deviceNumber) {
-		ZeroMemory(&eventStart, sizeof(EVENT_START));
 		deviceName[wcslen(deviceName)-1] = (WCHAR)(L'0' + deviceNumber);
-		
+
 		SendToDevice(deviceName,
 					IOCTL_EVENT_START,
-					&DriveLetter,
-					sizeof(WCHAR),
+					&eventStart,
+					sizeof(EVENT_START),
 					&eventStart,
 					sizeof(EVENT_START),
 					&returnedLength);
-		
+
 		if (eventStart.Version != DOKAN_VERSION) {
 			DokanDbgPrint(
 				"Dokan Error: driver version mismatch, driver %X, dll %X\n",
@@ -591,13 +597,15 @@ DokanStart(WCHAR DriveLetter)
 
 			SendReleaseIRP2(deviceNumber);
 
-			return -1;
+			return FALSE;
 		} else if (eventStart.Status == DOKAN_MOUNTED) {
-			return eventStart.DeviceNumber;
+			Instance->MountId = eventStart.MountId;
+			Instance->DeviceNumber = eventStart.DeviceNumber;
+			return TRUE;
 		}
 	}
 	DokanDbgPrint("Dokan Error: failed to start\n");
-	return -1;
+	return FALSE;
 }
 
 

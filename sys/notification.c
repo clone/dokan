@@ -59,11 +59,34 @@ IOCTL_EVENT_INFO:
 
 #include "dokan.h"
 
+VOID
+SetCommonEventContext(
+	__in PDEVICE_EXTENSION	DeviceExtension,
+	__in PEVENT_CONTEXT		EventContext,
+	__in PIRP				Irp,
+	__in PDokanCCB			Ccb)
+{
+	PIO_STACK_LOCATION  irpSp;
+
+	irpSp			= IoGetCurrentIrpStackLocation(Irp);
+
+	EventContext->MountId		= DeviceExtension->MountId;
+	EventContext->MajorFunction = irpSp->MajorFunction;
+	EventContext->MinorFunction = irpSp->MinorFunction;
+	EventContext->Flags			= irpSp->Flags;
+	ASSERT(Ccb->Fcb);
+	EventContext->FileFlags		= Ccb->Flags;
+
+	EventContext->ProcessId = IoGetRequestorProcessId(Irp);
+}
+
+
 PEVENT_CONTEXT
 AllocateEventContext(
 	__in PDEVICE_EXTENSION	DeviceExtension,
 	__in PIRP				Irp,
-	__in ULONG				EventContextLength
+	__in ULONG				EventContextLength,
+	__in PDokanCCB			Ccb
 	)
 {
 	ULONG driverContextLength;
@@ -81,7 +104,7 @@ AllocateEventContext(
 	eventContext = &driverEventContext->EventContext;
 	eventContext->Length = EventContextLength;
 
-	DokanSetCommonEventContext(DeviceExtension, eventContext, Irp);
+	SetCommonEventContext(DeviceExtension, eventContext, Irp, Ccb);
 	eventContext->SerialNumber = InterlockedIncrement(&DeviceExtension->SerialNumber);
 
 	return eventContext;

@@ -190,12 +190,6 @@ typedef struct _DEVICE_EXTENSION {
     CACHE_MANAGER_CALLBACKS CacheManagerNoOpCallbacks;
 } DEVICE_EXTENSION, *PDEVICE_EXTENSION;
 
-// used in CCB->Flags
-#define DOKAN_FILE_DIRECTORY	1
-#define DOKAN_FILE_DELETED		2
-#define DOKAN_FILE_OPENED		4
-#define DOKAN_DIR_MATCH_ALL		8
-#define DOKAN_DELETE_ON_CLOSE	16
 
 typedef struct _DokanFileControlBlock
 {
@@ -328,7 +322,8 @@ PEVENT_CONTEXT
 AllocateEventContext(
 	__in PDEVICE_EXTENSION	DeviceExtension,
 	__in PIRP				Irp,
-	__in ULONG				EventContextLength);
+	__in ULONG				EventContextLength,
+	__in PDokanCCB			Ccb);
 
 VOID
 DokanFreeEventContext(
@@ -430,12 +425,6 @@ DokanGetVcb (
 PDEVICE_EXTENSION
 DokanGetDeviceExtension (
 	  __in PDEVICE_OBJECT DeviceObject);
-
-VOID
-DokanSetCommonEventContext(
-	PDEVICE_EXTENSION	DeviceExtension,
-	PEVENT_CONTEXT		EventContext,
-	PIRP				Irp);
 
 VOID
 DokanPrintNTStatus(

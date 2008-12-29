@@ -32,7 +32,7 @@ MIT  license.mit.txt
 
 ■ 動作環境
 
-Windowx XP x86版，Windows Vista x86版およびx64版で動作します．
+Windowx XP,Vista,2003 x86版，Windows Vista x64版で動作します．
 
 
 ■ 動作の仕組み

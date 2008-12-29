@@ -29,9 +29,9 @@ DokanAllocateFCB(
 {
 	PDokanFCB fcb = ExAllocatePool(sizeof(DokanFCB));
 
-	if (fcb == NULL)
+	if (fcb == NULL) {
 		return NULL;
-
+	}
 
 	ASSERT(fcb != NULL);
 	ASSERT(Vcb != NULL);
@@ -250,8 +250,9 @@ DokanFreeCCB(
 
 	ExDeleteResourceLite(&ccb->Resource);
 
-	if (ccb->SearchPattern)
+	if (ccb->SearchPattern) {
 		ExFreePool(ccb->SearchPattern);
+	}
 
 	ExFreePool(ccb);
 
@@ -440,7 +441,7 @@ Return Value:
 		enteringFileSystem = FALSE;
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
 				
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
@@ -448,6 +449,7 @@ Return Value:
 		}
 
 		eventContext->Context = 0;
+		eventContext->FileFlags |= fcb->Flags;
 
 		// copy the file name
 		eventContext->Create.FileNameLength = fcb->FileName.Length;
@@ -635,7 +637,7 @@ Return Value:
 		ASSERT(fcb != NULL);
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
 
 		if (eventContext == NULL) {
 			//status = STATUS_INSUFFICIENT_RESOURCES;

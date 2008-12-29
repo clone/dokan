@@ -24,7 +24,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000170
+#define DOKAN_VERSION	0x0000173
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 
@@ -49,12 +49,6 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #define IOCTL_EVENT_WRITE \
 	CTL_CODE( FILE_DEVICE_UNKNOWN, 0x806, METHOD_OUT_DIRECT, FILE_ANY_ACCESS )
 
-#define IOCTL_ALTSTREAM_ON \
-	CTL_CODE( FILE_DEVICE_UNKNOWN, 0x807, METHOD_BUFFERED, FILE_ANY_ACCESS )
-
-#define IOCTL_KEEPALIVE_ON \
-	CTL_CODE( FILE_DEVICE_UNKNOWN, 0x808, METHOD_NEITHER, FILE_ANY_ACCESS )
-
 #define IOCTL_KEEPALIVE \
 	CTL_CODE( FILE_DEVICE_UNKNOWN, 0x809, METHOD_NEITHER, FILE_ANY_ACCESS )
 
@@ -74,7 +68,12 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #define DOKAN_ALLOCATION_UNIT_SIZE	512
 
 
+// used in CCB->Flags and FCB->Flags
 #define DOKAN_FILE_DIRECTORY	1
+#define DOKAN_FILE_DELETED		2
+#define DOKAN_FILE_OPENED		4
+#define DOKAN_DIR_MATCH_ALL		8
+#define DOKAN_DELETE_ON_CLOSE	16
 
 
 typedef struct _CREATE_CONTEXT {
@@ -90,7 +89,6 @@ typedef struct _CREATE_CONTEXT {
 
 
 typedef struct _CLEANUP_CONTEXT {
-	CHAR	DeleteOnClose;
 	ULONG	FileNameLength;
 	WCHAR	FileName[1];
 
@@ -176,11 +174,13 @@ typedef struct _FLUSH_CONTEXT {
 
 typedef struct _EVENT_CONTEXT {
 	ULONG	Length;
+	ULONG	MountId;
 	ULONG	SerialNumber;
 	ULONG	ProcessId;
 	UCHAR	MajorFunction;
 	UCHAR	MinorFunction;
 	ULONG	Flags;
+	ULONG	FileFlags;
 	ULONG64	Context;
 	union {
 		DIRECTORY_CONTEXT	Directory;
@@ -230,10 +230,16 @@ typedef struct _EVENT_INFORMATION {
 } EVENT_INFORMATION, *PEVENT_INFORMATION;
 
 
+#define DOKAN_EVENT_ALTERNATIVE_STREAM_ON	1
+#define DOKAN_EVENT_KEEP_ALIVE_ON			2
+
 typedef struct _EVENT_START {
 	ULONG	Version;
 	ULONG	Status;
 	ULONG	DeviceNumber;
+	ULONG	MountId;
+	ULONG	Flags;
+	WCHAR	DriveLetter;
 } EVENT_START, *PEVENT_START;
 
 #endif // _PUBLIC_H_

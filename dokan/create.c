@@ -196,6 +196,8 @@ DispatchCreate(
 			eventInfo->Status = STATUS_OBJECT_NAME_COLLISION;
 			eventInfo->Create.Information = FILE_EXISTS;
 			break;
+		case ERROR_PRIVILEGE_NOT_HELD:
+			eventInfo->Status = STATUS_PRIVILEGE_NOT_HELD;
 		default:
 			eventInfo->Status = STATUS_INVALID_PARAMETER;
 			DbgPrint("Create got unknown error code %d\n", error);

@@ -22,41 +22,6 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "dokan.h"
 
 
-/*
- Control Flow
-
- loop {
-	=> EventIRP 
-	    When IRP for Event from user-mode dokan library comes,
-		 put it in EventQueue                   # DokanRegisterPendingIrpForEvent
-	<= STATUS_PENDING (EventIRP)
-
-	=> QueryDirectoryIRP                        # from individual dispatch routine
-		put it in IrpQueue                      # DokanRegisterPendingIrp
-		by use one of EventQueue
-		 inform it to user-mode that QueryDirectory is requested
-		                                        # DokanEventNotification
-		<= Complete EventIRP
-	<= STATUS_PENDING (QueryDirectoryIRP)
-
-	=> EventIRP with QueryDirectoryInfo         # DokanCompleteIrp
-		When user-mode file system returns EventInfo for QueryDirectory
-		  search corresponding IRP from IrpQueue
-		  copy QueryDirectoryInfo to that IRP
-		<= Complete QueryDirectoryIRP
-	<= STATUS_SUCCESS (EventIRP with QueryDirectoryInfo)
- }
-    
-
-  * Caution *
-	use lock while Queue operations
-	register CancelRoutine
-	needs to regiter CleanupRoutine
-
-*/
-
-
-
 VOID
 DokanIrpCancelRoutine(
     __in PDEVICE_OBJECT   DeviceObject,
@@ -427,12 +392,11 @@ DokanEventStart(
 {
 	PDokanVCB			vcb;
     PDEVICE_EXTENSION   deviceExtension;
-	ULONG				bufferLen;
+	ULONG				outBufferLen;
 	ULONG				inBufferLen;
 	PVOID				buffer;
 	PIO_STACK_LOCATION	irpSp;
 	PEVENT_START		eventStart;
-	WCHAR				driveLetter;
 
 	DDbgPrint("==> DokanEventStart\n");
 
@@ -441,17 +405,13 @@ DokanEventStart(
 
 	irpSp		= IoGetCurrentIrpStackLocation(Irp);
 
-	bufferLen = irpSp->Parameters.DeviceIoControl.OutputBufferLength;		
+	outBufferLen = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
 	inBufferLen = irpSp->Parameters.DeviceIoControl.InputBufferLength;
 	eventStart = (PEVENT_START)Irp->AssociatedIrp.SystemBuffer;
 
-	if (bufferLen < sizeof(EVENT_START))
+	if (outBufferLen < sizeof(EVENT_START) || inBufferLen < sizeof(EVENT_START)) {
 		return STATUS_INSUFFICIENT_RESOURCES;
-	if (inBufferLen < sizeof(WCHAR))
-		return STATUS_INSUFFICIENT_RESOURCES;
-
-	
-	driveLetter = *(WCHAR*)Irp->AssociatedIrp.SystemBuffer;
+	}
 
 	eventStart->Version = DOKAN_VERSION;
 	eventStart->DeviceNumber = deviceExtension->Number;
@@ -465,13 +425,21 @@ DokanEventStart(
 	} else {
 		DDbgPrint("  DOKAN_MOUNTED\n");
 		eventStart->Status = DOKAN_MOUNTED;
-		deviceExtension->Mounted = driveLetter;
+		deviceExtension->Mounted = eventStart->DriveLetter;
 		KeQueryTickCount(&deviceExtension->TickCount);
 		InterlockedIncrement(&deviceExtension->MountId);
 		DDbgPrint("  MountId:%d\n", deviceExtension->MountId);
-
+		eventStart->MountId = deviceExtension->MountId;
 		deviceExtension->UseAltStream = 0;
+		if (eventStart->Flags & DOKAN_EVENT_ALTERNATIVE_STREAM_ON) {
+			DDbgPrint("  ALT_STREAM_ON\n");
+			deviceExtension->UseAltStream = 1;
+		}
 		deviceExtension->UseKeepAlive = 0;
+		if (eventStart->Flags & DOKAN_EVENT_KEEP_ALIVE_ON) {
+			DDbgPrint("  KEEP_ALIVE_ON\n");
+			deviceExtension->UseKeepAlive = 1;
+		}
 		DokanStartEventNotificationThread(deviceExtension);
 		DokanStartCheckThread(deviceExtension);
 	}

@@ -224,7 +224,7 @@ DokanQueryDirectory(
 		eventLength += ccb->SearchPatternLength;
 	}
 		
-	eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
+	eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
 
 	if (eventContext == NULL) {
 		return STATUS_INSUFFICIENT_RESOURCES;

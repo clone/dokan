@@ -417,24 +417,6 @@ DokanGetDeviceExtension(
 }
 
 
-VOID
-DokanSetCommonEventContext(
-	PDEVICE_EXTENSION	DeviceExtension,
-	PEVENT_CONTEXT		EventContext,
-	PIRP				Irp)
-{
-	PIO_STACK_LOCATION  irpSp;
-
-	irpSp			= IoGetCurrentIrpStackLocation(Irp);
-
-	EventContext->MajorFunction = irpSp->MajorFunction;
-	EventContext->MinorFunction = irpSp->MinorFunction;
-	EventContext->Flags			= irpSp->Flags;
-
-	EventContext->ProcessId = IoGetRequestorProcessId(Irp);
-}
-
-
 #define PrintStatus(val, flag) if(val == flag) DDbgPrint("  status = " #flag "\n")
 
 

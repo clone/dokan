@@ -132,7 +132,7 @@ DokanDispatchQueryVolumeInformation(
 			}
 
 			// this memory must be freed in this {}
-			eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
+			eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
 
 			if (eventContext == NULL) {
 				status = STATUS_INSUFFICIENT_RESOURCES;

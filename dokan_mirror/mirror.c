@@ -401,8 +401,6 @@ MirrorWriteFile(
 			return -1;
 		}
 		opened = TRUE;
-		
-		return -1;
 	}
 
 	if (SetFilePointer(handle, offset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
@@ -504,14 +502,15 @@ MirrorGetFileInformation(
 			HandleFileInformation->nFileSizeHigh = find.nFileSizeHigh;
 			HandleFileInformation->nFileSizeLow = find.nFileSizeLow;
 			DbgPrint(L"\tFindFiles OK\n");
-			CloseHandle(handle);
+			FindClose(handle);
 		}
 	}
 
 	DbgPrint(L"\n");
 
-	if (opened)
+	if (opened) {
 		CloseHandle(handle);
+	}
 
 	return 0;
 }
@@ -603,6 +602,7 @@ MirrorDeleteDirectory(
 			return -1;
 		}
 	} else {
+		FindClose(hFind);
 		return -(int)STATUS_DIRECTORY_NOT_EMPTY;
 	}
 	

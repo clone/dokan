@@ -99,7 +99,7 @@ DokanDispatchWrite(
 							+ irpSp->Parameters.Write.Length
 							+ fcb->FileName.Length;
 
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
 
 		// no more memory!
 		if (eventContext == NULL) {
@@ -156,7 +156,7 @@ DokanDispatchWrite(
 		} else {
 			// the length at lest file name can be stored
 			ULONG	requestContextLength = max(sizeof(EVENT_CONTEXT), eventContext->Write.BufferOffset);
-			PEVENT_CONTEXT requestContext = AllocateEventContext(deviceExtension, Irp, requestContextLength);
+			PEVENT_CONTEXT requestContext = AllocateEventContext(deviceExtension, Irp, requestContextLength, ccb);
 
 			// no more memory!
 			if (requestContext == NULL) {

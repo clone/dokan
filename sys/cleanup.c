@@ -91,7 +91,7 @@ Return Value:
 		ASSERT(fcb != NULL);
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
 
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
@@ -100,10 +100,6 @@ Return Value:
 
 		eventContext->Context = ccb->UserContext;
 		//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
-
-		if (ccb->Flags & DOKAN_DELETE_ON_CLOSE) {
-			eventContext->Cleanup.DeleteOnClose = TRUE;
-		}
 
 		// copy the filename to EventContext from ccb
 		eventContext->Cleanup.FileNameLength = fcb->FileName.Length;
@@ -169,8 +165,9 @@ DokanCompleteCleanup(
 
 	status = EventInfo->Status;
 
-	if (fcb->Flags & DOKAN_FILE_DIRECTORY)
+	if (fcb->Flags & DOKAN_FILE_DIRECTORY) {
 		FsRtlNotifyCleanup(vcb->NotifySync, &vcb->DirNotifyList, ccb);
+	}
 
 	CcFlushCache(&fcb->SectionObjectPointers, NULL, 0, NULL);
 	CcPurgeCacheSection(&fcb->SectionObjectPointers, NULL, 0, FALSE);

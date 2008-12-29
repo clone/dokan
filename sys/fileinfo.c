@@ -178,7 +178,7 @@ DokanDispatchQueryInformation(
 		// sum of it's size and file name length
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
 
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
 				
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
@@ -412,7 +412,7 @@ DokanDispatchSetInformation(
 			eventLength += targetFileObject->FileName.Length;
 		}
 
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength);
+		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
 	
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;

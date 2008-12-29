@@ -47,6 +47,7 @@ typedef struct _DOKAN_INSTANCE
 	// other DeviceName)
 	WCHAR	DeviceName[MAX_PATH];
 	ULONG	DeviceNumber;
+	ULONG	MountId;
 
 	PDOKAN_OPTIONS		DokanOptions;
 	PDOKAN_OPERATIONS	DokanOperations;
@@ -66,9 +67,9 @@ typedef struct _DOKAN_OPEN_INFO {
 } DOKAN_OPEN_INFO, *PDOKAN_OPEN_INFO;
 
 
-ULONG
+BOOL
 DokanStart(
-	WCHAR	DriveLetter);
+	PDOKAN_INSTANCE	Instance);
 
 BOOL
 SendToDevice(

@@ -52,7 +52,7 @@ DokanCreateDiskDevice(
 	UNICODE_STRING		symbolicLinkName;
 	NTSTATUS			status;
 
-	FS_FILTER_CALLBACKS filterCallbacks;
+	//FS_FILTER_CALLBACKS filterCallbacks;
 
 	// make DeviceName and SymboliLink
 	swprintf(deviceNameBuf, NTDEVICE_NAME_STRING L"%u", Number);

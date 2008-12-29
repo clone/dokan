@@ -37,10 +37,6 @@ DispatchCleanup(
 
 	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
 	
-	if (EventContext->Cleanup.DeleteOnClose) {
-		fileInfo.DeleteOnClose = TRUE;
-	}
-
 	eventInfo->Status = STATUS_SUCCESS; // return success at any case
 	
 	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;

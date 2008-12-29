@@ -140,20 +140,6 @@ Return Value:
 			status = DokanEventWrite(DeviceObject, Irp);
 			break;
 
-		case IOCTL_ALTSTREAM_ON:
-			DDbgPrint("  IOCTL_ALTSTREAM_ON\n");
-			// TODO: reset this value when umounted
-			deviceExtension->UseAltStream = 1;
-			status = STATUS_SUCCESS;
-			break;
-
-		case IOCTL_KEEPALIVE_ON:
-			DDbgPrint("   IOCTL_KEEPALIVE_ON\n");
-			// TODO: reset this value when umounted
-			deviceExtension->UseKeepAlive = 1;
-			status = STATUS_SUCCESS;
-			break;
-
 		case IOCTL_KEEPALIVE:
 			KeEnterCriticalRegion();
 			ExAcquireResourceExclusiveLite(&deviceExtension->Resource, TRUE);
