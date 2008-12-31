@@ -74,8 +74,10 @@ SetCommonEventContext(
 	EventContext->MajorFunction = irpSp->MajorFunction;
 	EventContext->MinorFunction = irpSp->MinorFunction;
 	EventContext->Flags			= irpSp->Flags;
-	ASSERT(Ccb->Fcb);
-	EventContext->FileFlags		= Ccb->Flags;
+	
+	if (Ccb) {
+		EventContext->FileFlags		= Ccb->Flags;
+	}
 
 	EventContext->ProcessId = IoGetRequestorProcessId(Irp);
 }

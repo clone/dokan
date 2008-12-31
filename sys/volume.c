@@ -132,7 +132,7 @@ DokanDispatchQueryVolumeInformation(
 			}
 
 			// this memory must be freed in this {}
-			eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
+			eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, NULL);
 
 			if (eventContext == NULL) {
 				status = STATUS_INSUFFICIENT_RESOURCES;
@@ -141,6 +141,7 @@ DokanDispatchQueryVolumeInformation(
 		
 			if (ccb) {
 				eventContext->Context = ccb->UserContext;
+				eventContext->FileFlags = ccb->Flags;
 				//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
 			}
 
