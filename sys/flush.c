@@ -34,7 +34,6 @@ DokanDispatchFlush(
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
 	PDokanFCB			fcb;
 	PDokanCCB			ccb;
-	PDokanVCB			vcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	PEVENT_CONTEXT		eventContext;
 	ULONG				eventLength;
@@ -42,15 +41,12 @@ DokanDispatchFlush(
 	PAGED_CODE();
 	
 	__try {
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanFlush\n");
 
 		irpSp		= IoGetCurrentIrpStackLocation(Irp);
 		fileObject	= irpSp->FileObject;
-
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
 		if (fileObject == NULL) {
 			DDbgPrint("  fileObject == NULL\n");
@@ -58,7 +54,8 @@ DokanDispatchFlush(
 			__leave;
 		}
 
-		if (!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
+			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
 			status = STATUS_SUCCESS;
 			__leave;
 		}
@@ -107,7 +104,7 @@ DokanDispatchFlush(
 
 		DDbgPrint("<== DokanFlush\n");
 
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;
@@ -126,7 +123,6 @@ DokanCompleteFlush(
 	ULONG				info	 = 0;
 	PDokanCCB			ccb;
 	PDokanFCB			fcb;
-	PDokanVCB			vcb;
 	PFILE_OBJECT		fileObject;
 
 	irp   = IrpEntry->Irp;

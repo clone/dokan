@@ -174,7 +174,7 @@ static VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 	}
 
 	device = CreateFile(
-				DOKAN_DEVICE_NAME,					// lpFileName
+				DOKAN_GLOBAL_DEVICE_NAME,			// lpFileName
 				GENERIC_READ | GENERIC_WRITE,       // dwDesiredAccess
 				FILE_SHARE_READ | FILE_SHARE_WRITE, // dwShareMode
 				NULL,                               // lpSecurityAttributes
@@ -206,8 +206,13 @@ static VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 		driver.hEvent = eventUnmount;
 
 		ConnectNamedPipe(pipe, &ov);
-		DeviceIoControl(device, IOCTL_SERVICE_WAIT, NULL, 0,
-			&eventContext, sizeof(EVENT_CONTEXT), NULL, &driver);
+		if (!DeviceIoControl(device, IOCTL_SERVICE_WAIT, NULL, 0,
+			&eventContext, sizeof(EVENT_CONTEXT), NULL, &driver)) {
+			DWORD error = GetLastError();
+			if (error != 997) {
+				DbgPrintW(L"DokanMounter: DeviceIoControl error: %d\n", error);
+			}
+		}
 
 		eventArray[0] = eventConnect;
 		eventArray[1] = eventUnmount;
@@ -246,6 +251,7 @@ static VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 			}
 
 		} else if (eventNo == 2) {
+			DbgPrintW(L"DokanMounter: stop mounter service\n");
 			g_ServiceStatus.dwWaitHint     = 0;
 			g_ServiceStatus.dwCheckPoint   = 0;
 			g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;

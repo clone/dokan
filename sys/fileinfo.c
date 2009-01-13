@@ -34,7 +34,6 @@ DokanDispatchQueryInformation(
 	PFILE_OBJECT			fileObject;
 	FILE_INFORMATION_CLASS	fileInfo;
 	PDokanCCB				ccb;
-	PDokanVCB				vcb;
 	PDokanFCB				fcb;
 	PDEVICE_EXTENSION		deviceExtension;
 	ULONG					info = 0;
@@ -42,15 +41,12 @@ DokanDispatchQueryInformation(
 	PEVENT_CONTEXT			eventContext;
 
 
-	//PAGED_CODE();
+	PAGED_CODE();
 	
 	__try {
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanQueryInformation\n");
-
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
 		irpSp			= IoGetCurrentIrpStackLocation(Irp);
 		fileObject		= irpSp->FileObject;
@@ -74,12 +70,11 @@ DokanDispatchQueryInformation(
 			__leave;
 		}*/
 
-
-		if (!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
+			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
-
 
 		ccb	= (PDokanCCB)fileObject->FsContext2;
 		ASSERT(ccb != NULL);
@@ -214,7 +209,7 @@ DokanDispatchQueryInformation(
 
 		DDbgPrint("<== DokanQueryInformation\n");
 
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 
 	}
 
@@ -311,7 +306,6 @@ DokanDispatchSetInformation(
 	PFILE_OBJECT		fileObject;
 	FILE_INFORMATION_CLASS fileInfo;
 	PDokanCCB			ccb;
-	PDokanVCB			vcb;
 	PDokanFCB			fcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	ULONG				eventLength;
@@ -319,15 +313,12 @@ DokanDispatchSetInformation(
 	PEVENT_CONTEXT		eventContext;
 
 
-	//PAGED_CODE();
+	PAGED_CODE();
 
 	__try {
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanSetInformationn\n");
-
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
 		irpSp			= IoGetCurrentIrpStackLocation(Irp);
 		fileObject		= irpSp->FileObject;
@@ -338,7 +329,8 @@ DokanDispatchSetInformation(
 			__leave;
 		}
 		
-		if (!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
+			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
@@ -474,7 +466,7 @@ DokanDispatchSetInformation(
 
 		DDbgPrint("<== DokanSetInformation\n");
 
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;
@@ -494,7 +486,6 @@ DokanCompleteSetInformation(
 	NTSTATUS			status;
 	ULONG				info	 = 0;
 	PDokanCCB			ccb;
-	PDokanVCB			vcb;
 	PDokanFCB			fcb;
 	UNICODE_STRING		oldFileName;
 
@@ -516,9 +507,6 @@ DokanCompleteSetInformation(
 
 		fcb = ccb->Fcb;
 		ASSERT(fcb != NULL);
-
-		vcb = fcb->Vcb;
-		ASSERT(vcb != NULL);
 
 		ccb->UserContext = EventInfo->Context;
 

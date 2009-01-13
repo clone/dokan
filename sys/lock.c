@@ -28,7 +28,6 @@ DokanDispatchLock(
 	__in PIRP Irp
 	)
 {
-	PDokanVCB			vcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	PIO_STACK_LOCATION	irpSp;
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
@@ -41,16 +40,12 @@ DokanDispatchLock(
 	PAGED_CODE();
 
 	__try {
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanLock\n");
 	
 		irpSp = IoGetCurrentIrpStackLocation(Irp);
 		fileObject = irpSp->FileObject;
-
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
-
 
 		if (fileObject == NULL) {
 			DDbgPrint("  fileObject == NULL\n");
@@ -58,11 +53,11 @@ DokanDispatchLock(
 			__leave;
 		}
 
-		if (!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
+			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
-
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
@@ -127,7 +122,7 @@ DokanDispatchLock(
 		}
 
 		DDbgPrint("<== DokanLock\n");
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;

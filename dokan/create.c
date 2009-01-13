@@ -162,7 +162,7 @@ DispatchCreate(
 
 		int error = status * -1;
 		
-		DokanDbgPrint("CreteFile status = %d\n", status);
+		DbgPrint("CreteFile status = %d\n", status);
 		if (EventContext->Flags & SL_OPEN_TARGET_DIRECTORY) {
 			DokanDbgPrint("SL_OPEN_TARGET_DIRECTORY spcefied\n");
 		}
@@ -179,8 +179,7 @@ DispatchCreate(
 			//if (EventContext->Flags & SL_OPEN_TARGET_DIRECTORY)
 			//	eventInfo->Status = STATUS_SUCCESS;
 			//else
-			DokanDbgPrint("ERROR_PATH_NOT_FOUND => STATUS_OBJECT_PATH_NOT_FOUND\n");
-				eventInfo->Status = STATUS_OBJECT_PATH_NOT_FOUND;
+			eventInfo->Status = STATUS_OBJECT_PATH_NOT_FOUND;
 			break;
 		case ERROR_ACCESS_DENIED:
 			eventInfo->Status = STATUS_ACCESS_DENIED;

@@ -143,7 +143,7 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	//}
 
 	device = CreateFile(
-					DOKAN_DEVICE_NAME,					// lpFileName
+					DOKAN_GLOBAL_DEVICE_NAME,			// lpFileName
 					GENERIC_READ|GENERIC_WRITE,			// dwDesiredAccess
 					FILE_SHARE_READ|FILE_SHARE_WRITE,	// dwShareMode
 					NULL,								// lpSecurityAttributes
@@ -565,8 +565,6 @@ SendReleaseIRP2(
 BOOL
 DokanStart(PDOKAN_INSTANCE Instance)
 {
-	WCHAR		deviceName[] = DOKAN_DEVICE_NAME;
-	ULONG		deviceNumber = 0;
 	EVENT_START	eventStart;
 	ULONG		returnedLength = 0;
 
@@ -579,32 +577,26 @@ DokanStart(PDOKAN_INSTANCE Instance)
 		eventStart.Flags |= DOKAN_EVENT_KEEP_ALIVE_ON;
 	}
 
-	for (; deviceNumber < DOKAN_DEVICE_MAX; ++deviceNumber) {
-		deviceName[wcslen(deviceName)-1] = (WCHAR)(L'0' + deviceNumber);
+	SendToDevice(
+		DOKAN_GLOBAL_DEVICE_NAME,
+		IOCTL_EVENT_START,
+		&eventStart,
+		sizeof(EVENT_START),
+		&eventStart,
+		sizeof(EVENT_START),
+		&returnedLength);
 
-		SendToDevice(deviceName,
-					IOCTL_EVENT_START,
-					&eventStart,
-					sizeof(EVENT_START),
-					&eventStart,
-					sizeof(EVENT_START),
-					&returnedLength);
+	if (eventStart.Version != DOKAN_VERSION) {
+		DokanDbgPrint(
+			"Dokan Error: driver version mismatch, driver %X, dll %X\n",
+			eventStart.Version, DOKAN_VERSION);
 
-		if (eventStart.Version != DOKAN_VERSION) {
-			DokanDbgPrint(
-				"Dokan Error: driver version mismatch, driver %X, dll %X\n",
-				eventStart.Version, DOKAN_VERSION);
-
-			SendReleaseIRP2(deviceNumber);
-
-			return FALSE;
-		} else if (eventStart.Status == DOKAN_MOUNTED) {
-			Instance->MountId = eventStart.MountId;
-			Instance->DeviceNumber = eventStart.DeviceNumber;
-			return TRUE;
-		}
+		return FALSE;
+	} else if (eventStart.Status == DOKAN_MOUNTED) {
+		Instance->MountId = eventStart.MountId;
+		Instance->DeviceNumber = eventStart.DeviceNumber;
+		return TRUE;
 	}
-	DokanDbgPrint("Dokan Error: failed to start\n");
 	return FALSE;
 }
 

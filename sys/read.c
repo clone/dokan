@@ -54,7 +54,6 @@ Return Value:
 	ULONG				readLength = 0;
 	PDokanCCB			ccb;
 	PDokanFCB			fcb;
-	PDokanVCB			vcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	PEVENT_CONTEXT		eventContext;
 	ULONG				eventLength;
@@ -63,16 +62,12 @@ Return Value:
 
 	__try {
 
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanRead\n");
 
 		irpSp		= IoGetCurrentIrpStackLocation(Irp);
 		fileObject	= irpSp->FileObject;
-
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
-
 
 		if (fileObject == NULL) {
 			DDbgPrint("  fileObject == NULL\n");
@@ -80,7 +75,8 @@ Return Value:
 			__leave;
 		}
 
-		if (!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
+			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
@@ -182,7 +178,7 @@ Return Value:
 
 		DDbgPrint("<== DokanRead\n");
 		
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 
 	}
 

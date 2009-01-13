@@ -45,7 +45,6 @@ Return Value:
 
 --*/
 {
-	PDokanVCB			vcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	PIO_STACK_LOCATION	irpSp;
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
@@ -59,15 +58,12 @@ Return Value:
 
 	__try {
 
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanCleanup\n");
 	
 		irpSp = IoGetCurrentIrpStackLocation(Irp);
 		fileObject = irpSp->FileObject;
-
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
@@ -79,7 +75,8 @@ Return Value:
 			__leave;
 		}
 
-		if (!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
+			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
 			status = STATUS_SUCCESS;
 			__leave;
 		}
@@ -119,7 +116,7 @@ Return Value:
 
 		DDbgPrint("<== DokanCleanup\n");
 	
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;

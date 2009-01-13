@@ -35,9 +35,8 @@ DokanControlMount(
 	WCHAR	driveLetterAndSlash[] = L"C:\\";
 	WCHAR	uniqueVolumeName[MAX_PATH];
 	HANDLE  device;
-	WCHAR	deviceName[MAX_PATH];
+	WCHAR	deviceName[] = DOKAN_DEVICE_NAME;
 
-	wcscpy_s(deviceName, sizeof(deviceName), DOKAN_DEVICE_NAME);
 	deviceName[wcslen(deviceName)-1] = (WCHAR)(L'0' + DeviceNumber);
 
     volumeName[4] = DriveLetter;
@@ -57,12 +56,12 @@ DokanControlMount(
 		);
 
     if (device != INVALID_HANDLE_VALUE) {
-        DbgPrintW(L"DokanControl Mount failed\n");
+		DbgPrintW(L"DokanControl Mount failed: %wc: is alredy used\n", DriveLetter);
         return FALSE;
     }
 
     if (!DefineDosDevice(0, &volumeName[4], deviceName)) {
-        DbgPrintW(L"DokanControl DefineDosDevice failed\n");
+		DbgPrintW(L"DokanControl DefineDosDevice failed: %d\n", GetLastError());
         return FALSE;
     }
 
@@ -96,7 +95,7 @@ DokanControlMount(
         );
 
     if (device == INVALID_HANDLE_VALUE) {
-        DbgPrintW(L"DokanControl Mount failed\n");
+		DbgPrintW(L"DokanControl Mount %ws failed:%d\n", volumeName, GetLastError());
         DefineDosDevice(DDD_REMOVE_DEFINITION, &volumeName[4], NULL);
         return FALSE;
     }
@@ -138,7 +137,9 @@ DokanControlUnmount(
 		DbgPrintW(L"DriveLetter %wc\n", DriveLetter);
         DbgPrintW(L"DokanControl DefineDosDevice failed\n");
         return FALSE;
-    }
+	} else {
+		DbgPrintW(L"DokanControl DD_REMOVE_DEFINITION success\n");
+	}
 
 	return TRUE;
 }

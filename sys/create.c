@@ -309,7 +309,6 @@ Return Value:
 	PEVENT_CONTEXT		eventContext;
 	PFILE_OBJECT		relatedFileObject;
 	ULONG				fileNameLength = 0;
-	BOOLEAN				enteringFileSystem = FALSE;
 	ULONG				eventLength;
 	PDokanFCB			fcb;
 	PDokanCCB			ccb;
@@ -319,7 +318,6 @@ Return Value:
 
 	__try {
 		FsRtlEnterFileSystem();
-		enteringFileSystem = TRUE;
 
 		DDbgPrint("==> DokanCreate\n");
 
@@ -336,9 +334,15 @@ Return Value:
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
 
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
+		deviceExtension = DeviceObject->DeviceExtension;
+		if (deviceExtension->Identifier.Type == DGL) {
+			status = STATUS_SUCCESS;
+			__leave;
+		}
+
+		DokanGetDeviceExtension(DeviceObject, &deviceExtension);
+		vcb = deviceExtension->Vcb;
 
 		DDbgPrint("  IrpSp->Flags = %d\n", irpSp->Flags);
 		if (irpSp->Flags & SL_CASE_SENSITIVE)
@@ -437,9 +441,6 @@ Return Value:
 		fileObject->PrivateCacheMap = NULL;
 		fileObject->SectionObjectPointer = &fcb->SectionObjectPointers;
 
-		FsRtlExitFileSystem();
-		enteringFileSystem = FALSE;
-
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
 		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
 				
@@ -473,9 +474,7 @@ Return Value:
 		}
 
 		DDbgPrint("<== DokanCreate\n");
-
-		if (enteringFileSystem)
-			FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;
@@ -575,7 +574,6 @@ Return Value:
 
 --*/
 {
-	PDokanVCB			vcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	PIO_STACK_LOCATION	irpSp;
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
@@ -584,22 +582,17 @@ Return Value:
 	PEVENT_CONTEXT		eventContext;
 	ULONG				eventLength;
 	PDokanFCB			fcb;
-	BOOLEAN				enteringFileSystem = FALSE;
 
 	PAGED_CODE();
 
 	__try {
 
 		FsRtlEnterFileSystem();
-		enteringFileSystem = TRUE;
 
 		DDbgPrint("==> DokanClose\n");
 	
 		irpSp = IoGetCurrentIrpStackLocation(Irp);
 		fileObject = irpSp->FileObject;
-
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
 		if (fileObject == NULL) {
 			DDbgPrint("  fileObject is NULL\n");
@@ -611,7 +604,8 @@ Return Value:
 		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
 
 
-		if (!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
+			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
 
 			if (fileObject->FsContext2) {
 				ccb = fileObject->FsContext2;
@@ -657,9 +651,6 @@ Return Value:
 
 		DokanFreeFCB(fcb);
 
-		FsRtlExitFileSystem();
-		enteringFileSystem = FALSE;
-
 		// Close can not be pending status
 		// don't register this IRP
 		//status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
@@ -679,8 +670,7 @@ Return Value:
 
 		DDbgPrint("<== DokanClose\n");
 
-		if (enteringFileSystem)
-			FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;

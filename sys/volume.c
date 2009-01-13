@@ -32,7 +32,6 @@ DokanDispatchQueryVolumeInformation(
 	PIO_STACK_LOCATION  irpSp;
 	PVOID				buffer;
 	PFILE_OBJECT		fileObject;
-	PDokanVCB			vcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	PDokanCCB			ccb;
 	ULONG               info = 0;
@@ -41,13 +40,15 @@ DokanDispatchQueryVolumeInformation(
 
 	__try {
 
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanQueryVolumeInformation\n");
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension)) {
+			status = STATUS_INVALID_PARAMETER;
+			__leave;
+		}
 
 		irpSp			= IoGetCurrentIrpStackLocation(Irp);
 		buffer			= Irp->AssociatedIrp.SystemBuffer;
@@ -166,7 +167,7 @@ DokanDispatchQueryVolumeInformation(
 
 		DDbgPrint("<== DokanQueryVolumeInformation\n");
 
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;

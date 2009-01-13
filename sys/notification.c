@@ -440,7 +440,7 @@ DokanEventRelease(
 	PLIST_ENTRY			ccbEntry, ccbNext, ccbHead;
 	NTSTATUS			status = STATUS_SUCCESS;
 
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
+	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
 
 	//ExAcquireResourceExclusiveLite(&deviceExtension->Resource, TRUE);
 	deviceExtension->Mounted = 0;

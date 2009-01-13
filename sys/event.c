@@ -28,17 +28,12 @@ DokanIrpCancelRoutine(
     __in PIRP             Irp
     )
 {
-	PDokanVCB			vcb;
-    PDEVICE_EXTENSION   deviceExtension;
     KIRQL               oldIrql;
     PIRP_ENTRY			irpEntry;
 	ULONG				serialNumber;
 	PIO_STACK_LOCATION	irpSp;
 
     DDbgPrint("==> DokanIrpCancelRoutine\n");
-
-	vcb = DokanGetVcb(DeviceObject);
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
     // Release the cancel spinlock
     IoReleaseCancelSpinLock(Irp->CancelIrql);
@@ -109,16 +104,14 @@ RegisterPendingIrpMain(
 	__in ULONG			CheckMount
     )
 {
-	PDokanVCB			vcb;
-    PDEVICE_EXTENSION   deviceExtension;
  	PIRP_ENTRY			irpEntry;
     PIO_STACK_LOCATION	irpSp;
     KIRQL				oldIrql;
  
 	//DDbgPrint("==> DokanRegisterPendingIrpMain\n");
 
-	vcb = DokanGetVcb(DeviceObject);
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
+	/*
+	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
 
 	//ExAcquireResourceSharedLite(&deviceExtension->Resource, TRUE);
 	if (CheckMount && !deviceExtension->Mounted) {
@@ -127,6 +120,7 @@ RegisterPendingIrpMain(
 		return STATUS_INSUFFICIENT_RESOURCES;
 	}
 	//ExReleaseResourceLite(&deviceExtension->Resource);
+	*/
 
     irpSp = IoGetCurrentIrpStackLocation(Irp);
  
@@ -143,7 +137,7 @@ RegisterPendingIrpMain(
 
 	irpEntry->SerialNumber		= SerialNumber;
     irpEntry->FileObject		= irpSp->FileObject;
-    irpEntry->DeviceExtension	= deviceExtension;
+    irpEntry->DeviceExtension	= DeviceObject->DeviceExtension;
     irpEntry->Irp				= Irp;
 	irpEntry->IrpSp				= irpSp;
 	irpEntry->IrpList			= IrpList;
@@ -195,9 +189,12 @@ DokanRegisterPendingIrp(
 	__in PEVENT_CONTEXT	EventContext
     )
 {
-	PDEVICE_EXTENSION deviceExtension = DokanGetDeviceExtension(DeviceObject);
+	PDEVICE_EXTENSION deviceExtension;
+	NTSTATUS status;
 
-	NTSTATUS status = RegisterPendingIrpMain(
+	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
+
+	status = RegisterPendingIrpMain(
 		DeviceObject,
 		Irp,
 		EventContext->SerialNumber,
@@ -220,7 +217,9 @@ DokanRegisterPendingIrpForEvent(
     __in PIRP			Irp
     )
 {
-	PDEVICE_EXTENSION deviceExtension = DokanGetDeviceExtension(DeviceObject);
+	PDEVICE_EXTENSION deviceExtension;
+	
+	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
 
 	//DDbgPrint("DokanRegisterPendingIrpForEvent\n");
 
@@ -240,15 +239,19 @@ DokanRegisterPendingIrpForService(
 	__in PIRP			Irp
 	)
 {
-	PDEVICE_EXTENSION deviceExtension = DokanGetDeviceExtension(DeviceObject);
-
+	PDOKAN_GLOBAL dokanGlobal;
 	DDbgPrint("DokanRegisterPendingIrpForService\n");
+
+	dokanGlobal = DeviceObject->DeviceExtension;
+	if (dokanGlobal->Identifier.Type != DGL) {
+		return STATUS_INVALID_PARAMETER;
+	}
 
 	return RegisterPendingIrpMain(
 		DeviceObject,
 		Irp,
 		0, // SerialNumber
-		&deviceExtension->Global->PendingService,
+		&dokanGlobal->PendingService,
 		FALSE);
 }
 
@@ -264,7 +267,6 @@ DokanCompleteIrp(
 	KIRQL				oldIrql;
     PLIST_ENTRY			thisEntry, nextEntry, listHead;
 	PIRP_ENTRY			irpEntry;
-	PDokanVCB			vcb;
     PDEVICE_EXTENSION   deviceExtension;
 	PEVENT_INFORMATION	eventInfo;
 
@@ -273,8 +275,7 @@ DokanCompleteIrp(
 	
 	//DDbgPrint("==> DokanCompleteIrp [EventInfo #%X]\n", eventInfo->SerialNumber);
 
-	vcb = DokanGetVcb(DeviceObject);
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
+	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
 
 	//DDbgPrint("      Lock IrpList.ListLock\n");
 	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
@@ -390,20 +391,23 @@ DokanEventStart(
     __in PIRP Irp
    )
 {
-	PDokanVCB			vcb;
-    PDEVICE_EXTENSION   deviceExtension;
 	ULONG				outBufferLen;
 	ULONG				inBufferLen;
 	PVOID				buffer;
 	PIO_STACK_LOCATION	irpSp;
 	PEVENT_START		eventStart;
+	PDOKAN_GLOBAL		dokanGlobal;
+	PDEVICE_EXTENSION	deviceExtension;
+	NTSTATUS			status;
 
 	DDbgPrint("==> DokanEventStart\n");
 
-	vcb = DokanGetVcb(DeviceObject);
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
+	dokanGlobal = DeviceObject->DeviceExtension;
+	if (dokanGlobal->Identifier.Type != DGL) {
+		return STATUS_INVALID_PARAMETER;
+	}
 
-	irpSp		= IoGetCurrentIrpStackLocation(Irp);
+	irpSp = IoGetCurrentIrpStackLocation(Irp);
 
 	outBufferLen = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
 	inBufferLen = irpSp->Parameters.DeviceIoControl.InputBufferLength;
@@ -413,42 +417,52 @@ DokanEventStart(
 		return STATUS_INSUFFICIENT_RESOURCES;
 	}
 
-	eventStart->Version = DOKAN_VERSION;
-	eventStart->DeviceNumber = deviceExtension->Number;
-
 	KeEnterCriticalRegion();
-	ExAcquireResourceExclusiveLite(&deviceExtension->Resource, TRUE);
+	ExAcquireResourceExclusiveLite(&dokanGlobal->Resource, TRUE);
 
-	if (deviceExtension->Mounted) {
-		DDbgPrint("  DOKAN_USED\n");
-		eventStart->Status = DOKAN_USED;
-	} else {
-		DDbgPrint("  DOKAN_MOUNTED\n");
-		eventStart->Status = DOKAN_MOUNTED;
-		deviceExtension->Mounted = eventStart->DriveLetter;
-		KeQueryTickCount(&deviceExtension->TickCount);
-		InterlockedIncrement(&deviceExtension->MountId);
-		DDbgPrint("  MountId:%d\n", deviceExtension->MountId);
-		eventStart->MountId = deviceExtension->MountId;
-		deviceExtension->UseAltStream = 0;
-		if (eventStart->Flags & DOKAN_EVENT_ALTERNATIVE_STREAM_ON) {
-			DDbgPrint("  ALT_STREAM_ON\n");
-			deviceExtension->UseAltStream = 1;
-		}
-		deviceExtension->UseKeepAlive = 0;
-		if (eventStart->Flags & DOKAN_EVENT_KEEP_ALIVE_ON) {
-			DDbgPrint("  KEEP_ALIVE_ON\n");
-			deviceExtension->UseKeepAlive = 1;
-		}
-		DokanStartEventNotificationThread(deviceExtension);
-		DokanStartCheckThread(deviceExtension);
+	status = DokanCreateDiskDevice(
+				DeviceObject->DriverObject,
+				dokanGlobal->MountId,
+				dokanGlobal,
+				FILE_DEVICE_DISK_FILE_SYSTEM,
+				//FILE_DEVICE_NETWORK_FILE_SYSTEM,
+				&deviceExtension);
+
+	if (!NT_SUCCESS(status)) {
+		ExReleaseResourceLite(&dokanGlobal->Resource);
+		KeLeaveCriticalRegion();
+		return status;
 	}
 
-	ExReleaseResourceLite(&deviceExtension->Resource);
+	eventStart->Version = DOKAN_VERSION;
+
+	DDbgPrint("  MountId:%d\n", deviceExtension->MountId);
+	eventStart->DeviceNumber = dokanGlobal->MountId;
+	eventStart->MountId = dokanGlobal->MountId;
+	eventStart->Status = DOKAN_MOUNTED;
+	deviceExtension->Mounted = eventStart->DriveLetter;
+	KeQueryTickCount(&deviceExtension->TickCount);
+
+	deviceExtension->UseAltStream = 0;
+	if (eventStart->Flags & DOKAN_EVENT_ALTERNATIVE_STREAM_ON) {
+		DDbgPrint("  ALT_STREAM_ON\n");
+		deviceExtension->UseAltStream = 1;
+	}
+	deviceExtension->UseKeepAlive = 0;
+	if (eventStart->Flags & DOKAN_EVENT_KEEP_ALIVE_ON) {
+		DDbgPrint("  KEEP_ALIVE_ON\n");
+		deviceExtension->UseKeepAlive = 1;
+	}
+	DokanStartEventNotificationThread(deviceExtension);
+	DokanStartCheckThread(deviceExtension);
+
+	ExReleaseResourceLite(&dokanGlobal->Resource);
 	KeLeaveCriticalRegion();
 
 	Irp->IoStatus.Status = STATUS_SUCCESS;
 	Irp->IoStatus.Information = sizeof(EVENT_START);
+
+	InterlockedIncrement(&dokanGlobal->MountId);
 
 	DDbgPrint("<== DokanEventStart\n");
 
@@ -468,7 +482,6 @@ DokanEventWrite(
 	KIRQL				oldIrql;
     PLIST_ENTRY			thisEntry, nextEntry, listHead;
 	PIRP_ENTRY			irpEntry;
-	PDokanVCB			vcb;
     PDEVICE_EXTENSION   deviceExtension;
 	PEVENT_INFORMATION	eventInfo;
 	PIRP				writeIrp;
@@ -478,8 +491,7 @@ DokanEventWrite(
 	
 	DDbgPrint("==> DokanEventWrite [EventInfo #%X]\n", eventInfo->SerialNumber);
 
-	vcb = DokanGetVcb(DeviceObject);
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
+	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
 
 	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
 	KeAcquireSpinLock(&deviceExtension->PendingIrp.ListLock, &oldIrql);

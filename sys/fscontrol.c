@@ -24,8 +24,8 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NTSTATUS
 DokanUserFsRequest(
-	__in PDEVICE_EXTENSION	DeviceExtension,
-	__in PIRP				Irp
+	__in PDEVICE_OBJECT	DeviceObject,
+	__in PIRP			Irp
 	)
 {
 	NTSTATUS			status = STATUS_NOT_IMPLEMENTED;
@@ -87,20 +87,16 @@ DokanDispatchFileSystemControl(
 {
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
 	PIO_STACK_LOCATION	irpSp;
-	PDokanVCB			vcb;
 	PDEVICE_EXTENSION	deviceExtension;
 
 	PAGED_CODE();
 
 	__try {
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanFileSystemControl\n");
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
 
 		irpSp = IoGetCurrentIrpStackLocation(Irp);
 
@@ -118,7 +114,7 @@ DokanDispatchFileSystemControl(
 			{
 				DDbgPrint("	IRP_MN_USER_FS_REQUEST\n");
 				DDbgPrint("  code %d\n", irpSp->Parameters.FileSystemControl.FsControlCode);
-				status = DokanUserFsRequest(deviceExtension, Irp);
+				status = DokanUserFsRequest(DeviceObject, Irp);
 			}
 			break;
 		case IRP_MN_VERIFY_VOLUME:
@@ -138,7 +134,7 @@ DokanDispatchFileSystemControl(
 		DokanPrintNTStatus(status);
 		DDbgPrint("<== DokanFileSystemControl\n");
 
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;

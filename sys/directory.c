@@ -47,17 +47,13 @@ DokanDispatchDirectoryControl(
 
 	PAGED_CODE();
 
-
 	__try {
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanDirectoryControl\n");
 
 		irpSp		= IoGetCurrentIrpStackLocation(Irp);
 		fileObject	= irpSp->FileObject;
-
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
-		ASSERT(deviceExtension != NULL);
 
 		if (fileObject == NULL) {
 			DDbgPrint("   fileObject is NULL\n");
@@ -65,7 +61,8 @@ DokanDispatchDirectoryControl(
 			__leave;
 		}
 
-		if (!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
+			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
@@ -95,7 +92,7 @@ DokanDispatchDirectoryControl(
 		DokanPrintNTStatus(status);
 		DDbgPrint("<== DokanDirectoryControl\n");
 
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;
@@ -111,7 +108,6 @@ DokanQueryDirectory(
 	PIO_STACK_LOCATION	irpSp;
 	PDEVICE_EXTENSION	deviceExtension;
 	PDokanCCB			ccb;
-	PDokanVCB			vcb;
 	PDokanFCB			fcb;
 	NTSTATUS			status;
 	PUNICODE_STRING		searchPattern;
@@ -123,8 +119,7 @@ DokanQueryDirectory(
 	irpSp		= IoGetCurrentIrpStackLocation(Irp);
 	fileObject	= irpSp->FileObject;
 
-	vcb = DokanGetVcb(DeviceObject);
-	deviceExtension = DokanGetDeviceExtension(DeviceObject);
+	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
 
 	ccb = fileObject->FsContext2;
 	ASSERT(ccb != NULL);
@@ -290,32 +285,31 @@ DokanNotifyChangeDirectory(
 	__in PIRP			Irp)
 {
 	PDokanCCB			ccb;
-	PDokanVCB			vcb;
 	PDokanFCB			fcb;
 	PFILE_OBJECT		fileObject;
 	PIO_STACK_LOCATION	irpSp;
+	PDEVICE_EXTENSION	deviceExtension;
 
 	DDbgPrint("\tNotifyChangeDirectory\n");
 
 	irpSp		= IoGetCurrentIrpStackLocation(Irp);
-
 	fileObject	= irpSp->FileObject;
-	
-	vcb = DokanGetVcb(DeviceObject);
-	ASSERT(vcb != NULL);
 
+	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
+	
 	ccb = fileObject->FsContext2;
 	ASSERT(ccb != NULL);
 
 	fcb = ccb->Fcb;
 	ASSERT(fcb != NULL);
 
-	if (!(fcb->Flags & DOKAN_FILE_DIRECTORY))
+	if (!(fcb->Flags & DOKAN_FILE_DIRECTORY)) {
 		return STATUS_INVALID_PARAMETER;
+	}
 
 	FsRtlNotifyFullChangeDirectory(
-		vcb->NotifySync,
-		&vcb->DirNotifyList,
+		deviceExtension->Vcb->NotifySync,
+		&deviceExtension->Vcb->DirNotifyList,
 		ccb,
 		(PSTRING)&fcb->FileName,
 		irpSp->Flags & SL_WATCH_TREE ? TRUE : FALSE,

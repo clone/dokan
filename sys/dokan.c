@@ -126,8 +126,6 @@ DokanReleaseForCreateSection(
 }
 
 
-//PDEVICE_EXTENSION Global = NULL;
-
 NTSTATUS
 DriverEntry(
 	__in PDRIVER_OBJECT  DriverObject,
@@ -155,27 +153,15 @@ Return Value:
 	PDEVICE_OBJECT		deviceObject;
 	NTSTATUS			status;
 	PFAST_IO_DISPATCH	fastIoDispatch;
-	ULONG				deviceNumber;
-	PDOKAN_GLOBAL		dokanGlobal;
 	UNICODE_STRING		functionName;
 
 	DDbgPrint("==> DriverEntry ver.%x, %s %s\n", DOKAN_VERSION, __DATE__, __TIME__);
 
-	dokanGlobal = ExAllocatePool(sizeof(DOKAN_GLOBAL));
-	if (dokanGlobal == NULL) {
-		return STATUS_INSUFFICIENT_RESOURCES;
+	status = DokanCreateGlobalDiskDevice(DriverObject);
+
+	if (status != STATUS_SUCCESS) {
+		return status;
 	}
-
-	RtlZeroMemory(dokanGlobal, sizeof(DOKAN_GLOBAL));
-	DokanInitIrpList(&dokanGlobal->PendingService);
-	DokanInitIrpList(&dokanGlobal->NotifyService);
-
-	for (deviceNumber = 0; deviceNumber < DOKAN_DEVICE_MAX; ++deviceNumber) {
-		status = DokanCreateDiskDevice(DriverObject, deviceNumber, dokanGlobal);
-		if (status != STATUS_SUCCESS)
-			break;
-	}
-
 	//
 	// Set up dispatch entry points for the driver.
 	//
@@ -261,7 +247,7 @@ Return Value:
 
 	PAGED_CODE();
 
-	deviceExtension = DokanGetDeviceExtension(deviceObject);
+	/*DokanGetDeviceExtension(deviceObject, &deviceExtension);
 	ASSERT( deviceExtension->Identifier.Type == DVE );
 
 	//
@@ -280,7 +266,7 @@ Return Value:
 
 	// delete DeviceObject
 	IoDeleteDevice(deviceObject);
-
+	*/
 	DDbgPrint("<== DokanUnload\n");
 	return;
 }
@@ -307,17 +293,46 @@ DokanDispatchPnp(
 	__in PIRP Irp
    )
 {
-	NTSTATUS status = STATUS_SUCCESS;
+	PIO_STACK_LOCATION	irpSp;
+	NTSTATUS			status = STATUS_SUCCESS;
 
 	PAGED_CODE();
-	
-	DDbgPrint("==> DokanPnp\n");
 
-	Irp->IoStatus.Status = status;
-	Irp->IoStatus.Information = 0;
-	IoCompleteRequest(Irp, IO_NO_INCREMENT);
+	__try {
+		DDbgPrint("==> DokanPnp\n");
 
-	DDbgPrint("<== DokanPnp\n");
+		irpSp = IoGetCurrentIrpStackLocation(Irp);
+
+		switch (irpSp->MinorFunction) {
+		case IRP_MN_QUERY_REMOVE_DEVICE:
+			DDbgPrint("  IRP_MN_QUERY_REMOVE_DEVICE\n");
+			break;
+		case IRP_MN_SURPRISE_REMOVAL:
+			DDbgPrint("  IRP_MN_SURPRISE_REMOVAL\n");
+			break;
+		case IRP_MN_REMOVE_DEVICE:
+			DDbgPrint("  IRP_MN_REMOVE_DEVICE\n");
+			break;
+		case IRP_MN_CANCEL_REMOVE_DEVICE:
+			DDbgPrint("  IRP_MN_CANCEL_REMOVE_DEVICE\n");
+			break;
+		case IRP_MN_QUERY_DEVICE_RELATIONS:
+			DDbgPrint("  IRP_MN_QUERY_DEVICE_RELATIONS\n");
+			status = STATUS_INVALID_PARAMETER;
+			break;
+		default:
+			DDbgPrint("   other minnor function %d\n", irpSp->MinorFunction);
+			break;
+			//IoSkipCurrentIrpStackLocation(Irp);
+			//status = IoCallDriver(Vcb->TargetDeviceObject, Irp);
+		}
+	} __finally {
+		Irp->IoStatus.Status = status;
+		Irp->IoStatus.Information = 0;
+		IoCompleteRequest(Irp, IO_NO_INCREMENT);
+
+		DDbgPrint("<== DokanPnp\n");
+	}
 
 	return status;
 }
@@ -362,58 +377,37 @@ DokanNoOpRelease(
 }
 
 
-
-PDokanVCB
-DokanGetVcb(
-	 __in PDEVICE_OBJECT DeviceObject
-	 )
-{
-	PDEVICE_EXTENSION deviceExtension;
-	PDokanVCB vcb = DeviceObject->DeviceExtension;
-	
-	if (vcb->Identifier.Type == DVE) {
-		deviceExtension = DeviceObject->DeviceExtension;
-		ASSERT(deviceExtension->Identifier.Type == DVE);
-
-		vcb = deviceExtension->Vcb;
-		ASSERT(vcb->Identifier.Type == VCB);
-	
-	} else {
-		ASSERT(vcb->Identifier.Type == VCB);
-		deviceExtension = vcb->DeviceExtension;
-		ASSERT(deviceExtension->Identifier.Type == DVE);
-	}
-
-	return vcb;
-}
-
-
-PDEVICE_EXTENSION
+BOOLEAN
 DokanGetDeviceExtension(
-	  __in PDEVICE_OBJECT DeviceObject
+	  __in PDEVICE_OBJECT DeviceObject,
+	  __out PDEVICE_EXTENSION *DeviceExtension
 	  )
 {
-	PDEVICE_EXTENSION deviceExtension;
 	PDokanVCB vcb;
+	PDEVICE_EXTENSION deviceExtension;
 	
 	ASSERT(DeviceObject);
 
 	vcb = DeviceObject->DeviceExtension;
 	
-	if (vcb->Identifier.Type == DVE) {
+	if (vcb->Identifier.Type == DGL) {
+		return FALSE;
+	} else if (vcb->Identifier.Type == DVE) {
 		deviceExtension = DeviceObject->DeviceExtension;
 		ASSERT(deviceExtension->Identifier.Type == DVE);
 
 		vcb = deviceExtension->Vcb;
 		ASSERT(vcb->Identifier.Type == VCB);
-	
+
+		*DeviceExtension = deviceExtension;
+		return TRUE;
 	} else {
 		ASSERT(vcb->Identifier.Type == VCB);
 		deviceExtension = vcb->DeviceExtension;
 		ASSERT(deviceExtension->Identifier.Type == DVE);
+		*DeviceExtension = deviceExtension;
+		return TRUE;
 	}
-
-	return deviceExtension;
 }
 
 

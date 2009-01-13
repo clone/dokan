@@ -46,14 +46,13 @@ Return Value:
 --*/
 
 {
-	PDokanVCB			vcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	PIO_STACK_LOCATION	irpSp;
 	NTSTATUS			status = STATUS_NOT_IMPLEMENTED;
 	ULONG				controlCode;
 
 	__try {
-		//FsRtlEnterFileSystem();
+		FsRtlEnterFileSystem();
 
 		Irp->IoStatus.Information = 0;
 
@@ -67,28 +66,28 @@ Return Value:
 			DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 		}
 
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
+		deviceExtension = DeviceObject->DeviceExtension;
+		if (deviceExtension->Identifier.Type == DGL) {
+			switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
+			case IOCTL_EVENT_START:
+				DDbgPrint("  IOCTL_EVENT_START\n");
+				status = DokanEventStart(DeviceObject, Irp);
+				break;
+			case IOCTL_SERVICE_WAIT:
+				status = DokanRegisterPendingIrpForService(DeviceObject, Irp);
+				break;
+
+			default:
+				status = STATUS_INVALID_PARAMETER;
+				break;
+			}
+			__leave;
+		}
+
+
+		ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
 
 		switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
-		case IOCTL_TEST:
-			{
-				DDbgPrint("  IOCTL_TEST\n");
-				if (irpSp->Parameters.DeviceIoControl.OutputBufferLength >= sizeof(ULONG)) {
-					*(ULONG*)Irp->AssociatedIrp.SystemBuffer = DOKAN_VERSION;
-					Irp->IoStatus.Information = sizeof(ULONG);
-				}
-				status = STATUS_SUCCESS;
-			}
-			break;
-
-		case IOCTL_UNREGFS:
-			DDbgPrint("  IOCTL_UNREGFS");
-			IoUnregisterFileSystem(DeviceObject);
-			DDbgPrint("    IoUnregisterFileSystem\n");
-			status = STATUS_SUCCESS;
-			break;
-
 	//	case IOCTL_QUERY_DEVICE_NAME:
 	//		DDbgPrint("  IOCTL_QUERY_DEVICE_NAME\n");
 	//		status = STATUS_SUCCESS;
@@ -109,32 +108,6 @@ Return Value:
 			status = DokanEventRelease(DeviceObject);
 			break;
 
-		case IOCTL_EVENT_START:
-			{
-				/*
-				WCHAR			deviceNameBuf[MAXIMUM_FILENAME_LENGTH];
-				HANDLE			mupHandle;
-				UNICODE_STRING	deviceName;
-				swprintf(deviceNameBuf, NTDEVICE_NAME_STRING L"%u", 0);
-				RtlInitUnicodeString(&deviceName, deviceNameBuf);
-
-				status = FsRtlRegisterUncProvider(&mupHandle, &deviceName, FALSE);
-				if (!NT_SUCCESS(status)) {
-					STATUS_ACCESS_DENIED
-					STATUS_ACCESS_VIOLATION
-					STATUS_DATATYPE_MISALIGNMENT
-					STATUS_INSUFFICIENT_RESOURCES
-					STATUS_INVALID_HANDLE
-					STATUS_INVALID_USER_BUFFER 
-					DokanPrintNTStatus(status);
-					DDbgPrint("    FsRtlRegisterUncProvider failed: 0x%X!\n", status);
-				}
-				*/
-				DDbgPrint("  IOCTL_EVENT_START\n");
-				status = DokanEventStart(DeviceObject, Irp);
-			}
-			break;
-
 		case IOCTL_EVENT_WRITE:
 			DDbgPrint("  IOCTL_EVENT_WRITE\n");
 			status = DokanEventWrite(DeviceObject, Irp);
@@ -147,10 +120,6 @@ Return Value:
 			ExReleaseResourceLite(&deviceExtension->Resource);
 			KeLeaveCriticalRegion();
 			status = STATUS_SUCCESS;
-			break;
-
-		case IOCTL_SERVICE_WAIT:
-			status = DokanRegisterPendingIrpForService(DeviceObject, Irp);
 			break;
 
 		case IOCTL_DISK_CHECK_VERIFY:
@@ -270,7 +239,7 @@ Return Value:
 			DDbgPrint("<== DokanDispatchIoControl\n");
 		}
 
-		//FsRtlExitFileSystem();
+		FsRtlExitFileSystem();
 	}
 
 	return status;

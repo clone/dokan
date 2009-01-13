@@ -39,7 +39,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 
 #define NTDEVICE_NAME_STRING	L"\\Device\\dokan"
-#define SYMBOLIC_NAME_STRING    L"\\DosDevices\\dokan"
+#define SYMBOLIC_NAME_STRING    L"\\DosDevices\\Global\\dokan"
 #define VOLUME_LABEL			L"DOKAN"
 
 #define TAG (ULONG)'AKOD'
@@ -62,7 +62,7 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 
 #define DOKAN_KEEPALIVE_TIMEOUT		15 // in seconds
 
-//#define USE_DBGPRINT 1
+#define USE_DBGPRINT 1
 
 #ifdef USE_DBGPRINT
 	#define DDbgPrint(...)		DbgPrint(__VA_ARGS__)
@@ -85,6 +85,7 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 // Identifiers used to mark the structures
 //
 typedef enum _FSD_IDENTIFIER_TYPE {
+	DGL = ':DGL', // Dokan Global
     DVE = ':DVE', // Devcie Extension
     VCB = ':VCB', // Volume Control Block
     FCB = ':FCB', // File Control Block
@@ -116,6 +117,7 @@ typedef struct _IRP_LIST {
 typedef struct _DOKAN_GLOBAL {
 	FSD_IDENTIFIER	Identifier;
 	ERESOURCE		Resource;
+	ULONG			MountId;
 	// the list of waiting IRP for mount service
 	IRP_LIST		PendingService;
 	IRP_LIST		NotifyService;
@@ -412,19 +414,24 @@ DokanNoOpAcquire(
     IN PVOID Fcb,
     IN BOOLEAN Wait);
 
+
+NTSTATUS
+DokanCreateGlobalDiskDevice(
+	__in PDRIVER_OBJECT DriverObject);
+
 NTSTATUS
 DokanCreateDiskDevice(
 	__in PDRIVER_OBJECT DriverObject,
-	__in ULONG			Number,
-	__in PDOKAN_GLOBAL	DokanGlobal);
+	__in ULONG			MountId,
+	__in PDOKAN_GLOBAL	DokanGlobal,
+	__in DEVICE_TYPE	DeviceType,
+	__out PDEVICE_EXTENSION* DeviceExtension);
 
-PDokanVCB
-DokanGetVcb (
-	 __in PDEVICE_OBJECT DeviceObject);
 
-PDEVICE_EXTENSION
-DokanGetDeviceExtension (
-	  __in PDEVICE_OBJECT DeviceObject);
+BOOLEAN
+DokanGetDeviceExtension(
+	__in PDEVICE_OBJECT DeviceObject,
+	__out PDEVICE_EXTENSION* DeviceExtension);
 
 VOID
 DokanPrintNTStatus(

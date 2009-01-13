@@ -34,7 +34,6 @@ DokanDispatchWrite(
 	PEVENT_CONTEXT		eventContext;
 	ULONG				eventLength;
 	PDokanCCB			ccb;
-	PDokanVCB			vcb;
 	PDokanFCB			fcb;
 	PDEVICE_EXTENSION	deviceExtension;
 	PVOID				buffer;
@@ -51,16 +50,14 @@ DokanDispatchWrite(
 		irpSp		= IoGetCurrentIrpStackLocation(Irp);
 		fileObject	= irpSp->FileObject;
 
-		vcb = DokanGetVcb(DeviceObject);
-		deviceExtension = DokanGetDeviceExtension(DeviceObject);
-
 		if (fileObject == NULL) {
 			DDbgPrint("  fileObject == NULL\n");
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
 
-		if (!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
+			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
