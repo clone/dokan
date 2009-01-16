@@ -398,10 +398,12 @@ DokanEventStart(
 	ULONG				inBufferLen;
 	PVOID				buffer;
 	PIO_STACK_LOCATION	irpSp;
-	PEVENT_START		eventStart;
+	EVENT_START			eventStart;
+	PEVENT_DRIVER_INFO	driverInfo;
 	PDOKAN_GLOBAL		dokanGlobal;
-	PDokanDCB	dcb;
+	PDokanDCB			dcb;
 	NTSTATUS			status;
+	DEVICE_TYPE			deviceType;
 
 	DDbgPrint("==> DokanEventStart\n");
 
@@ -414,10 +416,33 @@ DokanEventStart(
 
 	outBufferLen = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
 	inBufferLen = irpSp->Parameters.DeviceIoControl.InputBufferLength;
-	eventStart = (PEVENT_START)Irp->AssociatedIrp.SystemBuffer;
 
-	if (outBufferLen < sizeof(EVENT_START) || inBufferLen < sizeof(EVENT_START)) {
+	if (outBufferLen != sizeof(EVENT_DRIVER_INFO) ||
+		inBufferLen != sizeof(EVENT_START)) {
 		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
+	RtlCopyMemory(&eventStart, Irp->AssociatedIrp.SystemBuffer, sizeof(EVENT_START));
+	driverInfo = Irp->AssociatedIrp.SystemBuffer;
+
+	if (eventStart.UserVersion != DOKAN_VERSION) {
+		driverInfo->DriverVersion = DOKAN_VERSION;
+		driverInfo->Status = DOKAN_START_FAILED;
+		Irp->IoStatus.Status = STATUS_SUCCESS;
+		Irp->IoStatus.Information = sizeof(EVENT_DRIVER_INFO);
+		return STATUS_SUCCESS;
+	}
+
+	switch (eventStart.DeviceType) {
+	case DOKAN_DISK_FILE_SYSTEM:
+		deviceType = FILE_DEVICE_DISK_FILE_SYSTEM;
+		break;
+	case DOKAN_NETWORK_FILE_SYSTEM:
+		deviceType = FILE_DEVICE_NETWORK_FILE_SYSTEM;
+		break;
+	default:
+		DDbgPrint("  Unknown device type: %d\n", eventStart.DeviceType);
+		deviceType = FILE_DEVICE_DISK_FILE_SYSTEM;
 	}
 
 	KeEnterCriticalRegion();
@@ -427,8 +452,7 @@ DokanEventStart(
 				DeviceObject->DriverObject,
 				dokanGlobal->MountId,
 				dokanGlobal,
-				FILE_DEVICE_DISK_FILE_SYSTEM,
-				//FILE_DEVICE_NETWORK_FILE_SYSTEM,
+				deviceType,
 				&dcb);
 
 	if (!NT_SUCCESS(status)) {
@@ -437,22 +461,21 @@ DokanEventStart(
 		return status;
 	}
 
-	eventStart->Version = DOKAN_VERSION;
-
 	DDbgPrint("  MountId:%d\n", dcb->MountId);
-	eventStart->DeviceNumber = dokanGlobal->MountId;
-	eventStart->MountId = dokanGlobal->MountId;
-	eventStart->Status = DOKAN_MOUNTED;
-	dcb->Mounted = eventStart->DriveLetter;
+	driverInfo->DeviceNumber = dokanGlobal->MountId;
+	driverInfo->MountId = dokanGlobal->MountId;
+	driverInfo->Status = DOKAN_MOUNTED;
+	driverInfo->DriverVersion = DOKAN_VERSION;
+	dcb->Mounted = eventStart.DriveLetter;
 	KeQueryTickCount(&dcb->TickCount);
 
 	dcb->UseAltStream = 0;
-	if (eventStart->Flags & DOKAN_EVENT_ALTERNATIVE_STREAM_ON) {
+	if (eventStart.Flags & DOKAN_EVENT_ALTERNATIVE_STREAM_ON) {
 		DDbgPrint("  ALT_STREAM_ON\n");
 		dcb->UseAltStream = 1;
 	}
 	dcb->UseKeepAlive = 0;
-	if (eventStart->Flags & DOKAN_EVENT_KEEP_ALIVE_ON) {
+	if (eventStart.Flags & DOKAN_EVENT_KEEP_ALIVE_ON) {
 		DDbgPrint("  KEEP_ALIVE_ON\n");
 		dcb->UseKeepAlive = 1;
 	}
@@ -463,7 +486,7 @@ DokanEventStart(
 	KeLeaveCriticalRegion();
 
 	Irp->IoStatus.Status = STATUS_SUCCESS;
-	Irp->IoStatus.Information = sizeof(EVENT_START);
+	Irp->IoStatus.Information = sizeof(EVENT_DRIVER_INFO);
 
 	InterlockedIncrement(&dokanGlobal->MountId);
 

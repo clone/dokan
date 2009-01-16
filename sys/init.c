@@ -101,7 +101,7 @@ DokanCreateDiskDevice(
 	WCHAR				fsDeviceNameBuf[MAXIMUM_FILENAME_LENGTH];
 	PDEVICE_OBJECT		diskDeviceObject;
 	PDEVICE_OBJECT		fsDeviceObject;
-	PDokanDCB	dcb;
+	PDokanDCB			dcb;
 	PDokanVCB			vcb;
 	UNICODE_STRING		deviceName;
 	UNICODE_STRING		fsDeviceName;

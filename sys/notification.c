@@ -440,13 +440,16 @@ DokanDeleteDeviceObject(
 	vcb = Dcb->Vcb;
 
 	swprintf(symbolicLinkBuf, SYMBOLIC_NAME_STRING L"%u", Dcb->MountId);
-	RtlInitUnicodeString(&symbolicLinkName, SYMBOLIC_NAME_STRING);
+	RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
+	DDbgPrint("  Delete Symbolic Name: %wZ\n", &symbolicLinkName);
 	IoDeleteSymbolicLink(&symbolicLinkName);
 
 	// delete diskDeviceObject
+	DDbgPrint("  Delete DeviceObject\n");
 	IoDeleteDevice(vcb->DeviceObject);
 
 	// delete DeviceObject
+	DDbgPrint("  Delete Disk DeviceObject\n");
 	IoDeleteDevice(Dcb->DeviceObject);
 }
 
@@ -455,25 +458,26 @@ NTSTATUS
 DokanEventRelease(
 	__in PDEVICE_OBJECT DeviceObject)
 {
-	PDokanDCB	dcb = NULL;
-	PDokanVCB			vcb;
-	PDokanFCB			fcb;
-	PDokanCCB			ccb;
-	PLIST_ENTRY			fcbEntry, fcbNext, fcbHead;
-	PLIST_ENTRY			ccbEntry, ccbNext, ccbHead;
-	NTSTATUS			status = STATUS_SUCCESS;
+	PDokanDCB	dcb;
+	PDokanVCB	vcb;
+	PDokanFCB	fcb;
+	PDokanCCB	ccb;
+	PLIST_ENTRY	fcbEntry, fcbNext, fcbHead;
+	PLIST_ENTRY	ccbEntry, ccbNext, ccbHead;
+	NTSTATUS	status = STATUS_SUCCESS;
 
-	dcb = DeviceObject->DeviceExtension;
-	if (GetIdentifierType(dcb) != DCB) {
+	vcb = DeviceObject->DeviceExtension;
+	if (GetIdentifierType(vcb) != VCB) {
 		return STATUS_INVALID_PARAMETER;
 	}
+	dcb = vcb->Dcb;
 
 	//ExAcquireResourceExclusiveLite(&dcb->Resource, TRUE);
 	dcb->Mounted = 0;
 	//ExReleaseResourceLite(&dcb->Resource);
 
 	// search CCB list to complete not completed Directory Notification 
-	vcb = dcb->Vcb;
+
 	KeEnterCriticalRegion();
 	ExAcquireResourceExclusiveLite(&vcb->Resource, TRUE);
 

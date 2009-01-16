@@ -32,6 +32,7 @@ DokanCheckKeepAlive(
 	ULONG				eventLength;
 	PEVENT_CONTEXT		eventContext;
 	ULONG				mounted;
+	PDokanVCB			vcb = Dcb->Vcb;
 
 	//DDbgPrint("==> DokanCheckKeepAlive\n");
 
@@ -40,12 +41,10 @@ DokanCheckKeepAlive(
 
 	if ( (tickCount.QuadPart - Dcb->TickCount.QuadPart) * KeQueryTimeIncrement()
 		> DOKAN_KEEPALIVE_TIMEOUT * 10000 * 1000) {
-	
 
 		mounted = Dcb->Mounted;
 
 		ExReleaseResourceLite(&Dcb->Resource);
-
 
 		DDbgPrint("  Force to umount\n");
 
@@ -59,7 +58,7 @@ DokanCheckKeepAlive(
 				
 		if (eventContext == NULL) {
 			;//STATUS_INSUFFICIENT_RESOURCES;
-			DokanEventRelease(Dcb->DeviceObject);
+			DokanEventRelease(vcb->DeviceObject);
 			return;
 		}
 
@@ -71,7 +70,7 @@ DokanCheckKeepAlive(
 
 		DokanEventNotification(&Dcb->Global->NotifyService, eventContext);
 
-		DokanEventRelease(Dcb->DeviceObject);
+		DokanEventRelease(vcb->DeviceObject);
 
 	} else {
 		ExReleaseResourceLite(&Dcb->Resource);

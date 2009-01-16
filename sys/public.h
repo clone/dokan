@@ -24,7 +24,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000176
+#define DOKAN_VERSION	0x0000177
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 
@@ -59,8 +59,9 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #define DRIVER_FUNC_INSTALL     0x01
 #define DRIVER_FUNC_REMOVE      0x02
 
-#define DOKAN_MOUNTED	1
-#define DOKAN_USED		2
+#define DOKAN_MOUNTED		1
+#define DOKAN_USED			2
+#define DOKAN_START_FAILED	3
 
 #define DOKAN_DEVICE_MAX	10
 
@@ -75,6 +76,8 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #define DOKAN_DIR_MATCH_ALL		8
 #define DOKAN_DELETE_ON_CLOSE	16
 
+#define DOKAN_DISK_FILE_SYSTEM		0
+#define DOKAN_NETWORK_FILE_SYSTEM	1
 
 typedef struct _CREATE_CONTEXT {
 	ULONG	FileAttributes;
@@ -233,11 +236,18 @@ typedef struct _EVENT_INFORMATION {
 #define DOKAN_EVENT_ALTERNATIVE_STREAM_ON	1
 #define DOKAN_EVENT_KEEP_ALIVE_ON			2
 
-typedef struct _EVENT_START {
-	ULONG	Version;
+
+typedef struct _EVENT_DRIVER_INFO {
+	ULONG	DriverVersion;
 	ULONG	Status;
 	ULONG	DeviceNumber;
 	ULONG	MountId;
+
+} EVENT_DRIVER_INFO, *PEVENT_DRIVER_INFO;
+
+typedef struct _EVENT_START {
+	ULONG	UserVersion;
+	ULONG	DeviceType;
 	ULONG	Flags;
 	WCHAR	DriveLetter;
 } EVENT_START, *PEVENT_START;
