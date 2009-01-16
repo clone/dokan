@@ -26,13 +26,13 @@ DokanStartEventNotificationThread
 	# PendingEvent has pending IPRs (IOCTL_EVENT_WAIT)
     # NotifyEvent has IO events (ex.IRP_MJ_READ)
     # notify NotifyEvent using PendingEvent in this loop
-	NotificationLoop(&DeviceExtension->PendingEvent,
-					      &DeviceExtension->NotifyEvent);
+	NotificationLoop(&Dcb->PendingEvent,
+					      &Dcb->NotifyEvent);
 
     # PendingService has service events (ex. Unmount notification)
 	# NotifyService has pending IRPs (IOCTL_SERVICE_WAIT)
-    NotificationLoop(DeviceExtension->Global->PendingService,
-                          &DeviceExtension->Global->NotifyService);
+    NotificationLoop(Dcb->Global->PendingService,
+                          &Dcb->Global->NotifyService);
 
 IOCTL_EVENT_RELEASE:
 DokanStopEventNotificationThread
@@ -61,7 +61,7 @@ IOCTL_EVENT_INFO:
 
 VOID
 SetCommonEventContext(
-	__in PDEVICE_EXTENSION	DeviceExtension,
+	__in PDokanDCB	Dcb,
 	__in PEVENT_CONTEXT		EventContext,
 	__in PIRP				Irp,
 	__in PDokanCCB			Ccb)
@@ -70,7 +70,7 @@ SetCommonEventContext(
 
 	irpSp			= IoGetCurrentIrpStackLocation(Irp);
 
-	EventContext->MountId		= DeviceExtension->MountId;
+	EventContext->MountId		= Dcb->MountId;
 	EventContext->MajorFunction = irpSp->MajorFunction;
 	EventContext->MinorFunction = irpSp->MinorFunction;
 	EventContext->Flags			= irpSp->Flags;
@@ -85,7 +85,7 @@ SetCommonEventContext(
 
 PEVENT_CONTEXT
 AllocateEventContext(
-	__in PDEVICE_EXTENSION	DeviceExtension,
+	__in PDokanDCB	Dcb,
 	__in PIRP				Irp,
 	__in ULONG				EventContextLength,
 	__in PDokanCCB			Ccb
@@ -106,8 +106,8 @@ AllocateEventContext(
 	eventContext = &driverEventContext->EventContext;
 	eventContext->Length = EventContextLength;
 
-	SetCommonEventContext(DeviceExtension, eventContext, Irp, Ccb);
-	eventContext->SerialNumber = InterlockedIncrement(&DeviceExtension->SerialNumber);
+	SetCommonEventContext(Dcb, eventContext, Irp, Ccb);
+	eventContext->SerialNumber = InterlockedIncrement(&Dcb->SerialNumber);
 
 	return eventContext;
 }
@@ -337,7 +337,7 @@ NotificationLoop(
 
 VOID
 NotificationThread(
-	__in PDEVICE_EXTENSION	DeviceExtension
+	__in PDokanDCB	Dcb
 	)
 {
 	PKEVENT events[5];
@@ -345,11 +345,11 @@ NotificationThread(
 
 	DDbgPrint("==> NotificationThread\n");
 
-	events[0] = &DeviceExtension->ReleaseEvent;
-	events[1] = &DeviceExtension->NotifyEvent.NotEmpty;
-	events[2] = &DeviceExtension->PendingEvent.NotEmpty;
-	events[3] = &DeviceExtension->Global->PendingService.NotEmpty;
-	events[4] = &DeviceExtension->Global->NotifyService.NotEmpty;
+	events[0] = &Dcb->ReleaseEvent;
+	events[1] = &Dcb->NotifyEvent.NotEmpty;
+	events[2] = &Dcb->PendingEvent.NotEmpty;
+	events[3] = &Dcb->Global->PendingService.NotEmpty;
+	events[4] = &Dcb->Global->NotifyService.NotEmpty;
 
 	while (1) {
 		status = KeWaitForMultipleObjects(
@@ -362,13 +362,13 @@ NotificationThread(
 		} else if (status == STATUS_WAIT_1 || status == STATUS_WAIT_2) {
 
 			NotificationLoop(
-					&DeviceExtension->PendingEvent,
-					&DeviceExtension->NotifyEvent);
+					&Dcb->PendingEvent,
+					&Dcb->NotifyEvent);
 
 		} else {
 			NotificationLoop(
-				&DeviceExtension->Global->PendingService,
-				&DeviceExtension->Global->NotifyService);
+				&Dcb->Global->PendingService,
+				&Dcb->Global->NotifyService);
 		}
 	}
 
@@ -379,26 +379,26 @@ NotificationThread(
 
 NTSTATUS
 DokanStartEventNotificationThread(
-	__in PDEVICE_EXTENSION	DeviceExtension)
+	__in PDokanDCB	Dcb)
 {
 	NTSTATUS status;
 	HANDLE	thread;
 
 	DDbgPrint("==> DokanStartEventNotificationThread\n");
 
-	KeResetEvent(&DeviceExtension->ReleaseEvent);
+	KeResetEvent(&Dcb->ReleaseEvent);
 
 	status = PsCreateSystemThread(&thread, THREAD_ALL_ACCESS,
 		NULL, NULL, NULL,
 		(PKSTART_ROUTINE)NotificationThread,
-		DeviceExtension);
+		Dcb);
 
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
 
 	ObReferenceObjectByHandle(thread, THREAD_ALL_ACCESS, NULL,
-		KernelMode, (PVOID*)&DeviceExtension->EventNotificationThread, NULL);
+		KernelMode, (PVOID*)&Dcb->EventNotificationThread, NULL);
 
 	ZwClose(thread);
 
@@ -410,21 +410,44 @@ DokanStartEventNotificationThread(
 
 VOID
 DokanStopEventNotificationThread(
-	__in PDEVICE_EXTENSION	DeviceExtension)
+	__in PDokanDCB	Dcb)
 {
 	DDbgPrint("==> DokanStopEventNotificationThread\n");
 	
-	KeSetEvent(&DeviceExtension->ReleaseEvent, 0, FALSE);
+	KeSetEvent(&Dcb->ReleaseEvent, 0, FALSE);
 
-	if (DeviceExtension->EventNotificationThread) {
+	if (Dcb->EventNotificationThread) {
 		KeWaitForSingleObject(
-			DeviceExtension->EventNotificationThread, Executive,
+			Dcb->EventNotificationThread, Executive,
 			KernelMode, FALSE, NULL);
-		ObDereferenceObject(DeviceExtension->EventNotificationThread);
-		DeviceExtension->EventNotificationThread = NULL;
+		ObDereferenceObject(Dcb->EventNotificationThread);
+		Dcb->EventNotificationThread = NULL;
 	}
 	
 	DDbgPrint("<== DokanStopEventNotificationThread\n");
+}
+
+
+VOID
+DokanDeleteDeviceObject(
+	__in PDokanDCB Dcb)
+{
+	UNICODE_STRING		symbolicLinkName;
+	WCHAR				symbolicLinkBuf[MAXIMUM_FILENAME_LENGTH];
+	PDokanVCB			vcb;
+
+	ASSERT(GetIdentifierType(Dcb) == DCB);
+	vcb = Dcb->Vcb;
+
+	swprintf(symbolicLinkBuf, SYMBOLIC_NAME_STRING L"%u", Dcb->MountId);
+	RtlInitUnicodeString(&symbolicLinkName, SYMBOLIC_NAME_STRING);
+	IoDeleteSymbolicLink(&symbolicLinkName);
+
+	// delete diskDeviceObject
+	IoDeleteDevice(vcb->DeviceObject);
+
+	// delete DeviceObject
+	IoDeleteDevice(Dcb->DeviceObject);
 }
 
 
@@ -432,7 +455,7 @@ NTSTATUS
 DokanEventRelease(
 	__in PDEVICE_OBJECT DeviceObject)
 {
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanDCB	dcb = NULL;
 	PDokanVCB			vcb;
 	PDokanFCB			fcb;
 	PDokanCCB			ccb;
@@ -440,14 +463,17 @@ DokanEventRelease(
 	PLIST_ENTRY			ccbEntry, ccbNext, ccbHead;
 	NTSTATUS			status = STATUS_SUCCESS;
 
-	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
+	dcb = DeviceObject->DeviceExtension;
+	if (GetIdentifierType(dcb) != DCB) {
+		return STATUS_INVALID_PARAMETER;
+	}
 
-	//ExAcquireResourceExclusiveLite(&deviceExtension->Resource, TRUE);
-	deviceExtension->Mounted = 0;
-	//ExReleaseResourceLite(&deviceExtension->Resource);
+	//ExAcquireResourceExclusiveLite(&dcb->Resource, TRUE);
+	dcb->Mounted = 0;
+	//ExReleaseResourceLite(&dcb->Resource);
 
 	// search CCB list to complete not completed Directory Notification 
-	vcb = deviceExtension->Vcb;
+	vcb = dcb->Vcb;
 	KeEnterCriticalRegion();
 	ExAcquireResourceExclusiveLite(&vcb->Resource, TRUE);
 
@@ -476,10 +502,12 @@ DokanEventRelease(
 	ExReleaseResourceLite(&vcb->Resource);
 	KeLeaveCriticalRegion();
 
-	ReleasePendingIrp(&deviceExtension->PendingIrp);
-	ReleasePendingIrp(&deviceExtension->PendingEvent);
-	DokanStopCheckThread(deviceExtension);
-	DokanStopEventNotificationThread(deviceExtension);
+	ReleasePendingIrp(&dcb->PendingIrp);
+	ReleasePendingIrp(&dcb->PendingEvent);
+	DokanStopCheckThread(dcb);
+	DokanStopEventNotificationThread(dcb);
+
+	DokanDeleteDeviceObject(dcb);
 
 	return status;
 }

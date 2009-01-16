@@ -35,7 +35,7 @@ DokanDispatchWrite(
 	ULONG				eventLength;
 	PDokanCCB			ccb;
 	PDokanFCB			fcb;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanVCB			vcb;
 	PVOID				buffer;
 	ULONG				bufferLength;
 
@@ -56,8 +56,10 @@ DokanDispatchWrite(
 			__leave;
 		}
 
-		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
-			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		vcb = DeviceObject->DeviceExtension;
+
+		if (GetIdentifierType(vcb) != VCB ||
+			!DokanCheckCCB(vcb->Dcb, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
@@ -96,7 +98,7 @@ DokanDispatchWrite(
 							+ irpSp->Parameters.Write.Length
 							+ fcb->FileName.Length;
 
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
+		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
 
 		// no more memory!
 		if (eventContext == NULL) {
@@ -153,7 +155,7 @@ DokanDispatchWrite(
 		} else {
 			// the length at lest file name can be stored
 			ULONG	requestContextLength = max(sizeof(EVENT_CONTEXT), eventContext->Write.BufferOffset);
-			PEVENT_CONTEXT requestContext = AllocateEventContext(deviceExtension, Irp, requestContextLength, ccb);
+			PEVENT_CONTEXT requestContext = AllocateEventContext(vcb->Dcb, Irp, requestContextLength, ccb);
 
 			// no more memory!
 			if (requestContext == NULL) {

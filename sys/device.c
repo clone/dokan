@@ -46,7 +46,8 @@ Return Value:
 --*/
 
 {
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanVCB			vcb;
+	PDokanDCB			dcb;
 	PIO_STACK_LOCATION	irpSp;
 	NTSTATUS			status = STATUS_NOT_IMPLEMENTED;
 	ULONG				controlCode;
@@ -66,8 +67,8 @@ Return Value:
 			DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 		}
 
-		deviceExtension = DeviceObject->DeviceExtension;
-		if (deviceExtension->Identifier.Type == DGL) {
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) == DGL) {
 			switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
 			case IOCTL_EVENT_START:
 				DDbgPrint("  IOCTL_EVENT_START\n");
@@ -85,7 +86,11 @@ Return Value:
 		}
 
 
-		ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
+		if (GetIdentifierType(vcb) != VCB) {
+			status = STATUS_INVALID_PARAMETER;
+			__leave;
+		}
+		dcb = vcb->Dcb;
 
 		switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
 	//	case IOCTL_QUERY_DEVICE_NAME:
@@ -115,9 +120,9 @@ Return Value:
 
 		case IOCTL_KEEPALIVE:
 			KeEnterCriticalRegion();
-			ExAcquireResourceExclusiveLite(&deviceExtension->Resource, TRUE);
-			KeQueryTickCount(&deviceExtension->TickCount);
-			ExReleaseResourceLite(&deviceExtension->Resource);
+			ExAcquireResourceExclusiveLite(&dcb->Resource, TRUE);
+			KeQueryTickCount(&dcb->TickCount);
+			ExReleaseResourceLite(&dcb->Resource);
 			KeLeaveCriticalRegion();
 			status = STATUS_SUCCESS;
 			break;
@@ -217,7 +222,6 @@ Return Value:
 
 		default:
 			//ASSERT(FALSE);	// should never hit this
-			//status = STATUS_NOT_IMPLEMENTED;
 			DDbgPrint("   Unknown Code 0x%x\n", irpSp->Parameters.DeviceIoControl.IoControlCode);
 			status = STATUS_NOT_IMPLEMENTED;
 			break;

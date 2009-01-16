@@ -34,7 +34,7 @@ DokanDispatchFlush(
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
 	PDokanFCB			fcb;
 	PDokanCCB			ccb;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanVCB			vcb;
 	PEVENT_CONTEXT		eventContext;
 	ULONG				eventLength;
 
@@ -54,8 +54,9 @@ DokanDispatchFlush(
 			__leave;
 		}
 
-		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
-			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) != VCB ||
+			!DokanCheckCCB(vcb->Dcb, fileObject->FsContext2)) {
 			status = STATUS_SUCCESS;
 			__leave;
 		}
@@ -70,7 +71,7 @@ DokanDispatchFlush(
 		ASSERT(fcb != NULL);
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
+		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
 
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;

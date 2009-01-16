@@ -32,7 +32,7 @@ DokanDispatchQueryVolumeInformation(
 	PIO_STACK_LOCATION  irpSp;
 	PVOID				buffer;
 	PFILE_OBJECT		fileObject;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanVCB			vcb;
 	PDokanCCB			ccb;
 	ULONG               info = 0;
 
@@ -45,9 +45,9 @@ DokanDispatchQueryVolumeInformation(
 		DDbgPrint("==> DokanQueryVolumeInformation\n");
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 
-		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension)) {
-			status = STATUS_INVALID_PARAMETER;
-			__leave;
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) != VCB) {
+			return STATUS_INVALID_PARAMETER;
 		}
 
 		irpSp			= IoGetCurrentIrpStackLocation(Irp);
@@ -127,13 +127,13 @@ DokanDispatchQueryVolumeInformation(
 			ULONG			eventLength = sizeof(EVENT_CONTEXT);
 			PEVENT_CONTEXT	eventContext;
 
-			if (ccb && !DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+			if (ccb && !DokanCheckCCB(vcb->Dcb, fileObject->FsContext2)) {
 				status = STATUS_INVALID_PARAMETER;
 				__leave;
 			}
 
 			// this memory must be freed in this {}
-			eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, NULL);
+			eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, NULL);
 
 			if (eventContext == NULL) {
 				status = STATUS_INSUFFICIENT_RESOURCES;

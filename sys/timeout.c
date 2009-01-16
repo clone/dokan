@@ -26,7 +26,7 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 
 VOID
 DokanCheckKeepAlive(
-	PDEVICE_EXTENSION	DeviceExtension)
+	PDokanDCB	Dcb)
 {
 	LARGE_INTEGER		tickCount;
 	ULONG				eventLength;
@@ -36,15 +36,15 @@ DokanCheckKeepAlive(
 	//DDbgPrint("==> DokanCheckKeepAlive\n");
 
 	KeQueryTickCount(&tickCount);
-	ExAcquireResourceSharedLite(&DeviceExtension->Resource, TRUE);
+	ExAcquireResourceSharedLite(&Dcb->Resource, TRUE);
 
-	if ( (tickCount.QuadPart - DeviceExtension->TickCount.QuadPart) * KeQueryTimeIncrement()
+	if ( (tickCount.QuadPart - Dcb->TickCount.QuadPart) * KeQueryTimeIncrement()
 		> DOKAN_KEEPALIVE_TIMEOUT * 10000 * 1000) {
 	
 
-		mounted = DeviceExtension->Mounted;
+		mounted = Dcb->Mounted;
 
-		ExReleaseResourceLite(&DeviceExtension->Resource);
+		ExReleaseResourceLite(&Dcb->Resource);
 
 
 		DDbgPrint("  Force to umount\n");
@@ -59,7 +59,7 @@ DokanCheckKeepAlive(
 				
 		if (eventContext == NULL) {
 			;//STATUS_INSUFFICIENT_RESOURCES;
-			DokanEventRelease(DeviceExtension->DeviceObject);
+			DokanEventRelease(Dcb->DeviceObject);
 			return;
 		}
 
@@ -69,12 +69,12 @@ DokanCheckKeepAlive(
 		// set drive letter
 		eventContext->Flags = mounted;
 
-		DokanEventNotification(&DeviceExtension->Global->NotifyService, eventContext);
+		DokanEventNotification(&Dcb->Global->NotifyService, eventContext);
 
-		DokanEventRelease(DeviceExtension->DeviceObject);
+		DokanEventRelease(Dcb->DeviceObject);
 
 	} else {
-		ExReleaseResourceLite(&DeviceExtension->Resource);
+		ExReleaseResourceLite(&Dcb->Resource);
 	}
 
 	//DDbgPrint("<== DokanCheckKeepAlive\n");
@@ -84,7 +84,7 @@ DokanCheckKeepAlive(
 
 NTSTATUS
 ReleaseTimeoutPendingIrp(
-   PDEVICE_EXTENSION	DeviceExtension
+   PDokanDCB	Dcb
    )
 {
 	KIRQL				oldIrql;
@@ -98,11 +98,11 @@ ReleaseTimeoutPendingIrp(
 	InitializeListHead(&completeList);
 
 	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
-	KeAcquireSpinLock(&DeviceExtension->PendingIrp.ListLock, &oldIrql);
+	KeAcquireSpinLock(&Dcb->PendingIrp.ListLock, &oldIrql);
 
 	// when IRP queue is empty, there is nothing to do
-	if (IsListEmpty(&DeviceExtension->PendingIrp.ListHead)) {
-		KeReleaseSpinLock(&DeviceExtension->PendingIrp.ListLock, oldIrql);
+	if (IsListEmpty(&Dcb->PendingIrp.ListHead)) {
+		KeReleaseSpinLock(&Dcb->PendingIrp.ListLock, oldIrql);
 		DDbgPrint("  IrpQueue is Empty\n");
 		return STATUS_SUCCESS;
 	}
@@ -110,7 +110,7 @@ ReleaseTimeoutPendingIrp(
 	KeQueryTickCount(&tickCount);
 
 	// search timeout IRP through pending IRP list
-	listHead = &DeviceExtension->PendingIrp.ListHead;
+	listHead = &Dcb->PendingIrp.ListHead;
 
     for (thisEntry = listHead->Flink;
 		thisEntry != listHead;
@@ -152,10 +152,10 @@ ReleaseTimeoutPendingIrp(
 		InsertTailList(&completeList, &irpEntry->ListEntry);
 	}
 
-	if (IsListEmpty(&DeviceExtension->PendingIrp.ListHead)) {
-		KeClearEvent(&DeviceExtension->PendingIrp.NotEmpty);
+	if (IsListEmpty(&Dcb->PendingIrp.ListHead)) {
+		KeClearEvent(&Dcb->PendingIrp.NotEmpty);
 	}
-	KeReleaseSpinLock(&DeviceExtension->PendingIrp.ListLock, oldIrql);
+	KeReleaseSpinLock(&Dcb->PendingIrp.ListLock, oldIrql);
 	
 	while (!IsListEmpty(&completeList)) {
 		listHead = RemoveHeadList(&completeList);
@@ -175,7 +175,7 @@ ReleaseTimeoutPendingIrp(
 
 VOID
 DokanTimeoutThread(
-	PDEVICE_EXTENSION	DeviceExtension)
+	PDokanDCB	Dcb)
 /*++
 
 Routine Description:
@@ -193,7 +193,7 @@ Routine Description:
 
 	KeInitializeTimerEx(&timer, SynchronizationTimer);
 	
-	pollevents[0] = (PVOID)&DeviceExtension->KillEvent;
+	pollevents[0] = (PVOID)&Dcb->KillEvent;
 	pollevents[1] = (PVOID)&timer;
 
 	KeSetTimerEx(&timer, timeout, DOKAN_CHECK_INTERVAL, NULL);
@@ -208,9 +208,9 @@ Routine Description:
 			break;
 		}
 
-		ReleaseTimeoutPendingIrp(DeviceExtension);
-		if (DeviceExtension->UseKeepAlive)
-			DokanCheckKeepAlive(DeviceExtension);
+		ReleaseTimeoutPendingIrp(Dcb);
+		if (Dcb->UseKeepAlive)
+			DokanCheckKeepAlive(Dcb);
 	}
 
 	KeCancelTimer(&timer);
@@ -223,7 +223,7 @@ Routine Description:
 
 NTSTATUS
 DokanStartCheckThread(
-	__in PDEVICE_EXTENSION	DeviceExtension)
+	__in PDokanDCB	Dcb)
 /*++
 
 Routine Description:
@@ -237,17 +237,17 @@ Routine Description:
 
 	DDbgPrint("==> DokanStartCheckThread\n");
 
-	KeInitializeEvent(&DeviceExtension->KillEvent, NotificationEvent, FALSE);
+	KeInitializeEvent(&Dcb->KillEvent, NotificationEvent, FALSE);
 
 	status = PsCreateSystemThread(&thread, THREAD_ALL_ACCESS,
-		NULL, NULL, NULL, (PKSTART_ROUTINE)DokanTimeoutThread, DeviceExtension);
+		NULL, NULL, NULL, (PKSTART_ROUTINE)DokanTimeoutThread, Dcb);
 
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
 
 	ObReferenceObjectByHandle(thread, THREAD_ALL_ACCESS, NULL,
-		KernelMode, (PVOID*)&DeviceExtension->TimeoutThread, NULL);
+		KernelMode, (PVOID*)&Dcb->TimeoutThread, NULL);
 
 	ZwClose(thread);
 
@@ -259,7 +259,7 @@ Routine Description:
 
 VOID
 DokanStopCheckThread(
-	__in PDEVICE_EXTENSION	DeviceExtension)
+	__in PDokanDCB	Dcb)
 /*++
 
 Routine Description:
@@ -270,12 +270,12 @@ Routine Description:
 {
 	DDbgPrint("==> DokanStopCheckThread\n");
 	
-	KeSetEvent(&DeviceExtension->KillEvent, 0, FALSE);
+	KeSetEvent(&Dcb->KillEvent, 0, FALSE);
 
-	if (DeviceExtension->TimeoutThread) {
-		KeWaitForSingleObject(DeviceExtension->TimeoutThread, Executive,
+	if (Dcb->TimeoutThread) {
+		KeWaitForSingleObject(Dcb->TimeoutThread, Executive,
 			KernelMode, FALSE, NULL);
-		ObDereferenceObject(DeviceExtension->TimeoutThread);
+		ObDereferenceObject(Dcb->TimeoutThread);
 	}
 	
 	DDbgPrint("<== DokanStopCheckThread\n");

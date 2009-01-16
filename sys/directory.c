@@ -43,7 +43,7 @@ DokanDispatchDirectoryControl(
 	PFILE_OBJECT		fileObject;
 	PIO_STACK_LOCATION	irpSp;
 	PDokanCCB			ccb;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanVCB			vcb;
 
 	PAGED_CODE();
 
@@ -61,8 +61,9 @@ DokanDispatchDirectoryControl(
 			__leave;
 		}
 
-		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
-			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) != VCB ||
+			!DokanCheckCCB(vcb->Dcb, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
@@ -106,7 +107,7 @@ DokanQueryDirectory(
 {
 	PFILE_OBJECT		fileObject;
 	PIO_STACK_LOCATION	irpSp;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanVCB			vcb;
 	PDokanCCB			ccb;
 	PDokanFCB			fcb;
 	NTSTATUS			status;
@@ -119,7 +120,10 @@ DokanQueryDirectory(
 	irpSp		= IoGetCurrentIrpStackLocation(Irp);
 	fileObject	= irpSp->FileObject;
 
-	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
+	vcb = DeviceObject->DeviceExtension;
+	if (GetIdentifierType(vcb) != VCB) {
+		return STATUS_INVALID_PARAMETER;
+	}
 
 	ccb = fileObject->FsContext2;
 	ASSERT(ccb != NULL);
@@ -219,7 +223,7 @@ DokanQueryDirectory(
 		eventLength += ccb->SearchPatternLength;
 	}
 		
-	eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
+	eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
 
 	if (eventContext == NULL) {
 		return STATUS_INSUFFICIENT_RESOURCES;
@@ -288,14 +292,17 @@ DokanNotifyChangeDirectory(
 	PDokanFCB			fcb;
 	PFILE_OBJECT		fileObject;
 	PIO_STACK_LOCATION	irpSp;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanVCB			vcb;
 
 	DDbgPrint("\tNotifyChangeDirectory\n");
 
 	irpSp		= IoGetCurrentIrpStackLocation(Irp);
 	fileObject	= irpSp->FileObject;
 
-	ASSERT(DokanGetDeviceExtension(DeviceObject, &deviceExtension));
+	vcb = DeviceObject->DeviceExtension;
+	if (GetIdentifierType(vcb) != VCB) {
+		return STATUS_INVALID_PARAMETER;
+	}
 	
 	ccb = fileObject->FsContext2;
 	ASSERT(ccb != NULL);
@@ -308,8 +315,8 @@ DokanNotifyChangeDirectory(
 	}
 
 	FsRtlNotifyFullChangeDirectory(
-		deviceExtension->Vcb->NotifySync,
-		&deviceExtension->Vcb->DirNotifyList,
+		vcb->NotifySync,
+		&vcb->DirNotifyList,
 		ccb,
 		(PSTRING)&fcb->FileName,
 		irpSp->Flags & SL_WATCH_TREE ? TRUE : FALSE,

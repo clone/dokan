@@ -54,7 +54,7 @@ Return Value:
 	ULONG				readLength = 0;
 	PDokanCCB			ccb;
 	PDokanFCB			fcb;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanVCB			vcb;
 	PEVENT_CONTEXT		eventContext;
 	ULONG				eventLength;
 
@@ -75,12 +75,12 @@ Return Value:
 			__leave;
 		}
 
-		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
-			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) != VCB ||
+			!DokanCheckCCB(vcb->Dcb, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
-
 
 	    bufferLength = irpSp->Parameters.Read.Length;
 		if (irpSp->Parameters.Read.ByteOffset.LowPart == FILE_USE_FILE_POINTER_POSITION &&
@@ -141,7 +141,7 @@ Return Value:
 		// length of EventContext is sum of file name length and itself
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
 
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
+		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
 			__leave;

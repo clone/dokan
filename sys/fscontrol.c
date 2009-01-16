@@ -87,7 +87,7 @@ DokanDispatchFileSystemControl(
 {
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
 	PIO_STACK_LOCATION	irpSp;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanDCB	dcb;
 
 	PAGED_CODE();
 

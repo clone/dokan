@@ -39,23 +39,20 @@ DokanCreateGlobalDiskDevice(
 	__in PDRIVER_OBJECT DriverObject
 	)
 {
-	WCHAR	deviceNameBuf[MAXIMUM_FILENAME_LENGTH];
-	WCHAR	symbolicLinkBuf[MAXIMUM_FILENAME_LENGTH];
+	WCHAR	deviceNameBuf[] = NTDEVICE_NAME_STRING; 
+	WCHAR	symbolicLinkBuf[] = SYMBOLIC_NAME_STRING;
 	NTSTATUS		status;
 	UNICODE_STRING	deviceName;
 	UNICODE_STRING	symbolicLinkName;
 	PDEVICE_OBJECT	deviceObject;
 	PDOKAN_GLOBAL	dokanGlobal;
 
-	swprintf(deviceNameBuf, NTDEVICE_NAME_STRING);
-	swprintf(symbolicLinkBuf, SYMBOLIC_NAME_STRING);
-
 	RtlInitUnicodeString(&deviceName, deviceNameBuf);
 	RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
 
 	status = IoCreateDeviceSecure(
 				DriverObject, // DriverObject
-				sizeof(DOKAN_GLOBAL),// DeviceExtensionSize
+				sizeof(DOKAN_GLOBAL),// DcbSize
 				&deviceName, // DeviceName
 				FILE_DEVICE_UNKNOWN, // DeviceType
 				0,			// DeviceCharacteristics
@@ -96,7 +93,7 @@ DokanCreateDiskDevice(
 	__in ULONG			MountId,
 	__in PDOKAN_GLOBAL	DokanGlobal,
 	__in DEVICE_TYPE	DeviceType,
-	__out PDEVICE_EXTENSION* DeviceExtension
+	__out PDokanDCB*	Dcb
 	)
 {
 	WCHAR				deviceNameBuf[MAXIMUM_FILENAME_LENGTH];
@@ -104,7 +101,7 @@ DokanCreateDiskDevice(
 	WCHAR				fsDeviceNameBuf[MAXIMUM_FILENAME_LENGTH];
 	PDEVICE_OBJECT		diskDeviceObject;
 	PDEVICE_OBJECT		fsDeviceObject;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanDCB	dcb;
 	PDokanVCB			vcb;
 	UNICODE_STRING		deviceName;
 	UNICODE_STRING		fsDeviceName;
@@ -128,7 +125,7 @@ DokanCreateDiskDevice(
 	// make a DeviceObject for Disk Device
 	//
 	status = IoCreateDevice(DriverObject,				// DriverObject
-							sizeof(DEVICE_EXTENSION),	// DeviceExtensionSize
+							sizeof(PDokanDCB),			// DeviceExtensionSize
 							NULL,//&deviceName,			// DeviceName
 							//FILE_DEVICE_DISK,			// DeviceType
 							FILE_DEVICE_VIRTUAL_DISK,
@@ -153,15 +150,15 @@ DokanCreateDiskDevice(
 	//
 	// Initialize the device extension.
 	//
-	deviceExtension = diskDeviceObject->DeviceExtension;
-	*DeviceExtension = deviceExtension;
-	deviceExtension->DeviceObject = diskDeviceObject;
-	deviceExtension->Global = DokanGlobal;
+	dcb = diskDeviceObject->DeviceExtension;
+	*Dcb = dcb;
+	dcb->DeviceObject = diskDeviceObject;
+	dcb->Global = DokanGlobal;
 
-	deviceExtension->Identifier.Type = DVE;
-	deviceExtension->Identifier.Size = sizeof(DEVICE_EXTENSION);
+	dcb->Identifier.Type = DCB;
+	dcb->Identifier.Size = sizeof(DokanDCB);
 
-	deviceExtension->MountId = MountId;
+	dcb->MountId = MountId;
 
 	//
 	// Establish user-buffer access method.
@@ -169,37 +166,37 @@ DokanCreateDiskDevice(
 	diskDeviceObject->Flags |= DO_DIRECT_IO;
 
 	// initialize Event and Event queue
-	DokanInitIrpList(&deviceExtension->PendingIrp);
-	DokanInitIrpList(&deviceExtension->PendingEvent);
-	DokanInitIrpList(&deviceExtension->NotifyEvent);
+	DokanInitIrpList(&dcb->PendingIrp);
+	DokanInitIrpList(&dcb->PendingEvent);
+	DokanInitIrpList(&dcb->NotifyEvent);
 
 	DokanInitIrpList(&DokanGlobal->PendingService);
 	DokanInitIrpList(&DokanGlobal->NotifyService);
 
-	KeInitializeEvent(&deviceExtension->ReleaseEvent, NotificationEvent, FALSE);
+	KeInitializeEvent(&dcb->ReleaseEvent, NotificationEvent, FALSE);
 
 	// "0" means not mounted
-	deviceExtension->Mounted = 0;
+	dcb->Mounted = 0;
 
-	ExInitializeResourceLite(&deviceExtension->Resource);
+	ExInitializeResourceLite(&dcb->Resource);
 
-	deviceExtension->CacheManagerNoOpCallbacks.AcquireForLazyWrite  = &DokanNoOpAcquire;
-	deviceExtension->CacheManagerNoOpCallbacks.ReleaseFromLazyWrite = &DokanNoOpRelease;
-	deviceExtension->CacheManagerNoOpCallbacks.AcquireForReadAhead  = &DokanNoOpAcquire;
-	deviceExtension->CacheManagerNoOpCallbacks.ReleaseFromReadAhead = &DokanNoOpRelease;
+	dcb->CacheManagerNoOpCallbacks.AcquireForLazyWrite  = &DokanNoOpAcquire;
+	dcb->CacheManagerNoOpCallbacks.ReleaseFromLazyWrite = &DokanNoOpRelease;
+	dcb->CacheManagerNoOpCallbacks.AcquireForReadAhead  = &DokanNoOpAcquire;
+	dcb->CacheManagerNoOpCallbacks.ReleaseFromReadAhead = &DokanNoOpRelease;
 
 
 	// to pretend to be mounted, make File System Device object
-	status = IoCreateDeviceSecure(DriverObject,			// DriverObject
-							sizeof(DokanVCB),			// DeviceExtensionSize
-							&deviceName,//&fsDeviceName, // DeviceName
-							DeviceType, //FILE_DEVICE_NETWORK_FILE_SYSTEM,
-							//FILE_DEVICE_DISK_FILE_SYSTEM,// DeviceType
-							0,							// DeviceCharacteristics
-							FALSE,						// Not Exclusive
-							&SDDL_DEVOBJ_SYS_ALL_ADM_RWX_WORLD_RW_RES_R, // Default SDDL String
-							NULL, // Device Class GUID
-							&fsDeviceObject);				// DeviceObject
+	status = IoCreateDeviceSecure(
+				DriverObject,		// DriverObject
+				sizeof(DokanVCB),	// DcbSize
+				&deviceName,		// DeviceName
+				DeviceType, // DeviceType
+				0,			// DeviceCharacteristics
+				FALSE,		// Not Exclusive
+				&SDDL_DEVOBJ_SYS_ALL_ADM_RWX_WORLD_RW_RES_R, // Default SDDL String
+				NULL,				// Device Class GUID
+				&fsDeviceObject);	// DeviceObject
 
 	if (!NT_SUCCESS(status)) {
 		DDbgPrint("  IoCreateDevice returned 0x%x\n", status);
@@ -209,15 +206,13 @@ DokanCreateDiskDevice(
 
 	vcb = fsDeviceObject->DeviceExtension;
 
-
 	vcb->Identifier.Type = VCB;
 	vcb->Identifier.Size = sizeof(DokanVCB);
 
-	vcb->DiskDevice = diskDeviceObject;
-	vcb->DeviceExtension = deviceExtension;
+	vcb->DeviceObject = fsDeviceObject;
+	vcb->Dcb = dcb;
 
-
-	deviceExtension->Vcb = vcb;
+	dcb->Vcb = vcb;
 	
 	InitializeListHead(&vcb->NextFCB);
 

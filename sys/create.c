@@ -199,7 +199,7 @@ DokanFreeFCB(
 
 PDokanCCB
 DokanAllocateCCB(
-	__in PDEVICE_EXTENSION	DeviceExtension,
+	__in PDokanDCB	Dcb,
 	__in PDokanFCB	Fcb
 	)
 {
@@ -226,7 +226,7 @@ DokanAllocateCCB(
 	InsertTailList(&Fcb->NextCCB, &ccb->NextCCB);
 	ExReleaseResourceLite(&Fcb->Resource);
 
-	ccb->MountId = DeviceExtension->MountId;
+	ccb->MountId = Dcb->MountId;
 
 	return ccb;
 }
@@ -299,7 +299,7 @@ Return Value:
 --*/
 {
 	PDokanVCB			vcb;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanDCB			dcb;
 	PIO_STACK_LOCATION	irpSp;
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
 	PFILE_OBJECT		fileObject;
@@ -334,15 +334,13 @@ Return Value:
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
 
-
-		deviceExtension = DeviceObject->DeviceExtension;
-		if (deviceExtension->Identifier.Type == DGL) {
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) != VCB) {
 			status = STATUS_SUCCESS;
 			__leave;
 		}
 
-		DokanGetDeviceExtension(DeviceObject, &deviceExtension);
-		vcb = deviceExtension->Vcb;
+		dcb = vcb->Dcb;
 
 		DDbgPrint("  IrpSp->Flags = %d\n", irpSp->Flags);
 		if (irpSp->Flags & SL_CASE_SENSITIVE)
@@ -358,7 +356,7 @@ Return Value:
 		if (relatedFileObject != NULL) {
 			fileObject->Vpb = relatedFileObject->Vpb;
 		} else {
-			fileObject->Vpb = vcb->DiskDevice->Vpb;
+			fileObject->Vpb = dcb->DeviceObject->Vpb;
 		}
 
 		if (relatedFileObject == NULL && fileObject->FileName.Length == 0) {
@@ -381,7 +379,7 @@ Return Value:
 
 
 		// don't open file like stream
-		if (!deviceExtension->UseAltStream &&
+		if (!dcb->UseAltStream &&
 			DokanUnicodeStringChar(&fileObject->FileName, L':') != -1) {
 			status = STATUS_INVALID_PARAMETER;
 			info = 0;
@@ -429,7 +427,7 @@ Return Value:
 			__leave;
 		}
 
-		ccb = DokanAllocateCCB(deviceExtension, fcb);
+		ccb = DokanAllocateCCB(dcb, fcb);
 		if (ccb == NULL) {
 			DokanFreeFCB(fcb); // FileName is freed here
 			status = STATUS_INSUFFICIENT_RESOURCES;
@@ -442,7 +440,7 @@ Return Value:
 		fileObject->SectionObjectPointer = &fcb->SectionObjectPointers;
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
+		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
 				
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
@@ -550,129 +548,4 @@ DokanCompleteCreate(
 
 
 
-
-NTSTATUS
-DokanDispatchClose(
-	__in PDEVICE_OBJECT DeviceObject,
-	__in PIRP Irp
-	)
-
-/*++
-
-Routine Description:
-
-	This device control dispatcher handles create & close IRPs.
-
-Arguments:
-
-	DeviceObject - Context for the activity.
-	Irp 		 - The device control argument block.
-
-Return Value:
-
-	NTSTATUS
-
---*/
-{
-	PDEVICE_EXTENSION	deviceExtension;
-	PIO_STACK_LOCATION	irpSp;
-	NTSTATUS			status = STATUS_INVALID_PARAMETER;
-	PFILE_OBJECT		fileObject;
-	PDokanCCB			ccb;
-	PEVENT_CONTEXT		eventContext;
-	ULONG				eventLength;
-	PDokanFCB			fcb;
-
-	PAGED_CODE();
-
-	__try {
-
-		FsRtlEnterFileSystem();
-
-		DDbgPrint("==> DokanClose\n");
-	
-		irpSp = IoGetCurrentIrpStackLocation(Irp);
-		fileObject = irpSp->FileObject;
-
-		if (fileObject == NULL) {
-			DDbgPrint("  fileObject is NULL\n");
-			status = STATUS_SUCCESS;
-			__leave;
-		}
-
-		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
-
-
-		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
-			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
-
-			if (fileObject->FsContext2) {
-				ccb = fileObject->FsContext2;
-				ASSERT(ccb != NULL);
-
-				fcb = ccb->Fcb;
-				ASSERT(fcb != NULL);
-
-				DDbgPrint("   Free CCB:%X\n", ccb);
-				DokanFreeCCB(ccb);
-
-				DokanFreeFCB(fcb);
-			}
-
-			status = STATUS_SUCCESS;
-			__leave;
-		}
-
-		ccb = fileObject->FsContext2;
-		ASSERT(ccb != NULL);
-
-		fcb = ccb->Fcb;
-		ASSERT(fcb != NULL);
-
-		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
-
-		if (eventContext == NULL) {
-			//status = STATUS_INSUFFICIENT_RESOURCES;
-			status = STATUS_SUCCESS;
-			__leave;
-		}
-
-		eventContext->Context = ccb->UserContext;
-		DDbgPrint("   UserContext:%X\n", (ULONG)ccb->UserContext);
-
-		// copy the file name to be closed
-		eventContext->Close.FileNameLength = fcb->FileName.Length;
-		RtlCopyMemory(eventContext->Close.FileName, fcb->FileName.Buffer, fcb->FileName.Length);
-
-		DDbgPrint("   Free CCB:%X\n", ccb);
-		DokanFreeCCB(ccb);
-
-		DokanFreeFCB(fcb);
-
-		// Close can not be pending status
-		// don't register this IRP
-		//status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
-
-		// inform it to user-mode
-		DokanEventNotification(&deviceExtension->NotifyEvent, eventContext);
-
-		status = STATUS_SUCCESS;
-
-	} __finally {
-
-		if (status != STATUS_PENDING) {
-			Irp->IoStatus.Status = status;
-			Irp->IoStatus.Information = 0;
-			IoCompleteRequest(Irp, IO_NO_INCREMENT);
-		}
-
-		DDbgPrint("<== DokanClose\n");
-
-		FsRtlExitFileSystem();
-	}
-
-	return status;
-}
 

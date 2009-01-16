@@ -86,7 +86,7 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 //
 typedef enum _FSD_IDENTIFIER_TYPE {
 	DGL = ':DGL', // Dokan Global
-    DVE = ':DVE', // Devcie Extension
+    DCB = ':DCB', // Disk Control Block
     VCB = ':VCB', // Volume Control Block
     FCB = ':FCB', // File Control Block
     CCB = ':CCB', // Context Control Block
@@ -101,6 +101,10 @@ typedef struct _FSD_IDENTIFIER {
     FSD_IDENTIFIER_TYPE     Type;
     ULONG                   Size;
 } FSD_IDENTIFIER, *PFSD_IDENTIFIER;
+
+
+#define GetIdentifierType(Obj) (((PFSD_IDENTIFIER)Obj)->Type)
+
 
 //
 // DATA
@@ -125,25 +129,8 @@ typedef struct _DOKAN_GLOBAL {
 } DOKAN_GLOBAL, *PDOKAN_GLOBAL;
 
 
-// DokanGetDeviceExtension refers Identifier which locates head of VCB
-// and DeviceExtension, so make sure Identifier is the top of struct
-typedef struct _DokanVolumeControlBlock {
-
-	FSD_IDENTIFIER				Identifier;
-
-	ERESOURCE					Resource;
-	PDEVICE_OBJECT				DiskDevice;
-	PVOID						DeviceExtension;
-	LIST_ENTRY					NextFCB;
-
-	// NotifySync is used by notify directory change
-    PNOTIFY_SYNC				NotifySync;
-    LIST_ENTRY					DirNotifyList;
-
-} DokanVCB, *PDokanVCB;
-
-
-typedef struct _DEVICE_EXTENSION {
+// make sure Identifier is the top of struct
+typedef struct _DokanDiskControlBlock {
 
 	FSD_IDENTIFIER			Identifier;
 
@@ -153,7 +140,7 @@ typedef struct _DEVICE_EXTENSION {
 	PDRIVER_OBJECT			DriverObject;
 	PDEVICE_OBJECT			DeviceObject;
 	
-	PDokanVCB				Vcb;
+	PVOID					Vcb;
 
 	// the list of waiting Event
 	IRP_LIST				PendingIrp;
@@ -190,7 +177,23 @@ typedef struct _DEVICE_EXTENSION {
 
 	CACHE_MANAGER_CALLBACKS CacheManagerCallbacks;
     CACHE_MANAGER_CALLBACKS CacheManagerNoOpCallbacks;
-} DEVICE_EXTENSION, *PDEVICE_EXTENSION;
+} DokanDCB, *PDokanDCB;
+
+
+typedef struct _DokanVolumeControlBlock {
+
+	FSD_IDENTIFIER				Identifier;
+
+	ERESOURCE					Resource;
+	PDEVICE_OBJECT				DeviceObject;
+	PDokanDCB					Dcb;
+	LIST_ENTRY					NextFCB;
+
+	// NotifySync is used by notify directory change
+    PNOTIFY_SYNC				NotifySync;
+    LIST_ENTRY					DirNotifyList;
+
+} DokanVCB, *PDokanVCB;
 
 
 typedef struct _DokanFileControlBlock
@@ -247,7 +250,7 @@ typedef struct _DokanContextControlBlock
 typedef struct _IRP_ENTRY {
 	LIST_ENTRY			ListEntry;
 	ULONG				SerialNumber;
-	PDEVICE_EXTENSION	DeviceExtension;
+	PDokanDCB			Dcb;
 	PIRP				Irp;
 	PIO_STACK_LOCATION	IrpSp;
 	PFILE_OBJECT		FileObject;
@@ -322,7 +325,7 @@ DRIVER_DISPATCH DokanEventWrite;
 
 PEVENT_CONTEXT
 AllocateEventContext(
-	__in PDEVICE_EXTENSION	DeviceExtension,
+	__in PDokanDCB	Dcb,
 	__in PIRP				Irp,
 	__in ULONG				EventContextLength,
 	__in PDokanCCB			Ccb);
@@ -347,7 +350,7 @@ DokanEventNotification(
 
 NTSTATUS
 DokanUnmountNotification(
-	__in PDEVICE_EXTENSION	DeviceExtension,
+	__in PDokanDCB	Dcb,
 	__in PEVENT_CONTEXT		EventContext);
 
 
@@ -425,13 +428,8 @@ DokanCreateDiskDevice(
 	__in ULONG			MountId,
 	__in PDOKAN_GLOBAL	DokanGlobal,
 	__in DEVICE_TYPE	DeviceType,
-	__out PDEVICE_EXTENSION* DeviceExtension);
+	__out PDokanDCB* Dcb);
 
-
-BOOLEAN
-DokanGetDeviceExtension(
-	__in PDEVICE_OBJECT DeviceObject,
-	__out PDEVICE_EXTENSION* DeviceExtension);
 
 VOID
 DokanPrintNTStatus(
@@ -464,7 +462,7 @@ DokanFreeFCB(
 
 PDokanCCB
 DokanAllocateCCB(
-	__in PDEVICE_EXTENSION DeviceExtension,
+	__in PDokanDCB Dcb,
 	__in PDokanFCB	Fcb);
 
 
@@ -474,16 +472,16 @@ DokanFreeCCB(
 
 NTSTATUS
 DokanStartCheckThread(
-	__in PDEVICE_EXTENSION	DeviceExtension);
+	__in PDokanDCB	Dcb);
 
 VOID
 DokanStopCheckThread(
-	__in PDEVICE_EXTENSION	DeviceExtension);
+	__in PDokanDCB	Dcb);
 
 
 BOOLEAN
 DokanCheckCCB(
-	__in PDEVICE_EXTENSION	DeviceExtension,
+	__in PDokanDCB	Dcb,
 	__in PDokanCCB	Ccb);
 
 VOID
@@ -492,11 +490,11 @@ DokanInitIrpList(
 
 NTSTATUS
 DokanStartEventNotificationThread(
-	__in PDEVICE_EXTENSION	DeviceExtension);
+	__in PDokanDCB	Dcb);
 
 VOID
 DokanStopEventNotificationThread(
-	__in PDEVICE_EXTENSION	DeviceExtension);
+	__in PDokanDCB	Dcb);
 
 #endif // _DOKAN_H_
 

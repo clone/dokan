@@ -28,12 +28,12 @@ DokanDispatchLock(
 	__in PIRP Irp
 	)
 {
-	PDEVICE_EXTENSION	deviceExtension;
 	PIO_STACK_LOCATION	irpSp;
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
 	PFILE_OBJECT		fileObject;
 	PDokanCCB			ccb;
 	PDokanFCB			fcb;
+	PDokanVCB			vcb;
 	PEVENT_CONTEXT		eventContext;
 	ULONG				eventLength;
 
@@ -53,8 +53,9 @@ DokanDispatchLock(
 			__leave;
 		}
 
-		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
-			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) != VCB ||
+			!DokanCheckCCB(vcb->Dcb, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
@@ -87,7 +88,7 @@ DokanDispatchLock(
 		ASSERT(fcb != NULL);
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
+		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
 
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;

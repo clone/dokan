@@ -35,7 +35,7 @@ DokanDispatchQueryInformation(
 	FILE_INFORMATION_CLASS	fileInfo;
 	PDokanCCB				ccb;
 	PDokanFCB				fcb;
-	PDEVICE_EXTENSION		deviceExtension;
+	PDokanVCB				vcb;
 	ULONG					info = 0;
 	ULONG					eventLength;
 	PEVENT_CONTEXT			eventContext;
@@ -69,9 +69,9 @@ DokanDispatchQueryInformation(
 			status = STATUS_SUCCESS;
 			__leave;
 		}*/
-
-		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
-			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) != VCB ||
+			!DokanCheckCCB(vcb->Dcb, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
@@ -173,7 +173,7 @@ DokanDispatchQueryInformation(
 		// sum of it's size and file name length
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
 
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
+		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
 				
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
@@ -307,7 +307,7 @@ DokanDispatchSetInformation(
 	FILE_INFORMATION_CLASS fileInfo;
 	PDokanCCB			ccb;
 	PDokanFCB			fcb;
-	PDEVICE_EXTENSION	deviceExtension;
+	PDokanVCB			vcb;
 	ULONG				eventLength;
 	PFILE_OBJECT		targetFileObject;
 	PEVENT_CONTEXT		eventContext;
@@ -329,8 +329,9 @@ DokanDispatchSetInformation(
 			__leave;
 		}
 		
-		if (!DokanGetDeviceExtension(DeviceObject, &deviceExtension) ||
-			!DokanCheckCCB(deviceExtension, fileObject->FsContext2)) {
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) != VCB ||
+			!DokanCheckCCB(vcb->Dcb, fileObject->FsContext2)) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
@@ -404,7 +405,7 @@ DokanDispatchSetInformation(
 			eventLength += targetFileObject->FileName.Length;
 		}
 
-		eventContext = AllocateEventContext(deviceExtension, Irp, eventLength, ccb);
+		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
 	
 		if (eventContext == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;

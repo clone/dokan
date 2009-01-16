@@ -238,35 +238,24 @@ Return Value:
 
 {
 
-	PDEVICE_OBJECT		deviceObject = DriverObject->DeviceObject;
-	PDEVICE_EXTENSION	deviceExtension;
-	UNICODE_STRING		symbolicLinkName;
-	WCHAR				symbolicLinkBuf[MAXIMUM_FILENAME_LENGTH];
+	PDEVICE_OBJECT	deviceObject = DriverObject->DeviceObject;
+	WCHAR			symbolicLinkBuf[] = SYMBOLIC_NAME_STRING;
+	UNICODE_STRING	symbolicLinkName;
 
 	DDbgPrint("==> DokanUnload\n");
 
 	PAGED_CODE();
 
-	/*DokanGetDeviceExtension(deviceObject, &deviceExtension);
-	ASSERT( deviceExtension->Identifier.Type == DVE );
+	if (GetIdentifierType(deviceObject->DeviceExtension) == DGL) {
+		DDbgPrint("  Delete Global DeviceObject\n");
+		RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
 
-	//
-	// Delete the user-mode symbolic link and deviceobjct.
-	//
-	swprintf(symbolicLinkBuf, SYMBOLIC_NAME_STRING L"%u", deviceExtension->Number);
-	RtlInitUnicodeString(&symbolicLinkName, SYMBOLIC_NAME_STRING);
-	IoDeleteSymbolicLink(&symbolicLinkName);
+		IoDeleteSymbolicLink(&symbolicLinkName);
 
-	if (deviceExtension->Number == 0) {
-		ExFreePool(deviceExtension->Global);
+		// delete DeviceObject
+		IoDeleteDevice(deviceObject);
 	}
 
-	// delete diskDeviceObject
-	//IoDeleteDevice(vcb->DiskDevice);
-
-	// delete DeviceObject
-	IoDeleteDevice(deviceObject);
-	*/
 	DDbgPrint("<== DokanUnload\n");
 	return;
 }
@@ -377,40 +366,6 @@ DokanNoOpRelease(
 }
 
 
-BOOLEAN
-DokanGetDeviceExtension(
-	  __in PDEVICE_OBJECT DeviceObject,
-	  __out PDEVICE_EXTENSION *DeviceExtension
-	  )
-{
-	PDokanVCB vcb;
-	PDEVICE_EXTENSION deviceExtension;
-	
-	ASSERT(DeviceObject);
-
-	vcb = DeviceObject->DeviceExtension;
-	
-	if (vcb->Identifier.Type == DGL) {
-		return FALSE;
-	} else if (vcb->Identifier.Type == DVE) {
-		deviceExtension = DeviceObject->DeviceExtension;
-		ASSERT(deviceExtension->Identifier.Type == DVE);
-
-		vcb = deviceExtension->Vcb;
-		ASSERT(vcb->Identifier.Type == VCB);
-
-		*DeviceExtension = deviceExtension;
-		return TRUE;
-	} else {
-		ASSERT(vcb->Identifier.Type == VCB);
-		deviceExtension = vcb->DeviceExtension;
-		ASSERT(deviceExtension->Identifier.Type == DVE);
-		*DeviceExtension = deviceExtension;
-		return TRUE;
-	}
-}
-
-
 #define PrintStatus(val, flag) if(val == flag) DDbgPrint("  status = " #flag "\n")
 
 
@@ -491,22 +446,25 @@ DokanNotifyReportChange(
 
 BOOLEAN
 DokanCheckCCB(
-	__in PDEVICE_EXTENSION	DeviceExtension,
+	__in PDokanDCB	Dcb,
 	__in PDokanCCB	Ccb)
 {
-	ASSERT(DeviceExtension != NULL);
+	ASSERT(Dcb != NULL);
+	if (GetIdentifierType(Dcb) != DCB) {
+		return FALSE;
+	}
 
 	if (Ccb == NULL) {
 		DDbgPrint("   ccb is NULL\n");
 		return FALSE;
 	}
 
-	if (Ccb->MountId != DeviceExtension->MountId) {
+	if (Ccb->MountId != Dcb->MountId) {
 		DDbgPrint("   MountId is different\n");
 		return FALSE;
 	}
 
-	if (!DeviceExtension->Mounted) {
+	if (!Dcb->Mounted) {
 		DDbgPrint("  Not mounted\n");
 		return FALSE;
 	}

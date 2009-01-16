@@ -7,6 +7,7 @@ TARGETLIBS= \
 SOURCES=dokan.c \
 	init.c \
 	create.c \
+	close.c \
 	event.c \
 	directory.c \
 	fileinfo.c \
