@@ -52,7 +52,7 @@ DokanCreateGlobalDiskDevice(
 
 	status = IoCreateDeviceSecure(
 				DriverObject, // DriverObject
-				sizeof(DOKAN_GLOBAL),// DcbSize
+				sizeof(DOKAN_GLOBAL),// DeviceExtensionSize
 				&deviceName, // DeviceName
 				FILE_DEVICE_UNKNOWN, // DeviceType
 				0,			// DeviceCharacteristics
@@ -125,7 +125,7 @@ DokanCreateDiskDevice(
 	// make a DeviceObject for Disk Device
 	//
 	status = IoCreateDevice(DriverObject,				// DriverObject
-							sizeof(PDokanDCB),			// DeviceExtensionSize
+							sizeof(DokanDCB),			// DeviceExtensionSize
 							NULL,//&deviceName,			// DeviceName
 							//FILE_DEVICE_DISK,			// DeviceType
 							FILE_DEVICE_VIRTUAL_DISK,
@@ -189,7 +189,7 @@ DokanCreateDiskDevice(
 	// to pretend to be mounted, make File System Device object
 	status = IoCreateDeviceSecure(
 				DriverObject,		// DriverObject
-				sizeof(DokanVCB),	// DcbSize
+				sizeof(DokanVCB),	// DeviceExtensionSize
 				&deviceName,		// DeviceName
 				DeviceType, // DeviceType
 				0,			// DeviceCharacteristics

@@ -110,9 +110,9 @@ RegisterPendingIrpMain(
  
 	//DDbgPrint("==> DokanRegisterPendingIrpMain\n");
 
-	if (GetIdentifierType(DeviceObject->DeviceExtension) == DCB) {
-		PDokanDCB dcb = DeviceObject->DeviceExtension;
-		if (CheckMount && !dcb->Mounted) {
+	if (GetIdentifierType(DeviceObject->DeviceExtension) == VCB) {
+		PDokanVCB vcb = DeviceObject->DeviceExtension;
+		if (CheckMount && !vcb->Dcb->Mounted) {
 			DDbgPrint(" device is not mounted\n");
 			return STATUS_INSUFFICIENT_RESOURCES;
 		}

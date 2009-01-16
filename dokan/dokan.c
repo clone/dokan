@@ -565,11 +565,15 @@ SendReleaseIRP2(
 BOOL
 DokanStart(PDOKAN_INSTANCE Instance)
 {
-	EVENT_START	eventStart;
+	EVENT_START			eventStart;
+	EVENT_DRIVER_INFO	driverInfo;
 	ULONG		returnedLength = 0;
 
 	ZeroMemory(&eventStart, sizeof(EVENT_START));
+	ZeroMemory(&driverInfo, sizeof(EVENT_DRIVER_INFO));
+
 	eventStart.DriveLetter = Instance->DokanOptions->DriveLetter;
+	eventStart.UserVersion = DOKAN_VERSION;
 	if (Instance->DokanOptions->UseAltStream) {
 		eventStart.Flags |= DOKAN_EVENT_ALTERNATIVE_STREAM_ON;
 	}
@@ -582,19 +586,22 @@ DokanStart(PDOKAN_INSTANCE Instance)
 		IOCTL_EVENT_START,
 		&eventStart,
 		sizeof(EVENT_START),
-		&eventStart,
-		sizeof(EVENT_START),
+		&driverInfo,
+		sizeof(EVENT_DRIVER_INFO),
 		&returnedLength);
 
-	if (eventStart.Version != DOKAN_VERSION) {
-		DokanDbgPrint(
-			"Dokan Error: driver version mismatch, driver %X, dll %X\n",
-			eventStart.Version, DOKAN_VERSION);
-
+	if (driverInfo.Status == DOKAN_START_FAILED) {
+		if (driverInfo.DriverVersion != eventStart.UserVersion) {
+			DokanDbgPrint(
+				"Dokan Error: driver version mismatch, driver %X, dll %X\n",
+				driverInfo.DriverVersion, eventStart.UserVersion);
+		} else {
+			DokanDbgPrint("Dokan Error: driver start error\n");
+		}
 		return FALSE;
-	} else if (eventStart.Status == DOKAN_MOUNTED) {
-		Instance->MountId = eventStart.MountId;
-		Instance->DeviceNumber = eventStart.DeviceNumber;
+	} else if (driverInfo.Status == DOKAN_MOUNTED) {
+		Instance->MountId = driverInfo.MountId;
+		Instance->DeviceNumber = driverInfo.DeviceNumber;
 		return TRUE;
 	}
 	return FALSE;
