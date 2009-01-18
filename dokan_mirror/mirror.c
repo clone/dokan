@@ -860,7 +860,8 @@ main(ULONG argc, PCHAR argv[])
 			"  /l DriveLetter (ex. /l m)\n"
 			"  /t ThreadCount (ex. /t 5)\n"
 			"  /d (enable debug output)\n"
-			"  /s (use stderr for output)");
+			"  /s (use stderr for output)\n"
+			"  /n (use network drive)");
 		return -1;
 	}
 
@@ -891,15 +892,22 @@ main(ULONG argc, PCHAR argv[])
 		case 's':
 			g_UseStdErr = TRUE;
 			break;
+		case 'n':
+			dokanOptions->Options |= DOKAN_OPTION_NETWORK;
+			break;
 		default:
 			fprintf(stderr, "unknown command: %s\n", argv[command]);
 			return -1;
 		}
 	}
 
-	dokanOptions->DebugMode = (UCHAR)g_DebugMode;
-	dokanOptions->UseStdErr = (UCHAR)g_UseStdErr;
-	dokanOptions->UseKeepAlive = 1;
+	if (g_DebugMode)
+		dokanOptions->Options |= DOKAN_OPTION_DEBUG;
+	if (g_UseStdErr)
+		dokanOptions->Options |= DOKAN_OPTION_STDERR;
+
+	dokanOptions->Options |= DOKAN_OPTION_KEEP_ALIVE;
+
 
 	status = DokanMain(dokanOptions, &dokanOperations);
 	switch (status) {
