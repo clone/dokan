@@ -10,3 +10,5 @@ DokanServiceInstall
 DokanServiceDelete
 DokanVersion
 DokanDriverVersion
+DokanNetworkProviderInstall
+DokanNetworkProviderUninstall

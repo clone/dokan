@@ -91,19 +91,8 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	char	buffer[1024];
 	PDOKAN_INSTANCE instance;
 
-	if (DokanOptions->DebugMode) {
-		g_DebugMode = TRUE;
-	} else {
-		g_DebugMode = FALSE;
-	}
-
-
-	if (DokanOptions->UseStdErr) {
-		g_DebugMode = TRUE;
-		g_UseStdErr = TRUE;
-	} else {
-		g_UseStdErr = FALSE;
-	}
+	g_DebugMode = DokanOptions->Options & DOKAN_OPTION_DEBUG;
+	g_DebugMode = DokanOptions->Options & DOKAN_OPTION_STDERR;
 
 	if (g_DebugMode) {
 		DbgPrintW(L"Dokan: debug mode on\n");
@@ -184,7 +173,7 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 
 	DbgPrintW(L"mounted: %wc,%d\n", DokanOptions->DriveLetter, instance->MountId);
 
-	if (DokanOptions->UseKeepAlive) {
+	if (DokanOptions->Options & DOKAN_OPTION_KEEP_ALIVE) {
 		threadIds[threadNum++] = (HANDLE)_beginthreadex(
 			NULL, // Security Atributes
 			0, //stack size
@@ -574,11 +563,14 @@ DokanStart(PDOKAN_INSTANCE Instance)
 
 	eventStart.DriveLetter = Instance->DokanOptions->DriveLetter;
 	eventStart.UserVersion = DOKAN_VERSION;
-	if (Instance->DokanOptions->UseAltStream) {
+	if (Instance->DokanOptions->Options & DOKAN_OPTION_ALT_STREAM) {
 		eventStart.Flags |= DOKAN_EVENT_ALTERNATIVE_STREAM_ON;
 	}
-	if (Instance->DokanOptions->UseKeepAlive) {
+	if (Instance->DokanOptions->Options & DOKAN_OPTION_KEEP_ALIVE) {
 		eventStart.Flags |= DOKAN_EVENT_KEEP_ALIVE_ON;
+	}
+	if (Instance->DokanOptions->Options & DOKAN_OPTION_NETWORK) {
+		eventStart.DeviceType = DOKAN_NETWORK_FILE_SYSTEM;
 	}
 
 	SendToDevice(

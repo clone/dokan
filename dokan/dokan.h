@@ -36,13 +36,17 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
+
+#define DOKAN_OPTION_DEBUG		1 // ouput debug message
+#define DOKAN_OPTION_STDERR		2 // ouput debug message to stderr
+#define DOKAN_OPTION_ALT_STREAM	4 // use alternate stream
+#define DOKAN_OPTION_KEEP_ALIVE	8 // use auto unmount
+#define DOKAN_OPTION_NETWORK	16 // use network drive
+
 typedef struct _DOKAN_OPTIONS {
 	WCHAR	DriveLetter; // drive letter to be mounted
 	USHORT	ThreadCount; // number of threads to be used
-	UCHAR	DebugMode; // ouput debug message
-	UCHAR	UseStdErr; // ouput debug message to stderr
-	UCHAR	UseAltStream; // use alternate stream
-	UCHAR	UseKeepAlive; // use auto unmount
+	ULONG	Options;	 // combination of DOKAN_OPTIONS_*
 	ULONG64	GlobalContext; // FileSystem can use this variable
 } DOKAN_OPTIONS, *PDOKAN_OPTIONS;
 
@@ -281,6 +285,11 @@ BOOL DOKANAPI
 DokanServiceDelete(
 	LPCWSTR	ServiceName);
 
+BOOL DOKANAPI
+DokanNetworkProviderInstall();
+
+BOOL DOKANAPI
+DokanNetworkProviderUninstall();
 
 #ifdef __cplusplus
 }

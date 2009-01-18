@@ -122,6 +122,11 @@ main(int argc, PCHAR argv[])
 				fprintf(stderr, "mounter install ok\n");
 			else
 				fprintf(stderr, "mounter install failed\n");
+		} else if (type == L'n') {
+			if (DokanNetworkProviderInstall())
+				fprintf(stderr, "network provider install ok\n");
+			else
+				fprintf(stderr, "network provider install failed\n");
 		}
 		break;
 
@@ -148,6 +153,11 @@ main(int argc, PCHAR argv[])
 				fprintf(stderr, "driver remove ok\n");
 			else
 				fprintf(stderr, "driver remvoe failed\n");
+		} else if (type == L'n') {
+			if (DokanNetworkProviderUninstall())
+				fprintf(stderr, "network provider remove ok\n");
+			else
+				fprintf(stderr, "network provider remove failed\n");
 		}
 		break;
 	

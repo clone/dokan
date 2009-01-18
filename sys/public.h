@@ -76,6 +76,8 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #define DOKAN_DIR_MATCH_ALL		8
 #define DOKAN_DELETE_ON_CLOSE	16
 
+
+// used in DOKAN_START->DeviceType
 #define DOKAN_DISK_FILE_SYSTEM		0
 #define DOKAN_NETWORK_FILE_SYSTEM	1
 
