@@ -275,6 +275,17 @@ DokanUnicodeStringChar(
 }
 
 
+VOID
+SetFileObjectForVCB(
+	__in PFILE_OBJECT	FileObject,
+	__in PDokanVCB		Vcb)
+{
+	FileObject->SectionObjectPointer = &Vcb->SectionObjectPointers;
+	FileObject->FsContext = &Vcb->VolumeFileHeader;
+}
+
+
+
 NTSTATUS
 DokanDispatchCreate(
 	__in PDEVICE_OBJECT DeviceObject,
@@ -365,6 +376,7 @@ Return Value:
 			if (irpSp->Parameters.Create.Options & FILE_DIRECTORY_FILE) {
 				status = STATUS_NOT_A_DIRECTORY;
 			} else {
+				SetFileObjectForVCB(fileObject, vcb);
 				info = FILE_OPENED;
 				status = STATUS_SUCCESS;
 			}

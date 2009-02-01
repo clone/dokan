@@ -184,6 +184,10 @@ typedef struct _DokanVolumeControlBlock {
 
 	FSD_IDENTIFIER				Identifier;
 
+	FSRTL_ADVANCED_FCB_HEADER	VolumeFileHeader;
+	SECTION_OBJECT_POINTERS		SectionObjectPointers;
+	FAST_MUTEX					AdvancedFCBHeaderMutex;
+
 	ERESOURCE					Resource;
 	PDEVICE_OBJECT				DeviceObject;
 	PDokanDCB					Dcb;
@@ -198,10 +202,9 @@ typedef struct _DokanVolumeControlBlock {
 
 typedef struct _DokanFileControlBlock
 {
-	FSRTL_ADVANCED_FCB_HEADER	AdvancedFCBHeader;
-
 	FSD_IDENTIFIER				Identifier;
 
+	FSRTL_ADVANCED_FCB_HEADER	AdvancedFCBHeader;
 	SECTION_OBJECT_POINTERS		SectionObjectPointers;
 	
 	FAST_MUTEX				AdvancedFCBHeaderMutex;

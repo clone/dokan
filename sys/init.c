@@ -219,7 +219,14 @@ DokanCreateDiskDevice(
 	InitializeListHead(&vcb->DirNotifyList);
 	FsRtlNotifyInitializeSync(&vcb->NotifySync);
 
-
+	ExInitializeFastMutex(&vcb->AdvancedFCBHeaderMutex);
+#if _WIN32_WINNT >= 0x0501
+	FsRtlSetupAdvancedHeader(&vcb->VolumeFileHeader, &vcb->AdvancedFCBHeaderMutex);
+#else
+	if (DokanFsRtlTeardownPerStreamContexts) {
+		FsRtlSetupAdvancedHeader(&vcb->VolumeFileHeader, &vcb->AdvancedFCBHeaderMutex);
+	}
+#endif
 
     //RtlZeroMemory(&filterCallbacks, sizeof(FS_FILTER_CALLBACKS));
 

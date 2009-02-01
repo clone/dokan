@@ -61,7 +61,9 @@ Return Value:
 
 		controlCode = irpSp->Parameters.DeviceIoControl.IoControlCode;
 	
-		if (controlCode != IOCTL_EVENT_WAIT && controlCode != IOCTL_EVENT_INFO) {
+		if (controlCode != IOCTL_EVENT_WAIT &&
+			controlCode != IOCTL_EVENT_INFO &&
+			controlCode != IOCTL_KEEPALIVE) {
 		
 			DDbgPrint("==> DokanDispatchIoControl\n");
 			DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
@@ -93,10 +95,10 @@ Return Value:
 		dcb = vcb->Dcb;
 
 		switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
-	//	case IOCTL_QUERY_DEVICE_NAME:
-	//		DDbgPrint("  IOCTL_QUERY_DEVICE_NAME\n");
-	//		status = STATUS_SUCCESS;
-	//		break;
+		//case IOCTL_QUERY_DEVICE_NAME:
+		//	DDbgPrint("  IOCTL_QUERY_DEVICE_NAME\n");
+			//status = STATUS_SUCCESS;
+		//	break;
 				
 		case IOCTL_EVENT_WAIT:
 			//DDbgPrint("  IOCTL_EVENT_WAIT\n");
@@ -237,7 +239,9 @@ Return Value:
 			IoCompleteRequest(Irp, IO_NO_INCREMENT);
 		}
 
-		if (controlCode != IOCTL_EVENT_WAIT && controlCode != IOCTL_EVENT_INFO) {
+		if (controlCode != IOCTL_EVENT_WAIT &&
+			controlCode != IOCTL_EVENT_INFO &&
+			controlCode != IOCTL_KEEPALIVE) {
 		
 			DokanPrintNTStatus(status);
 			DDbgPrint("<== DokanDispatchIoControl\n");

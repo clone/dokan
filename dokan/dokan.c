@@ -452,6 +452,8 @@ DispatchCommon(
 	eventInfo->Context = (ULONG64)openInfo;
 
 	DokanFileInfo->ProcessId	= EventContext->ProcessId;
+	DokanFileInfo->DokanOptions = DokanInstance->DokanOptions;
+	DokanFileInfo->DeleteOnClose = (UCHAR)(EventContext->FileFlags & DOKAN_DELETE_ON_CLOSE);
 
 	//DbgPrint("### OpenInfo %X\n", openInfo);
 
@@ -462,8 +464,6 @@ DispatchCommon(
 
 	DokanFileInfo->Context		= (ULONG64)openInfo->UserContext;
 	DokanFileInfo->IsDirectory	= (UCHAR)openInfo->IsDirectory;
-	DokanFileInfo->DokanOptions = DokanInstance->DokanOptions;
-	DokanFileInfo->DeleteOnClose = (UCHAR)(EventContext->FileFlags & DOKAN_DELETE_ON_CLOSE);
 
 	return eventInfo;
 }

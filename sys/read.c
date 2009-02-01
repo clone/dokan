@@ -106,18 +106,26 @@ Return Value:
 			__leave;
 		}
 
-		if (Irp->MdlAddress) {
-			//DDbgPrint("  use MdlAddress\n");
-			buffer = MmGetSystemAddressForMdlSafe(Irp->MdlAddress, NormalPagePriority);
-		} else {
-			//DDbgPrint("  use UserBuffer\n");
-			buffer = Irp->UserBuffer;
-		}
+		// make a MDL for UserBuffer that can be used later on another thread context
+		if (Irp->MdlAddress == NULL) {
+			PMDL mdl = IoAllocateMdl(Irp->UserBuffer, irpSp->Parameters.Read.Length, FALSE, FALSE, Irp);
 
-		if (buffer == NULL) {
-			DDbgPrint("  buffer == NULL\n");
-			status = STATUS_INVALID_PARAMETER;
-			__leave;
+			if (mdl == NULL) {
+				status = STATUS_INSUFFICIENT_RESOURCES;
+			} else {
+				__try {
+					MmProbeAndLockPages(Irp->MdlAddress, Irp->RequestorMode, IoWriteAccess);
+	
+				} __except (EXCEPTION_EXECUTE_HANDLER) {
+					DDbgPrint("    MmProveAndLockPages error\n");
+					IoFreeMdl(Irp->MdlAddress);
+					Irp->MdlAddress = NULL;
+					status =  STATUS_INSUFFICIENT_RESOURCES;
+				}
+			}
+			if (status == STATUS_INSUFFICIENT_RESOURCES) {
+				__leave;
+			}
 		}
 		
 		if (Irp->Flags & IRP_PAGING_IO)
