@@ -82,8 +82,8 @@ DokanDispatchWrite(
 			DDbgPrint("  use MdlAddress\n");
 			buffer = MmGetSystemAddressForMdlSafe(Irp->MdlAddress, NormalPagePriority);
 		} else {
-			DDbgPrint("  use AssociatedIrp.SystemBuffer\n");
-			buffer = Irp->AssociatedIrp.SystemBuffer ;
+			DDbgPrint("  use UserBuffer\n");
+			buffer = Irp->UserBuffer;
 		}
 
 		if (buffer == NULL) {
@@ -144,6 +144,8 @@ DokanDispatchWrite(
 		// returns it to user-mode using pending event.
 		if (eventLength <= EVENT_CONTEXT_MAX_SIZE) {
 
+			DDbgPrint("   Offset %lld, Length %d\n",
+				irpSp->Parameters.Write.ByteOffset.QuadPart, irpSp->Parameters.Write.Length);
 			// register this IRP to IRP waiting list and make it pending status
 			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
 
@@ -164,6 +166,9 @@ DokanDispatchWrite(
 				DokanFreeEventContext(eventContext);
 				__leave;
 			}
+
+			DDbgPrint("   Offset %lld, Length %d (request)\n",
+				irpSp->Parameters.Write.ByteOffset.QuadPart, irpSp->Parameters.Write.Length);
 
 			// copies from begining of EventContext to the end of file name
 			RtlCopyMemory(requestContext, eventContext, eventContext->Write.BufferOffset);

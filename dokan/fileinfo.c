@@ -182,6 +182,7 @@ DokanFillFileAttributeTagInfo(
 		return STATUS_BUFFER_OVERFLOW;
 
 	AttrTagInfo->FileAttributes = FileInfo->dwFileAttributes;
+	AttrTagInfo->ReparseTag = 0;
 
 	*RemainingLength -= sizeof(FILE_ATTRIBUTE_TAG_INFORMATION);
 

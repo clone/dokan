@@ -368,14 +368,44 @@ DWORD WINAPI
 DokanKeepAlive(
 	PDOKAN_INSTANCE DokanInstance)
 {
-	
-	while (DokanInstance->DokanOptions->DriveLetter != 0) {
-		if (!DokanSendIoControl(
-				DokanInstance->DokanOptions->DriveLetter, IOCTL_KEEPALIVE)) {
+	HANDLE	device;
+	ULONG	ReturnedLength;
+	WCHAR   volumeName[] = L"\\\\.\\ :";
+	ULONG	returnedLength;
+	BOOL	status;
+	volumeName[4] = DokanInstance->DokanOptions->DriveLetter;
+
+	device = CreateFile(
+				volumeName,
+				GENERIC_READ | GENERIC_WRITE,       // dwDesiredAccess
+                FILE_SHARE_READ | FILE_SHARE_WRITE, // dwShareMode
+                NULL,                               // lpSecurityAttributes
+                OPEN_EXISTING,                      // dwCreationDistribution
+                0,                                  // dwFlagsAndAttributes
+                NULL                                // hTemplateFile
+			);
+
+    while(device != INVALID_HANDLE_VALUE &&
+		DokanInstance->DokanOptions->DriveLetter != 0) {
+
+		status = DeviceIoControl(
+					device,                 // Handle to device
+					IOCTL_KEEPALIVE,			// IO Control code
+					NULL,		    // Input Buffer to driver.
+					0,			// Length of input buffer in bytes.
+					NULL,           // Output Buffer from driver.
+					0,			// Length of output buffer in bytes.
+					&ReturnedLength,		    // Bytes placed in buffer.
+					NULL                    // synchronous call
+				);
+		if (!status) {
 			break;
 		}
 		Sleep(DOKAN_KEEPALIVE_TIME);
 	}
+
+	CloseHandle(device);
+
 	_endthreadex(0);
 	return 0;
 }

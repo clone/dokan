@@ -14,7 +14,7 @@ https://connect.microsoft.com
 When you unzip the dokan source codes, you can get the following folders.
 
     * \dokan (user-mode library dokan.dll)
-    * \dokan_control (control program dokanctrl.exe)
+    * \dokan_control (control program dokanctl.exe)
     * \dokan_mirror (sample program)
     * \dokan_mount (mount service mounter.exe)
     * \sys (driver dokan.sys) 
@@ -26,34 +26,34 @@ Run Ågbuild /wcbgÅh command within each folders.
 ** Install Driver
 
 Now you can get binary programs for example under Åg\dokan\objchk_wlh_x86\i386Åç.
-You need dokan.dll dokan.sys dokanctrl.exe mounter.exe mirror.exe
+You need dokan.dll dokan.sys dokanctl.exe mounter.exe mirror.exe
 
 Copy dokan.sys under \Windows\system32\drivers
 Copy dokan.dll under \Windows\system32
 Place dokanctl.exe and mounter.exe in the same folder.
 
-Run Ågdokanctrl.exe /i aÅh This means register the driver and the service to Windows.
+Run Ågdokanctl.exe /i aÅh This means register the driver and the service to Windows.
 You can also do them separately.
-Ågdokanctrl.exe /i dÅh Install driver.
-Ågdokanctrl.exe /i sÅh install service.
+Ågdokanctl.exe /i dÅh Install driver.
+Ågdokanctl.exe /i sÅh install service.
 
 If you update your driver, you MUST restart your computer after uninstalling previous version.
 
 
 ** Test the driver
 
-You can get version information when you run Ågdokanctrl.exe /vÅh.
+You can get version information when you run Ågdokanctl.exe /vÅh.
 
 
 ** Sample program
 
-Run Ågmirror.exe c:\ mÅh. This means mirror C driver under M driver. Can you see M driver?
+Run Ågmirror.exe /r c:\ /l mÅh. This means mirror C driver under M driver. Can you see M driver?
 To unmount M driver, run Ågdokanctl.exe /u mÅh
-
+You can see all options of mirror.exe by running mirror.exe without argument.
 
 ** Uninstall Driver
 
-Ågdokanctrl.exe /r aÅh Uninstall both driver and service.
-Ågdokanctrl.exe /r dÅh Uninstall driver.
-Ågdokanctrl.exe /r sÅh Uninstall service.
+Ågdokanctl.exe /r aÅh Uninstall both driver and service.
+Ågdokanctl.exe /r dÅh Uninstall driver.
+Ågdokanctl.exe /r sÅh Uninstall service.
 You should restart your computer after uninstalling driver.

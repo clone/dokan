@@ -190,18 +190,24 @@ Return Value:
 
 	DriverObject->MajorFunction[IRP_MJ_LOCK_CONTROL]		= DokanDispatchLock;
 
-	//fastIoDispatch = ExAllocatePool(sizeof(FAST_IO_DISPATCH));
+	fastIoDispatch = ExAllocatePool(sizeof(FAST_IO_DISPATCH));
 	// TODO: check fastIoDispatch
 
-	//RtlZeroMemory(fastIoDispatch, sizeof(FAST_IO_DISPATCH));
+	RtlZeroMemory(fastIoDispatch, sizeof(FAST_IO_DISPATCH));
 
-	//fastIoDispatch->SizeOfFastIoDispatch = sizeof(FAST_IO_DISPATCH);
-    //fastIoDispatch->FastIoCheckIfPossible = DokanFastIoCheckIfPossible;
+	fastIoDispatch->SizeOfFastIoDispatch = sizeof(FAST_IO_DISPATCH);
+    fastIoDispatch->FastIoCheckIfPossible = DokanFastIoCheckIfPossible;
     //fastIoDispatch->FastIoRead = DokanFastIoRead;
-	//fastIoDispatch->AcquireFileForNtCreateSection = DokanAcquireForCreateSection;
-	//fastIoDispatch->ReleaseFileForNtCreateSection = DokanReleaseForCreateSection;
+	fastIoDispatch->FastIoRead = FsRtlCopyRead;
+	fastIoDispatch->FastIoWrite = FsRtlCopyWrite;
+	fastIoDispatch->AcquireFileForNtCreateSection = DokanAcquireForCreateSection;
+	fastIoDispatch->ReleaseFileForNtCreateSection = DokanReleaseForCreateSection;
+    fastIoDispatch->MdlRead = FsRtlMdlReadDev;
+    fastIoDispatch->MdlReadComplete = FsRtlMdlReadCompleteDev;
+    fastIoDispatch->PrepareMdlWrite = FsRtlPrepareMdlWriteDev;
+    fastIoDispatch->MdlWriteComplete = FsRtlMdlWriteCompleteDev;
 
-	//DriverObject->FastIoDispatch = fastIoDispatch;
+	DriverObject->FastIoDispatch = fastIoDispatch;
 
 
 #if _WIN32_WINNT < 0x0501

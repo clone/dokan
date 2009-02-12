@@ -140,7 +140,7 @@ DokanDispatchQueryInformation(
 			
 				DDbgPrint("  FilePositionInformation\n");
 
-				if (irpSp->Parameters.QueryFile.Length < sizeof(FILE_POSITION_INFORMATION) ) {
+				if (irpSp->Parameters.QueryFile.Length < sizeof(FILE_POSITION_INFORMATION)) {
 					status = STATUS_INSUFFICIENT_RESOURCES;
 			
 				} else {
@@ -312,7 +312,6 @@ DokanDispatchSetInformation(
 	PFILE_OBJECT		targetFileObject;
 	PEVENT_CONTEXT		eventContext;
 
-
 	PAGED_CODE();
 
 	__try {
@@ -345,9 +344,12 @@ DokanDispatchSetInformation(
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
 
+		buffer = Irp->AssociatedIrp.SystemBuffer;
+
 		switch (irpSp->Parameters.SetFile.FileInformationClass) {
 		case FileAllocationInformation:
-			DDbgPrint("  FileAllocationInformation\n");
+			DDbgPrint("  FileAllocationInformation %lld\n",
+						((PFILE_ALLOCATION_INFORMATION)buffer)->AllocationSize.QuadPart);
 			break;
 		case FileBasicInformation:
 			DDbgPrint("  FileBasicInformation\n");
@@ -356,7 +358,8 @@ DokanDispatchSetInformation(
 			DDbgPrint("  FileDispositionInformation\n");
 			break;
 		case FileEndOfFileInformation:
-			DDbgPrint("  FileEndOfFileInformation\n");
+			DDbgPrint("  FileEndOfFileInformation %lld\n",
+						((PFILE_END_OF_FILE_INFORMATION)buffer)->EndOfFile.QuadPart);
 			break;
 		case FileLinkInformation:
 			DDbgPrint("  FileLinkInformation\n");
@@ -365,10 +368,11 @@ DokanDispatchSetInformation(
 			{
 				PFILE_POSITION_INFORMATION posInfo;
 				
-				DDbgPrint("  FilePositionInformation\n");
-
 				posInfo = (PFILE_POSITION_INFORMATION)Irp->AssociatedIrp.SystemBuffer;
 				ASSERT(posInfo != NULL);
+
+				DDbgPrint("  FilePositionInformation %lld\n",
+								posInfo->CurrentByteOffset.QuadPart);
 
 				fileObject->CurrentByteOffset = posInfo->CurrentByteOffset;
 
