@@ -86,7 +86,7 @@ DokanDispatchFlush(
 		RtlCopyMemory(eventContext->Flush.FileName, fcb->FileName.Buffer, fcb->FileName.Length);
 
 		CcUninitializeCacheMap(fileObject, NULL, NULL);
-		fileObject->Flags &= FO_CLEANUP_COMPLETE;
+		//fileObject->Flags &= FO_CLEANUP_COMPLETE;
 
 		// register this IRP to waiting IRP list and make it pending status
 		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
