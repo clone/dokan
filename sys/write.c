@@ -92,6 +92,10 @@ DokanDispatchWrite(
 			__leave;
 		}
 
+		if (irpSp->Parameters.Write.Length == 0) {
+			status = STATUS_SUCCESS;
+			__leave;
+		}
 
 		// the length of EventContext is sum of length to write and length of file name
 		eventLength = sizeof(EVENT_CONTEXT)
@@ -144,13 +148,16 @@ DokanDispatchWrite(
 		// returns it to user-mode using pending event.
 		if (eventLength <= EVENT_CONTEXT_MAX_SIZE) {
 
-			DDbgPrint("   Offset %lld, Length %d\n",
-				irpSp->Parameters.Write.ByteOffset.QuadPart, irpSp->Parameters.Write.Length);
+			DDbgPrint("   Offset %d:%d, Length %d\n",
+				irpSp->Parameters.Write.ByteOffset.HighPart,
+				irpSp->Parameters.Write.ByteOffset.LowPart,
+				irpSp->Parameters.Write.Length);
+
+			// EventContext is no longer needed, clear it
+			Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = 0;
+
 			// register this IRP to IRP waiting list and make it pending status
 			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
-
-			// EventContext is no longer valid, clears it
-			Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = 0;
 
 		// Resuests bigger memory
 		// eventContext will be freed later using Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT]
@@ -167,8 +174,10 @@ DokanDispatchWrite(
 				__leave;
 			}
 
-			DDbgPrint("   Offset %lld, Length %d (request)\n",
-				irpSp->Parameters.Write.ByteOffset.QuadPart, irpSp->Parameters.Write.Length);
+			DDbgPrint("   Offset %d:%d, Length %d (request)\n",
+				irpSp->Parameters.Write.ByteOffset.HighPart,
+				irpSp->Parameters.Write.ByteOffset.LowPart,
+				irpSp->Parameters.Write.Length);
 
 			// copies from begining of EventContext to the end of file name
 			RtlCopyMemory(requestContext, eventContext, eventContext->Write.BufferOffset);
