@@ -124,13 +124,11 @@ MirrorCreateFile(
 	MirrorCheckFlag(AccessMode, STANDARD_RIGHTS_WRITE);
 	MirrorCheckFlag(AccessMode, STANDARD_RIGHTS_EXECUTE);
 
-
 	// when filePath is a directory, flags is changed to the file be opened
 	if (GetFileAttributes(filePath) & FILE_ATTRIBUTE_DIRECTORY) {
 		FlagsAndAttributes |= FILE_FLAG_BACKUP_SEMANTICS;
 		//AccessMode = 0;
 	}
-
 	DbgPrint(L"\tFlagsAndAttributes = 0x%x\n", FlagsAndAttributes);
 
 	MirrorCheckFlag(FlagsAndAttributes, FILE_ATTRIBUTE_ARCHIVE);
@@ -214,7 +212,7 @@ MirrorOpenDirectory(
 
 	DbgPrint(L"OpenDirectory : %s\n", filePath);
 
-	attr = GetFileAttributes(FileName);
+	attr = GetFileAttributes(filePath);
 	if (attr == INVALID_FILE_ATTRIBUTES) {
 		DWORD error = GetLastError();
 		DbgPrint(L"\terror code = %d\n\n", error);
@@ -715,7 +713,8 @@ MirrorSetEndOfFile(
 
 	offset.QuadPart = ByteOffset;
 	if (!SetFilePointerEx(handle, offset, NULL, FILE_BEGIN)) {
-		DbgPrint(L"\tSetFilePointer error: %d, offset = %I64d\n\n", GetLastError(), ByteOffset);
+		DbgPrint(L"\tSetFilePointer error: %d, offset = %I64d\n\n",
+				GetLastError(), ByteOffset);
 		return GetLastError() * -1;
 	}
 
@@ -725,6 +724,49 @@ MirrorSetEndOfFile(
 		return error * -1;
 	}
 
+	return 0;
+}
+
+
+static int
+MirrorSetAllocationSize(
+	LPCWSTR				FileName,
+	LONGLONG			AllocSize,
+	PDOKAN_FILE_INFO	DokanFileInfo)
+{
+	WCHAR			filePath[MAX_PATH];
+	HANDLE			handle;
+	LARGE_INTEGER	fileSize;
+
+	GetFilePath(filePath, FileName);
+
+	DbgPrint(L"SetAllocationSize %s, %I64d\n", filePath, AllocSize);
+
+	handle = (HANDLE)DokanFileInfo->Context;
+	if (!handle || handle == INVALID_HANDLE_VALUE) {
+		DbgPrint(L"\tinvalid handle\n\n");
+		return -1;
+	}
+
+	if (GetFileSizeEx(handle, &fileSize)) {
+		if (AllocSize < fileSize.QuadPart) {
+			fileSize.QuadPart = AllocSize;
+			if (SetFilePointerEx(handle, fileSize, NULL, FILE_BEGIN)) {
+				DbgPrint(L"\tSetAllocationSize: SetFilePointer eror: %d, "
+					L"offset = %I64d\n\n", GetLastError(), AllocSize);
+				return GetLastError() * -1;
+			}
+			if (!SetEndOfFile(handle)) {
+				DWORD error = GetLastError();
+				DbgPrint(L"\terror code = %d\n\n", error);
+				return error * -1;
+			}
+		}
+	} else {
+		DWORD error = GetLastError();
+		DbgPrint(L"\terror code = %d\n\n", error);
+		return error * -1;
+	}
 	return 0;
 }
 
@@ -830,40 +872,16 @@ MirrorUnmount(
 }
 
 
-static DOKAN_OPERATIONS
-dokanOperations = {
-	MirrorCreateFile,
-	MirrorOpenDirectory,
-	MirrorCreateDirectory,
-	MirrorCleanup,
-	MirrorCloseFile,
-	MirrorReadFile,
-	MirrorWriteFile,
-	MirrorFlushFileBuffers,
-	MirrorGetFileInformation,
-	MirrorFindFiles,
-	NULL, // FindFilesWithPattern
-	MirrorSetFileAttributes,
-	MirrorSetFileTime,
-	MirrorDeleteFile,
-	MirrorDeleteDirectory,
-	MirrorMoveFile,
-	MirrorSetEndOfFile,
-	MirrorLockFile,
-	MirrorUnlockFile,
-	NULL, // GetDiskFreeSpace
-	NULL, // GetVolumeInformation
-	MirrorUnmount // Unmount
-};
-
-
 
 int __cdecl
 main(ULONG argc, PCHAR argv[])
 {
 	int status;
 	ULONG command;
-	PDOKAN_OPTIONS dokanOptions = (PDOKAN_OPTIONS)malloc(sizeof(DOKAN_OPTIONS));
+	PDOKAN_OPERATIONS dokanOperations =
+			(PDOKAN_OPERATIONS)malloc(sizeof(DOKAN_OPERATIONS));
+	PDOKAN_OPTIONS dokanOptions =
+			(PDOKAN_OPTIONS)malloc(sizeof(DOKAN_OPTIONS));
 
 	if (argc < 5) {
 		fprintf(stderr, "mirror.exe\n"
@@ -919,8 +937,32 @@ main(ULONG argc, PCHAR argv[])
 
 	dokanOptions->Options |= DOKAN_OPTION_KEEP_ALIVE;
 
+	ZeroMemory(dokanOperations, sizeof(DOKAN_OPERATIONS));
+	dokanOperations->CreateFile = MirrorCreateFile;
+	dokanOperations->OpenDirectory = MirrorOpenDirectory;
+	dokanOperations->CreateDirectory = MirrorCreateDirectory;
+	dokanOperations->Cleanup = MirrorCleanup;
+	dokanOperations->CloseFile = MirrorCloseFile;
+	dokanOperations->ReadFile = MirrorReadFile;
+	dokanOperations->WriteFile = MirrorWriteFile;
+	dokanOperations->FlushFileBuffers = MirrorFlushFileBuffers;
+	dokanOperations->GetFileInformation = MirrorGetFileInformation;
+	dokanOperations->FindFiles = MirrorFindFiles;
+	dokanOperations->FindFilesWithPattern = NULL;
+	dokanOperations->SetFileAttributes = MirrorSetFileAttributes;
+	dokanOperations->SetFileTime = MirrorSetFileTime;
+	dokanOperations->DeleteFile = MirrorDeleteFile;
+	dokanOperations->DeleteDirectory = MirrorDeleteDirectory;
+	dokanOperations->MoveFile = MirrorMoveFile;
+	dokanOperations->SetEndOfFile = MirrorSetEndOfFile;
+	dokanOperations->SetAllocationSize = MirrorSetAllocationSize;
+	dokanOperations->LockFile = MirrorLockFile;
+	dokanOperations->UnlockFile = MirrorUnlockFile;
+	dokanOperations->GetDiskFreeSpace = NULL;
+	dokanOperations->GetVolumeInformation = NULL;
+	dokanOperations->Unmount = MirrorUnmount;
 
-	status = DokanMain(dokanOptions, &dokanOperations);
+	status = DokanMain(dokanOptions, dokanOperations);
 	switch (status) {
 		case DOKAN_SUCCESS:
 			fprintf(stderr, "Success\n");
@@ -945,6 +987,8 @@ main(ULONG argc, PCHAR argv[])
 			break;
 	}
 
+	free(dokanOptions);
+	free(dokanOperations);
 	return 0;
 }
 

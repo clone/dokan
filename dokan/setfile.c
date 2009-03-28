@@ -41,6 +41,12 @@ DokanSetAllocationInformation(
 	// is less than the end-of-file position, the end-of-file position is automatically
 	// adjusted to match the allocation size.
 
+	if (DokanOperations->SetAllocationSize) {
+		return DokanOperations->SetAllocationSize(
+			EventContext->SetFile.FileName,
+			allocInfo->AllocationSize.QuadPart,
+			FileInfo);
+	}
 	// How can we check the current end-of-file position?
 	if (allocInfo->AllocationSize.QuadPart == 0) {
 		return DokanOperations->SetEndOfFile(
