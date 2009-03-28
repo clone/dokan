@@ -208,10 +208,21 @@ MirrorOpenDirectory(
 {
 	WCHAR filePath[MAX_PATH];
 	HANDLE handle;
+	DWORD attr;
 
 	GetFilePath(filePath, FileName);
 
 	DbgPrint(L"OpenDirectory : %s\n", filePath);
+
+	attr = GetFileAttributes(FileName);
+	if (attr == INVALID_FILE_ATTRIBUTES) {
+		DWORD error = GetLastError();
+		DbgPrint(L"\terror code = %d\n\n", error);
+		return error * -1;
+	}
+	if (!(attr & FILE_ATTRIBUTE_DIRECTORY)) {
+		return -1;
+	}
 
 	handle = CreateFile(
 		filePath,

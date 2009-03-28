@@ -128,12 +128,15 @@ Return Value:
 			}
 		}
 		
-		if (Irp->Flags & IRP_PAGING_IO)
+		if (Irp->Flags & IRP_PAGING_IO) {
 			DDbgPrint("  Paging IO\n");
-		if (Irp->Flags & IRP_NOCACHE)
+		}
+		if (Irp->Flags & IRP_NOCACHE) {
 			DDbgPrint("  Nocache\n");
-		if (fileObject->Flags & FO_SYNCHRONOUS_IO)
+		}
+		if (fileObject->Flags & FO_SYNCHRONOUS_IO) {
 			DDbgPrint("  Synchronous IO\n");
+		}
 
 		ccb	= fileObject->FsContext2;
 		ASSERT(ccb != NULL);
@@ -142,6 +145,7 @@ Return Value:
 		ASSERT(fcb != NULL);
 
 		if (fcb->Flags & DOKAN_FILE_DIRECTORY) {
+			DDbgPrint("   DOKAN_FILE_DIRECTORY %p\n", fcb);
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}

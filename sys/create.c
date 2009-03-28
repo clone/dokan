@@ -517,6 +517,8 @@ DokanCompleteCreate(
 	fcb = ccb->Fcb;
 	ASSERT(fcb != NULL);
 
+	DDbgPrint("  FileName:%wZ\n", &fcb->FileName);
+
 	ccb->UserContext = EventInfo->Context;
 	//DDbgPrint("   set Context %X\n", (ULONG)ccb->UserContext);
 
@@ -528,6 +530,11 @@ DokanCompleteCreate(
 	if (NT_SUCCESS(status) &&
 		(irpSp->Parameters.Create.Options & FILE_DIRECTORY_FILE ||
 		EventInfo->Create.Flags & DOKAN_FILE_DIRECTORY)) {
+		if (irpSp->Parameters.Create.Options & FILE_DIRECTORY_FILE) {
+			DDbgPrint("  FILE_DIRECTORY_FILE %p\n", fcb);
+		} else {
+			DDbgPrint("  DOKAN_FILE_DIRECTORY %p\n", fcb);
+		}
 		fcb->Flags |= DOKAN_FILE_DIRECTORY;
 	}
 	ExReleaseResourceLite(&fcb->Resource);
