@@ -92,7 +92,7 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	PDOKAN_INSTANCE instance;
 
 	g_DebugMode = DokanOptions->Options & DOKAN_OPTION_DEBUG;
-	g_DebugMode = DokanOptions->Options & DOKAN_OPTION_STDERR;
+	g_UseStdErr = DokanOptions->Options & DOKAN_OPTION_STDERR;
 
 	if (g_DebugMode) {
 		DbgPrintW(L"Dokan: debug mode on\n");
@@ -100,6 +100,7 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 
 	if (g_UseStdErr) {
 		DbgPrintW(L"Dokan: use stderr\n");
+		g_DebugMode = TRUE;
 	}
 
 	if (DokanOptions->ThreadCount == 0) {

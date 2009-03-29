@@ -58,8 +58,9 @@ DokanFillFileStandardInfo(
 	PBY_HANDLE_FILE_INFORMATION	FileInfo,
 	PULONG						RemainingLength)
 {
-	if (*RemainingLength < sizeof(FILE_STANDARD_INFORMATION))
+	if (*RemainingLength < sizeof(FILE_STANDARD_INFORMATION)) {
 		return STATUS_BUFFER_OVERFLOW;
+	}
 
 	StandardInfo->AllocationSize.HighPart = FileInfo->nFileSizeHigh;
 	StandardInfo->AllocationSize.LowPart  = FileInfo->nFileSizeLow;
@@ -69,8 +70,9 @@ DokanFillFileStandardInfo(
 	StandardInfo->DeletePending           = FALSE;
 	StandardInfo->Directory               = FALSE;
 
-	if (FileInfo->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+	if (FileInfo->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 		StandardInfo->Directory = TRUE;
+	}
 
 	*RemainingLength -= sizeof(FILE_STANDARD_INFORMATION);
 	

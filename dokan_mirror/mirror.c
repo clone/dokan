@@ -283,6 +283,7 @@ MirrorCleanup(
 		DokanFileInfo->Context = 0;
 
 		if (DokanFileInfo->DeleteOnClose) {
+			DbgPrint(L"\tDeleteOnClose\n");
 			if (DokanFileInfo->IsDirectory) {
 				DbgPrint(L"  DeleteDirectory ");
 				if (!RemoveDirectory(filePath)) {
@@ -299,7 +300,6 @@ MirrorCleanup(
 				}
 			}
 		}
-
 
 	} else {
 		DbgPrint(L"Cleanup: %s\n\tinvalid handle\n\n", filePath);
