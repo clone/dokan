@@ -42,7 +42,7 @@ namespace Dokan
         private ArrayList array_;
         private Dictionary<ulong, DokanFileInfo> infoTable_;
         private ulong infoId_ = 0;
-        private object infoIdLock_ = new object();
+        private object infoTableLock_ = new object();
         private DokanOptions options_;
 
         public Proxy(DokanOptions options, DokanOperations operations)
@@ -57,37 +57,39 @@ namespace Dokan
         {
             DokanFileInfo info = new DokanFileInfo();
 
-            lock (infoIdLock_)
+            lock (infoTableLock_)
             {
                 info.InfoId = ++infoId_;
-            }
-            FileInfo.Context = info.InfoId;
-            info.IsDirectory = FileInfo.IsDirectory == 1 ? true : false;
-            info.ProcessId = FileInfo.ProcessId;
 
-            // to avoid GC
-            infoTable_[info.InfoId] = info;
+                FileInfo.Context = info.InfoId;
+                info.IsDirectory = FileInfo.IsDirectory == 1 ? true : false;
+                info.ProcessId = FileInfo.ProcessId;
+
+                // to avoid GC
+                infoTable_[info.InfoId] = info;
+            }
             return info;
         }
 
         private DokanFileInfo GetFileInfo(ref DOKAN_FILE_INFO info)
         {
             DokanFileInfo fileinfo = null;
-
-            if (info.Context != 0)
+            lock (infoTableLock_)
             {
-                infoTable_.TryGetValue(info.Context, out fileinfo);
-            }
-           
-            if (fileinfo == null)
-            {
-                // bug?
-                fileinfo = new DokanFileInfo();
-            }
+                if (info.Context != 0)
+                {
+                    infoTable_.TryGetValue(info.Context, out fileinfo);
+                }
 
-            fileinfo.IsDirectory = info.IsDirectory == 1 ? true : false;
-            fileinfo.ProcessId = info.ProcessId;
+                if (fileinfo == null)
+                {
+                    // bug?
+                    fileinfo = new DokanFileInfo();
+                }
 
+                fileinfo.IsDirectory = info.IsDirectory == 1 ? true : false;
+                fileinfo.ProcessId = info.ProcessId;
+            }
             return fileinfo;
         }
       
@@ -101,6 +103,13 @@ namespace Dokan
         private const uint GENERIC_WRITE = 0x40000000;
         private const uint GENERIC_EXECUTE = 0x20000000;
         
+        private const uint FILE_READ_DATA = 0x0001;
+        private const uint FILE_READ_ATTRIBUTES = 0x0080;
+        private const uint FILE_READ_EA = 0x0008;
+        private const uint FILE_WRITE_DATA = 0x0002;
+        private const uint FILE_WRITE_ATTRIBUTES = 0x0100;
+        private const uint FILE_WRITE_EA = 0x0010;
+
         private const uint FILE_SHARE_READ = 0x00000001;
         private const uint FILE_SHARE_WRITE = 0x00000002;
         private const uint FILE_SHARE_DELETE = 0x00000004;
@@ -150,21 +159,33 @@ namespace Dokan
                 FileMode mode = FileMode.Open;
                 FileOptions options = FileOptions.None;
 
-                if ((AccessMode & GENERIC_READ) != 0 && (AccessMode & GENERIC_WRITE) != 0)
+                if ((AccessMode & FILE_READ_DATA) != 0 && (AccessMode & FILE_WRITE_DATA) != 0)
+                {
                     access = FileAccess.ReadWrite;
-                else if ((AccessMode & GENERIC_WRITE) != 0)
+                }
+                else if ((AccessMode & FILE_WRITE_DATA) != 0)
+                {
                     access = FileAccess.Write;
-                else if ((AccessMode & GENERIC_EXECUTE) != 0)
-                    access = FileAccess.Read; // TODO: right?
+                }
+                else
+                {
+                    access = FileAccess.Read;
+                }
 
                 if ((Share & FILE_SHARE_READ) != 0)
+                {
                     share = FileShare.Read;
+                }
 
                 if ((Share & FILE_SHARE_WRITE) != 0)
+                {
                     share |= FileShare.Write;
+                }
 
                 if ((Share & FILE_SHARE_DELETE) != 0)
+                {
                     share |= FileShare.Delete;
+                }
 
                 switch (CreationDisposition)
                 {
@@ -582,6 +603,33 @@ namespace Dokan
                 return -1;
             }
         }
+
+
+        public delegate int SetAllocationSizeDelegate(
+            IntPtr FileName,
+            long Length,
+            ref DOKAN_FILE_INFO FileInfo);
+
+        public int SetAllocationSizeProxy(
+            IntPtr FileName,
+            long Length,
+            ref DOKAN_FILE_INFO FileInfo)
+        {
+            try
+            {
+                string file = GetFileName(FileName);
+
+                return operations_.SetAllocationSize(file, Length, GetFileInfo(ref FileInfo));
+
+            }
+            catch (Exception e)
+            {
+
+                Console.Error.WriteLine(e.ToString());
+                return -1;
+            }
+        }
+
 
       ////
 

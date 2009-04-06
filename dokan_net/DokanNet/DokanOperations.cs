@@ -122,6 +122,11 @@ namespace Dokan
                 long length,
                 DokanFileInfo info);
 
+        int SetAllocationSize(
+                string filename,
+                long length,
+                DokanFileInfo info);
+
         int LockFile(
                 string filename,
                 long offset,

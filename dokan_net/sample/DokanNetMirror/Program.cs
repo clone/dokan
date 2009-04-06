@@ -182,6 +182,11 @@ namespace DokaNetMirror
             return -1;
         }
 
+        public int SetAllocationSize(String filename, long length, DokanFileInfo info)
+        {
+            return -1;
+        }
+
         public int LockFile(String filename, long offset, long length, DokanFileInfo info)
         {
             return 0;
@@ -211,7 +216,7 @@ namespace DokaNetMirror
             DokanOptions opt = new DokanOptions();
             opt.DebugMode = true;
             opt.DriveLetter = 'n';
-            opt.ThreadCount = 1;
+            opt.ThreadCount = 5;
             DokanNet.DokanMain(opt, new Mirror("C:"));
         }
     }

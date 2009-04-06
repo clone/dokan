@@ -8,7 +8,7 @@ namespace RegistoryFS
 {
     class RFS : DokanOperations
     {
-        #region DokanOperations ÉÅÉìÉo
+        #region DokanOperations member
 
         private Dictionary<string, RegistryKey> TopDirectory;
 
@@ -196,6 +196,11 @@ namespace RegistoryFS
         }
 
         public int SetEndOfFile(string filename, long length, DokanFileInfo info)
+        {
+            return -1;
+        }
+
+        public int SetAllocationSize(string filename, long length, DokanFileInfo info)
         {
             return -1;
         }

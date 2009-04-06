@@ -13,6 +13,7 @@ namespace Dokan
         public bool UseStdErr;
         public bool UseAltStream;
         public bool UseKeepAlive;
+        public bool NetworkDrive;
         public string VolumeLabel;
     }
 
@@ -38,6 +39,7 @@ namespace Dokan
         public Proxy.DeleteDirectoryDelegate DeleteDirectory;
         public Proxy.MoveFileDelegate MoveFile;
         public Proxy.SetEndOfFileDelegate SetEndOfFile;
+        public Proxy.SetAllocationSizeDelegate SetAllocationSize;
         public Proxy.LockFileDelegate LockFile;
         public Proxy.UnlockFileDelegate UnlockFile;
         public Proxy.GetDiskFreeSpaceDelegate GetDiskFreeSpace;
@@ -50,10 +52,7 @@ namespace Dokan
     {
         public char DriveLetter; // driver letter to be mounted
         public ushort ThreadCount; // number of threads to be used
-        public byte DebugMode; // print debug message
-        public byte UseStdErr; // output debug message to stderr
-        public byte UseAltStream; // use alternate stream
-        public byte UseKeepAlive; // use automacic unmount
+        public uint Options;
         public ulong Dummy1;
     }
 
@@ -85,6 +84,11 @@ namespace Dokan
         public const int DOKAN_START_ERROR          = -4; // Driver something wrong
         public const int DOKAN_MOUNT_ERROR          = -5; // Can't assign drive letter
 
+        private const uint DOKAN_OPTION_DEBUG = 1;
+        private const uint DOKAN_OPTION_STDERR = 2;
+        private const uint DOKAN_OPTION_ALT_STREAM = 4;
+        private const uint DOKAN_OPTION_KEEP_ALIVE = 8;
+        private const uint DOKAN_OPTION_NETWORK = 16;
 
         public static int DokanMain(DokanOptions options, DokanOperations operations)
         {
@@ -99,10 +103,11 @@ namespace Dokan
 
             dokanOptions.DriveLetter = options.DriveLetter;
             dokanOptions.ThreadCount = options.ThreadCount;
-            dokanOptions.DebugMode = (byte)(options.DebugMode ? 1 : 0);
-            dokanOptions.UseStdErr = (byte)(options.UseStdErr ? 1 : 0);
-            dokanOptions.UseAltStream = (byte)(options.UseAltStream ? 1 : 0);
-            dokanOptions.UseKeepAlive = (byte)(options.UseKeepAlive ? 1 : 0);
+            dokanOptions.Options |= options.DebugMode ? DOKAN_OPTION_DEBUG : 0;
+            dokanOptions.Options |= options.UseStdErr ? DOKAN_OPTION_STDERR : 0;
+            dokanOptions.Options |= options.UseAltStream ? DOKAN_OPTION_ALT_STREAM : 0;
+            dokanOptions.Options |= options.UseKeepAlive ? DOKAN_OPTION_KEEP_ALIVE : 0;
+            dokanOptions.Options |= options.NetworkDrive ? DOKAN_OPTION_NETWORK : 0;
 
             DOKAN_OPERATIONS dokanOperations = new DOKAN_OPERATIONS();
             dokanOperations.CreateFile = proxy.CreateFileProxy;
@@ -121,6 +126,7 @@ namespace Dokan
             dokanOperations.DeleteDirectory = proxy.DeleteDirectoryProxy;
             dokanOperations.MoveFile = proxy.MoveFileProxy;
             dokanOperations.SetEndOfFile = proxy.SetEndOfFileProxy;
+            dokanOperations.SetAllocationSize = proxy.SetAllocationSizeProxy;
             dokanOperations.LockFile = proxy.LockFileProxy;
             dokanOperations.UnlockFile = proxy.UnlockFileProxy;
             dokanOperations.GetDiskFreeSpace = proxy.GetDiskFreeSpaceProxy;           
