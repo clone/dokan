@@ -64,6 +64,12 @@ namespace Dokan
 
         [DllImport("dokan.dll")]
         public static extern int DokanUnmount(int driveLetter);
+
+        [DllImport("dokan.dll")]
+        public static extern uint DokanVersion();
+
+        [DllImport("dokan.dll")]
+        public static extern uint DokanDriveVersion();
     }
 
 
@@ -140,6 +146,17 @@ namespace Dokan
         public static int DokanUnmount(char driveLetter)
         {
             return Dokan.DokanUnmount(driveLetter);
+        }
+
+
+        public static uint DokanVersion()
+        {
+            return Dokan.DokanVersion();
+        }
+
+        public static uint DokanDriverVersion()
+        {
+            return Dokan.DokanDriveVersion();
         }
     }
 }
