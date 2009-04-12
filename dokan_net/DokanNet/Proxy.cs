@@ -89,6 +89,7 @@ namespace Dokan
 
                 fileinfo.IsDirectory = info.IsDirectory == 1 ? true : false;
                 fileinfo.ProcessId = info.ProcessId;
+                fileinfo.DeleteOnClose = info.DeleteOnClose == 1 ? true : false;
             }
             return fileinfo;
         }

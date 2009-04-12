@@ -10,6 +10,7 @@ namespace Dokan
         public bool IsDirectory;
         public ulong InfoId;
         public uint ProcessId;
+        public bool DeleteOnClose;
 
         public DokanFileInfo()
         {
