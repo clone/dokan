@@ -388,11 +388,6 @@ MirrorWriteFile(
 	GetFilePath(filePath, FileName);
 
 	DbgPrint(L"WriteFile : %s, offset %I64d, length %d\n", filePath, Offset, NumberOfBytesToWrite);
-	//DbgPrint(L"----\n%s\n----\n\n", Buffer);
-
-	//DbgPrint(L"press any key?");
-	//getchar();
-
 
 	// reopen the file
 	if (!handle || handle == INVALID_HANDLE_VALUE) {
