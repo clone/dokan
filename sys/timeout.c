@@ -275,6 +275,7 @@ Routine Description:
 		KeWaitForSingleObject(Dcb->TimeoutThread, Executive,
 			KernelMode, FALSE, NULL);
 		ObDereferenceObject(Dcb->TimeoutThread);
+		Dcb->TimeoutThread = NULL;
 	}
 	
 	DDbgPrint("<== DokanStopCheckThread\n");
