@@ -149,11 +149,10 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 
 	DbgPrint("device opened\n");
 
-
 	instance = NewDokanInstance();
-
 	instance->DokanOptions = DokanOptions;
 	instance->DokanOperations = DokanOperations;
+	instance->DriveLetter = DokanOptions->DriveLetter;
 
 	wcscpy_s(instance->DeviceName, sizeof(instance->DeviceName), 
 		DOKAN_DEVICE_NAME);
@@ -736,7 +735,7 @@ BOOL WINAPI DllMain(
 					PDOKAN_INSTANCE instance =
 						CONTAINING_RECORD(entry, DOKAN_INSTANCE, ListEntry);
 					
-					DokanUnmount(instance->DokanOptions->DriveLetter);
+					DokanUnmount(instance->DriveLetter);
 					free(instance);
 				}
 

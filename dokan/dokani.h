@@ -49,6 +49,8 @@ typedef struct _DOKAN_INSTANCE
 	ULONG	DeviceNumber;
 	ULONG	MountId;
 
+	WCHAR	DriveLetter;
+
 	PDOKAN_OPTIONS		DokanOptions;
 	PDOKAN_OPERATIONS	DokanOperations;
 
