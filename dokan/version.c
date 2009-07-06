@@ -38,7 +38,7 @@ DokanDriverVersion()
 	ULONG ret = 0;
 
 	if (SendToDevice(
-			DOKAN_DEVICE_NAME,
+			DOKAN_GLOBAL_DEVICE_NAME,
 			IOCTL_TEST,
 			NULL, // InputBuffer
 			0, // InputLength

@@ -35,11 +35,11 @@ DokanControlMount(
 	WCHAR	driveLetterAndSlash[] = L"C:\\";
 	WCHAR	uniqueVolumeName[MAX_PATH];
 	HANDLE  device;
-	WCHAR	deviceName[] = DOKAN_DEVICE_NAME;
+	WCHAR	deviceName[MAX_PATH];
+	
+	wsprintf(deviceName, DOKAN_DEVICE_NAME, DeviceNumber);
 
-	deviceName[wcslen(deviceName)-1] = (WCHAR)(L'0' + DeviceNumber);
-
-    volumeName[4] = DriveLetter;
+	volumeName[4] = DriveLetter;
 	driveLetterAndSlash[0] = DriveLetter;
 
 	DbgPrintW(L"DeviceNumber %d DriveLetter %c\n", DeviceNumber, DriveLetter);

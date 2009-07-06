@@ -154,16 +154,9 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	instance->DokanOperations = DokanOperations;
 	instance->DriveLetter = DokanOptions->DriveLetter;
 
-	wcscpy_s(instance->DeviceName, sizeof(instance->DeviceName), 
-		DOKAN_DEVICE_NAME);
-
 	if (!DokanStart(instance)) {
 		return DOKAN_START_ERROR;
 	}
-	
-	instance->DeviceName[wcslen(instance->DeviceName)-1] =
-		(WCHAR)(L'0' + instance->DeviceNumber);
-
 
 	if (!DokanMount(instance->DeviceNumber, DokanOptions->DriveLetter)) {
 		SendReleaseIRP2(instance->DeviceNumber);
@@ -560,8 +553,7 @@ SendReleaseIRP2(
 	ULONG	returnedLength;
 	WCHAR	deviceName[MAX_PATH];
 
-	wcscpy_s(deviceName, sizeof(deviceName), DOKAN_DEVICE_NAME);
-	deviceName[wcslen(deviceName)-1] = (WCHAR)(L'0' + DeviceNumber);
+	wsprintf(deviceName, DOKAN_DEVICE_NAME, DeviceNumber);
 
 	DbgPrint("send release\n");
 
@@ -624,6 +616,7 @@ DokanStart(PDOKAN_INSTANCE Instance)
 	} else if (driverInfo.Status == DOKAN_MOUNTED) {
 		Instance->MountId = driverInfo.MountId;
 		Instance->DeviceNumber = driverInfo.DeviceNumber;
+		wsprintf(Instance->DeviceName, DOKAN_DEVICE_NAME, Instance->DeviceNumber);
 		return TRUE;
 	}
 	return FALSE;
