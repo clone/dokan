@@ -44,7 +44,7 @@ DokanServiceCheck(
 		SERVICE_START | SERVICE_STOP | SERVICE_QUERY_STATUS);
 
 	if (serviceHandle == NULL) {
-		CloseHandle(controlHandle);
+		CloseServiceHandle(controlHandle);
 		return FALSE;
 	}
 	
@@ -77,7 +77,7 @@ DokanServiceControl(
 
 	if (serviceHandle == NULL) {
 		DokanDbgPrint("failed to open Service: %d\n", GetLastError());
-		CloseHandle(controlHandle);
+		CloseServiceHandle(controlHandle);
 		return FALSE;
 	}
 	
@@ -146,20 +146,22 @@ DokanControl(PDOKAN_CONTROL Control)
 
 	if(!SetNamedPipeHandleState(pipe, &pipeMode, NULL, NULL)) {
 		DbgPrint("failed to set named pipe state: %d\n", GetLastError());
+		CloseHandle(pipe);
 		return FALSE;
 	}
 
 
 	if(!TransactNamedPipe(pipe, Control, sizeof(DOKAN_CONTROL),
 		Control, sizeof(DOKAN_CONTROL), &readBytes, NULL)) {
-		
 		DbgPrint("failed to transact named pipe: %d\n", GetLastError());
 	}
 
-	if(Control->Status != DOKAN_CONTROL_FAIL)
+	CloseHandle(pipe);
+	if(Control->Status != DOKAN_CONTROL_FAIL) {
 		return TRUE;
-	else
+	} else {
 		return FALSE;
+	}
 }
 
 
@@ -184,17 +186,17 @@ DokanServiceInstall(
 		ServiceFullPath, NULL, NULL, NULL, NULL, NULL);
 	
 	if (serviceHandle == NULL) {
-		if (GetLastError() == ERROR_SERVICE_EXISTS)
+		if (GetLastError() == ERROR_SERVICE_EXISTS) {
 			DokanDbgPrint("Service is already installed\n");
-		else
+		} else {
 			DokanDbgPrint("failted to install service: %d\n", GetLastError());
+		}
 		CloseServiceHandle(controlHandle);
 		return FALSE;
 	}
 	
 	CloseServiceHandle(serviceHandle);
 	CloseServiceHandle(controlHandle);
-
 
 	DokanDbgPrint("Service isntalled\n");
 
@@ -229,9 +231,7 @@ BOOL DOKANAPI
 DokanUnmount(
 	WCHAR DriveLetter)
 {
-	HANDLE pipe;
 	DOKAN_CONTROL control;
-
 
 	SendReleaseIRP(DriveLetter);
 
@@ -252,7 +252,6 @@ DokanMount(
 	ULONG	DeviceNumber,
 	WCHAR	DriveLetter)
 {
-	HANDLE pipe;
 	DOKAN_CONTROL control;
 
 	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
