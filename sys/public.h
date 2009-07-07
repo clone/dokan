@@ -24,7 +24,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000178
+#define DOKAN_VERSION	0x0000179
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 
@@ -253,6 +253,18 @@ typedef struct _EVENT_START {
 	ULONG	Flags;
 	WCHAR	DriveLetter;
 } EVENT_START, *PEVENT_START;
+
+typedef struct _DOKAN_RENAME_INFORMATION {
+	BOOLEAN ReplaceIfExists;
+	ULONG FileNameLength;
+	WCHAR FileName[1];
+} DOKAN_RENAME_INFORMATION, *PDOKAN_RENAME_INFORMATION;
+
+typedef struct _DOKAN_LINK_INFORMATION {
+	BOOLEAN ReplaceIfExists;
+	ULONG FileNameLength;
+	WCHAR FileName[1];
+} DOKAN_LINK_INFORMATION, *PDOKAN_LINK_INFORMATION;
 
 #endif // _PUBLIC_H_
 

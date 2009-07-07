@@ -433,21 +433,32 @@ DokanDispatchSetInformation(
 						Irp->AssociatedIrp.SystemBuffer,
 						irpSp->Parameters.SetFile.Length);
 
+		if (irpSp->Parameters.SetFile.FileInformationClass == FileRenameInformation ||
+			irpSp->Parameters.SetFile.FileInformationClass == FileLinkInformation) {
+			// We need to hanle FileRenameInformation separetly because the structure of FILE_RENAME_INFORMATION
+			// has HANDLE type field, which size is different in 32 bit and 64 bit environment.
+			// This cases problems when driver is 64 bit and user mode library is 32 bit.
+			PFILE_RENAME_INFORMATION renameInfo = (PFILE_RENAME_INFORMATION)Irp->AssociatedIrp.SystemBuffer;			
+			PDOKAN_RENAME_INFORMATION renameContext = 
+				(PDOKAN_RENAME_INFORMATION)((PCHAR)eventContext + eventContext->SetFile.BufferOffset);
 
+			// This code assumes FILE_RENAME_INFORMATION and FILE_LINK_INFORMATION have
+			// the same typse and fields.
+			ASSERT(sizeof(FILE_RENAME_INFORMATION) == sizeof(FILE_LINK_INFORMATION));
 
-		// if Parameters.SetFile.FileObject is specified, relase FILE_RENAME_INFO's file name with
-		// FileObject's file name
-		// buffer size is adjusted above lines
-		if (irpSp->Parameters.SetFile.FileInformationClass == FileRenameInformation
-			&& targetFileObject != NULL) {
-			PFILE_RENAME_INFORMATION renameInfo = 
-				(PFILE_RENAME_INFORMATION)((PCHAR)eventContext + eventContext->SetFile.BufferOffset);
+			renameContext->ReplaceIfExists = renameInfo->ReplaceIfExists;
+			renameContext->FileNameLength = renameInfo->FileNameLength;
+			RtlCopyMemory(renameContext->FileName, renameInfo->FileName, renameInfo->FileNameLength);
 
-			DDbgPrint("  renameInfo->FileNameLength %d\n", renameInfo->FileNameLength);
-			DDbgPrint("  renameInfo->FileName %ws\n", renameInfo->FileName);
-			RtlZeroMemory(renameInfo->FileName, renameInfo->FileNameLength);
-			RtlCopyMemory(renameInfo->FileName, targetFileObject->FileName.Buffer, targetFileObject->FileName.Length);
-			renameInfo->FileNameLength = targetFileObject->FileName.Length;
+			if (targetFileObject != NULL) {
+				// if Parameters.SetFile.FileObject is specified, replase FILE_RENAME_INFO's file name by
+				// FileObject's file name. The buffer size is already adjusted.
+				DDbgPrint("  renameContext->FileNameLength %d\n", renameContext->FileNameLength);
+				DDbgPrint("  renameContext->FileName %ws\n", renameContext->FileName);
+				RtlZeroMemory(renameContext->FileName, renameContext->FileNameLength);
+				RtlCopyMemory(renameContext->FileName, targetFileObject->FileName.Buffer, targetFileObject->FileName.Length);
+				renameContext->FileNameLength = targetFileObject->FileName.Length;
+			}
 		}
 
 		// copy the file name

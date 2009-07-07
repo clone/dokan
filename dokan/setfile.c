@@ -158,8 +158,8 @@ DokanSetLinkInformation(
 	PDOKAN_FILE_INFO	FileInfo,
 	PDOKAN_OPERATIONS	DokanOperations)
 {
-	PFILE_LINK_INFORMATION linkInfo =
-		(PFILE_LINK_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
+	PDOKAN_LINK_INFORMATION linkInfo =
+		(PDOKAN_LINK_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
 	return -1;
 }
 
@@ -171,9 +171,8 @@ PEVENT_CONTEXT		EventContext,
 	 PDOKAN_FILE_INFO	FileInfo,
 	 PDOKAN_OPERATIONS	DokanOperations)
 {
-	PFILE_RENAME_INFORMATION renameInfo =
-		(PFILE_RENAME_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
-		//(PFILE_RENAME_INFORMATION)((PCHAR)&EventContext->SetFile + EventContext->SetFile.BufferOffset);
+	PDOKAN_RENAME_INFORMATION renameInfo =
+		(PDOKAN_RENAME_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
 
 	WCHAR newName[MAX_PATH];
 	ZeroMemory(newName, sizeof(newName));
@@ -235,8 +234,8 @@ DispatchSetInformation(
 
 
 	if (EventContext->SetFile.FileInformationClass == FileRenameInformation) {
-		PFILE_RENAME_INFORMATION renameInfo =
-		(PFILE_RENAME_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
+		PDOKAN_RENAME_INFORMATION renameInfo =
+		(PDOKAN_RENAME_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
 		sizeOfEventInfo += renameInfo->FileNameLength;
 	}
 
@@ -317,8 +316,8 @@ DispatchSetInformation(
 
 			// notice new file name to driver
 			if (EventContext->SetFile.FileInformationClass == FileRenameInformation) {
-				PFILE_RENAME_INFORMATION renameInfo =
-					(PFILE_RENAME_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
+				PDOKAN_RENAME_INFORMATION renameInfo =
+					(PDOKAN_RENAME_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
 				eventInfo->BufferLength = renameInfo->FileNameLength;
 				CopyMemory(eventInfo->Buffer, renameInfo->FileName, renameInfo->FileNameLength);
 			}
