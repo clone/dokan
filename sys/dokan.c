@@ -257,7 +257,6 @@ Return Value:
 		RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
 		IoDeleteSymbolicLink(&symbolicLinkName);
 		IoDeleteDevice(deviceObject);
-		RtlFreeUnicodeString(&symbolicLinkName);
 	}
 
 	DDbgPrint("<== DokanUnload\n");
