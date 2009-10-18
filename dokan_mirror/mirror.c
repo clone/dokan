@@ -746,7 +746,7 @@ MirrorSetAllocationSize(
 	if (GetFileSizeEx(handle, &fileSize)) {
 		if (AllocSize < fileSize.QuadPart) {
 			fileSize.QuadPart = AllocSize;
-			if (SetFilePointerEx(handle, fileSize, NULL, FILE_BEGIN)) {
+			if (!SetFilePointerEx(handle, fileSize, NULL, FILE_BEGIN)) {
 				DbgPrint(L"\tSetAllocationSize: SetFilePointer eror: %d, "
 					L"offset = %I64d\n\n", GetLastError(), AllocSize);
 				return GetLastError() * -1;
