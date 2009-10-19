@@ -609,7 +609,7 @@ DokanIsNameInExpression(
 		} else if (Expression[ei] == DOS_STAR) {
 
 			ULONG p = ni + 1;
-			ULONG lastDot;
+			ULONG lastDot = 0;
 			ei++;
 			
 			while (Name[p] != '\0') {
