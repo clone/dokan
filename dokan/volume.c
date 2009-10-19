@@ -99,13 +99,13 @@ DokanFsVolumeInformation(
 	RtlZeroMemory(fsName, sizeof(fsName));
 
 	status = DokanOperations->GetVolumeInformation(
-				volumeName,			// VolumeNameBuffer
-				sizeof(volumeName),	// VolumeNameSize
-				&volumeSerial,		// VolumeSerialNumber
-				&maxComLength,		// MaximumComponentLength
-				&fsFlags,			// FileSystemFlags
-				fsName,				// FileSystemNameBuffer
-				sizeof(fsName),		// FileSystemNameSize
+				volumeName,							// VolumeNameBuffer
+				sizeof(volumeName) / sizeof(WCHAR), // VolumeNameSize
+				&volumeSerial,						// VolumeSerialNumber
+				&maxComLength,						// MaximumComponentLength
+				&fsFlags,							// FileSystemFlags
+				fsName,								// FileSystemNameBuffer
+				sizeof(fsName)  / sizeof(WCHAR),	// FileSystemNameSize
 				FileInfo);
 
 	if (status < 0) {
