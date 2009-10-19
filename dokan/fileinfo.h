@@ -21,7 +21,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
 #ifndef _FILEINFO_H_
-#define _FILEINOF_H_
+#define _FILEINFO_H_
 
 
 #define IRP_MJ_CREATE                   0x00
