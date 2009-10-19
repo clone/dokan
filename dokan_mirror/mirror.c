@@ -72,6 +72,7 @@ MirrorCreateFile(
 {
 	WCHAR filePath[MAX_PATH];
 	HANDLE handle;
+	DWORD fileAttr;
 
 	GetFilePath(filePath, FileName);
 
@@ -124,8 +125,9 @@ MirrorCreateFile(
 	MirrorCheckFlag(AccessMode, STANDARD_RIGHTS_WRITE);
 	MirrorCheckFlag(AccessMode, STANDARD_RIGHTS_EXECUTE);
 
-	// when filePath is a directory, flags is changed to the file be opened
-	if (GetFileAttributes(filePath) & FILE_ATTRIBUTE_DIRECTORY) {
+	// When filePath is a directory, needs to change the flag so that the file can be opened.
+	fileAttr = GetFileAttributes(filePath);
+	if (fileAttr && fileAttr & FILE_ATTRIBUTE_DIRECTORY) {
 		FlagsAndAttributes |= FILE_FLAG_BACKUP_SEMANTICS;
 		//AccessMode = 0;
 	}
