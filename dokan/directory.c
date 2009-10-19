@@ -546,8 +546,13 @@ DispatchDirectoryInformation(
 
 		// there is no matched file
 		if (index <0) {
-			DbgPrint("  STATUS_NO_MORE_FILES\n");
-			eventInfo->Status = STATUS_NO_MORE_FILES;
+			if (EventContext->Directory.FileIndex == 0) {
+				DbgPrint("  STATUS_NO_SUCH_FILE\n");
+				eventInfo->Status = STATUS_NO_SUCH_FILE;
+			} else {
+				DbgPrint("  STATUS_NO_MORE_FILES\n");
+				eventInfo->Status = STATUS_NO_MORE_FILES;
+			}
 			eventInfo->BufferLength = 0;
 			eventInfo->Directory.Index = EventContext->Directory.FileIndex;
 
