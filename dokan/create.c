@@ -162,7 +162,7 @@ DispatchCreate(
 
 		int error = status * -1;
 		
-		DbgPrint("CreteFile status = %d\n", status);
+		DbgPrint("CreateFile status = %d\n", status);
 		if (EventContext->Flags & SL_OPEN_TARGET_DIRECTORY) {
 			DokanDbgPrint("SL_OPEN_TARGET_DIRECTORY spcefied\n");
 		}

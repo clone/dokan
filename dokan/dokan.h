@@ -139,7 +139,7 @@ typedef struct _DOKAN_OPERATIONS {
 		PDOKAN_FILE_INFO);  //  (see PFillFindData definition)
 
 
-	// You should implement either FindFires or FindFilesWithPattern
+	// You should implement either FindFiles or FindFilesWithPattern
 	int (DOKAN_CALLBACK *FindFilesWithPattern) (
 		LPCWSTR,			// PathName
 		LPCWSTR,			// SearchPattern
@@ -226,12 +226,12 @@ typedef struct _DOKAN_OPERATIONS {
 	// see Win32 API GetVolumeInformation
 	int (DOKAN_CALLBACK *GetVolumeInformation) (
 		LPWSTR, // VolumeNameBuffer
-		DWORD,	// VolumeNameSize
+		DWORD,	// VolumeNameSize in num of chars
 		LPDWORD,// VolumeSerialNumber
-		LPDWORD,// MaximumComponentLength
+		LPDWORD,// MaximumComponentLength in num of chars
 		LPDWORD,// FileSystemFlags
 		LPWSTR,	// FileSystemNameBuffer
-		DWORD,	// FileSystemNameSize
+		DWORD,	// FileSystemNameSize in num of chars
 		PDOKAN_FILE_INFO);
 
 
