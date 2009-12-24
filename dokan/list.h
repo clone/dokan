@@ -41,7 +41,7 @@ BOOLEAN
 IsListEmpty(
     const LIST_ENTRY * ListHead)
 {
-    return (BOOLEAN)(ListHead->Flink == ListHead);
+    return (BOOLEAN)(ListHead == NULL || ListHead->Flink == ListHead);
 }
 
 FORCEINLINE
@@ -52,11 +52,15 @@ RemoveEntryList(
     PLIST_ENTRY Blink;
     PLIST_ENTRY Flink;
 
-    Flink = Entry->Flink;
-    Blink = Entry->Blink;
-    Blink->Flink = Flink;
-    Flink->Blink = Blink;
-    return (BOOLEAN)(Flink == Blink);
+	if (Entry != NULL) {
+    	Flink = Entry->Flink;
+    	Blink = Entry->Blink;
+    	Blink->Flink = Flink;
+    	Flink->Blink = Blink;
+		return (BOOLEAN)(Flink == Blink);
+	}
+	/* Assumes the list is empty */
+    return TRUE;
 }
 
 FORCEINLINE
