@@ -96,6 +96,11 @@ Return Value:
 			__leave;
 		}
 
+		CcFlushCache(&fcb->SectionObjectPointers, NULL, 0, NULL);
+		CcPurgeCacheSection(&fcb->SectionObjectPointers, NULL, 0, FALSE);
+		CcUninitializeCacheMap(fileObject, NULL, NULL);
+		fileObject->Flags |= FO_CLEANUP_COMPLETE;
+
 		eventContext->Context = ccb->UserContext;
 		//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
 
@@ -140,8 +145,6 @@ DokanCompleteCleanup(
 	PDokanVCB			vcb;
 	PFILE_OBJECT		fileObject;
 
-	//FsRtlEnterFileSystem();
-
 	DDbgPrint("==> DokanCompleteCleanup\n");
 
 	irp   = IrpEntry->Irp;
@@ -167,20 +170,11 @@ DokanCompleteCleanup(
 		FsRtlNotifyCleanup(vcb->NotifySync, &vcb->DirNotifyList, ccb);
 	}
 
-	CcFlushCache(&fcb->SectionObjectPointers, NULL, 0, NULL);
-	CcPurgeCacheSection(&fcb->SectionObjectPointers, NULL, 0, FALSE);
-	CcUninitializeCacheMap(fileObject, NULL, NULL);
-	fileObject->Flags |= FO_CLEANUP_COMPLETE;
-
-
 	irp->IoStatus.Status = status;
 	irp->IoStatus.Information = 0;
 	IoCompleteRequest(irp, IO_NO_INCREMENT);
 
 	DDbgPrint("<== DokanCompleteCleanup\n");
-
-	//FsRtlExitFileSystem();
-
 }
 
 
