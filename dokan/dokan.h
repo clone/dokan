@@ -60,6 +60,8 @@ typedef struct _DOKAN_FILE_INFO {
 	ULONG	ProcessId;    // process id for the thread that originally requested a given I/O operation
 	UCHAR	IsDirectory;  // requesting a directory file
 	UCHAR	DeleteOnClose; // Delete on when "cleanup" is called
+	UCHAR	PagingIo;	// Read or write is paging IO
+	UCHAR	Dummy;
 	PDOKAN_OPTIONS DokanOptions;
 } DOKAN_FILE_INFO, *PDOKAN_FILE_INFO;
 

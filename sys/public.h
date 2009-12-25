@@ -24,7 +24,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000179
+#define DOKAN_VERSION	0x0000180
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 
@@ -75,6 +75,8 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #define DOKAN_FILE_OPENED		4
 #define DOKAN_DIR_MATCH_ALL		8
 #define DOKAN_DELETE_ON_CLOSE	16
+#define DOKAN_PAGING_IO			32
+#define DOKAN_SYNCHRONOUS_IO	64
 
 
 // used in DOKAN_START->DeviceType

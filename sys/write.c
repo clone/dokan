@@ -118,6 +118,14 @@ DokanDispatchWrite(
 		// more bigger memory.
 		Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = eventContext;
 
+		
+		if (Irp->Flags & IRP_PAGING_IO) {
+			eventContext->FileFlags |= DOKAN_PAGING_IO;
+		}
+		if (fileObject->Flags & FO_SYNCHRONOUS_IO) {
+			eventContext->FileFlags |= DOKAN_SYNCHRONOUS_IO;
+		}
+
 		// offset of file to write
 		eventContext->Write.ByteOffset = irpSp->Parameters.Write.ByteOffset;
 

@@ -61,14 +61,14 @@ IOCTL_EVENT_INFO:
 
 VOID
 SetCommonEventContext(
-	__in PDokanDCB	Dcb,
-	__in PEVENT_CONTEXT		EventContext,
-	__in PIRP				Irp,
-	__in PDokanCCB			Ccb)
+	__in PDokanDCB		Dcb,
+	__in PEVENT_CONTEXT	EventContext,
+	__in PIRP			Irp,
+	__in PDokanCCB		Ccb)
 {
 	PIO_STACK_LOCATION  irpSp;
 
-	irpSp			= IoGetCurrentIrpStackLocation(Irp);
+	irpSp = IoGetCurrentIrpStackLocation(Irp);
 
 	EventContext->MountId		= Dcb->MountId;
 	EventContext->MajorFunction = irpSp->MajorFunction;
@@ -86,9 +86,9 @@ SetCommonEventContext(
 PEVENT_CONTEXT
 AllocateEventContext(
 	__in PDokanDCB	Dcb,
-	__in PIRP				Irp,
-	__in ULONG				EventContextLength,
-	__in PDokanCCB			Ccb
+	__in PIRP		Irp,
+	__in ULONG		EventContextLength,
+	__in PDokanCCB	Ccb
 	)
 {
 	ULONG driverContextLength;
@@ -98,8 +98,9 @@ AllocateEventContext(
 	driverContextLength = EventContextLength - sizeof(EVENT_CONTEXT) + sizeof(DRIVER_EVENT_CONTEXT);
 	driverEventContext = ExAllocatePool(driverContextLength);
 
-	if (driverEventContext == NULL)
+	if (driverEventContext == NULL) {
 		return NULL;
+	}
 
 	RtlZeroMemory(driverEventContext, driverContextLength);
 	InitializeListHead(&driverEventContext->ListEntry);

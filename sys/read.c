@@ -162,6 +162,13 @@ Return Value:
 		eventContext->Context = ccb->UserContext;
 		//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
 
+		if (Irp->Flags & IRP_PAGING_IO) {
+			eventContext->FileFlags |= DOKAN_PAGING_IO;
+		}
+		if (fileObject->Flags & FO_SYNCHRONOUS_IO) {
+			eventContext->FileFlags |= DOKAN_SYNCHRONOUS_IO;
+		}
+
 		// offset of file to read
 		eventContext->Read.ByteOffset = byteOffset;
 

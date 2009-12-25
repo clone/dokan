@@ -476,7 +476,12 @@ DispatchCommon(
 
 	DokanFileInfo->ProcessId	= EventContext->ProcessId;
 	DokanFileInfo->DokanOptions = DokanInstance->DokanOptions;
-	DokanFileInfo->DeleteOnClose = (UCHAR)(EventContext->FileFlags & DOKAN_DELETE_ON_CLOSE);
+	if (EventContext->FileFlags & DOKAN_DELETE_ON_CLOSE) {
+		DokanFileInfo->DeleteOnClose = 1;
+	}
+	if (EventContext->FileFlags & DOKAN_PAGING_IO) {
+		DokanFileInfo->PagingIo = 1;
+	}
 
 	//DbgPrint("### OpenInfo %X\n", openInfo);
 
