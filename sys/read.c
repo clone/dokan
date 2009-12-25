@@ -212,15 +212,17 @@ DokanCompleteRead(
 	ULONG				bufferLen  = 0;
 	PVOID				buffer	   = NULL;
 	PDokanCCB			ccb;
+	PFILE_OBJECT		fileObject;
 
-	//FsRtlEnterFileSystem();
+	fileObject = IrpEntry->FileObject;
+	ASSERT(fileObject != NULL);
 
-	DDbgPrint("==> DokanCompleteRead %wZ\n", &IrpEntry->FileObject->FileName);
+	DDbgPrint("==> DokanCompleteRead %wZ\n", &fileObject->FileName);
 
 	irp   = IrpEntry->Irp;
 	irpSp = IrpEntry->IrpSp;	
 
-	ccb = IrpEntry->FileObject->FsContext2;
+	ccb = fileObject->FsContext2;
 	ASSERT(ccb != NULL);
 
 	ccb->UserContext = EventInfo->Context;
@@ -235,43 +237,42 @@ DokanCompleteRead(
 		buffer	= irp->UserBuffer;
 	}
 
-
 	// available buffer size
 	bufferLen = irpSp->Parameters.Read.Length;
-
 
 	DDbgPrint("  bufferLen %d, Event.BufferLen %d\n", bufferLen, EventInfo->BufferLength);
 
 	// buffer is not specified or short of length
 	if (bufferLen == 0 || buffer == NULL || bufferLen < EventInfo->BufferLength) {
-
+	
 		readLength  = 0;
 		status		= STATUS_INSUFFICIENT_RESOURCES;
-
 		
 	} else {
 		RtlZeroMemory(buffer, bufferLen);
 		RtlCopyMemory(buffer, EventInfo->Buffer, EventInfo->BufferLength);
 
-		// current offset of file
-		IrpEntry->FileObject->CurrentByteOffset = EventInfo->Read.CurrentByteOffset;
+		if (fileObject->Flags & FO_SYNCHRONOUS_IO && !(irp->Flags & IRP_PAGING_IO)) {
+			// update current byte offset only when synchronous IO and not pagind IO
+			fileObject->CurrentByteOffset = EventInfo->Read.CurrentByteOffset;
+			DDbgPrint("  Updated CurrentByteOffset %I64d\n",
+				fileObject->CurrentByteOffset.QuadPart); 
+		}
 
 		// read length which is acctuary read
 		readLength = EventInfo->BufferLength;
 		status = EventInfo->Status;
-
-		DDbgPrint("  CurrentByteOffset %I64d\n", IrpEntry->FileObject->CurrentByteOffset.QuadPart); 
-		//DDbgPrint("  buffer:%s\n", buffer);
 	}
 
-	if (status == STATUS_SUCCESS)
+	if (status == STATUS_SUCCESS) {
 		DDbgPrint("  STATUS_SUCCESS\n");
-	else if (status == STATUS_INSUFFICIENT_RESOURCES)
+	} else if (status == STATUS_INSUFFICIENT_RESOURCES) {
 		DDbgPrint("  STATUS_INSUFFICIENT_RESOURCES\n");
-	else if (status == STATUS_END_OF_FILE)
+	} else if (status == STATUS_END_OF_FILE) {
 		DDbgPrint("  STATUS_END_OF_FILE\n");
-	else
+	} else {
 		DDbgPrint("  status = 0x%X\n", status);
+	}
 
 	DDbgPrint("  readLength %d\n", readLength);
 	irp->IoStatus.Status = status;
@@ -279,8 +280,6 @@ DokanCompleteRead(
 	IoCompleteRequest(irp, IO_NO_INCREMENT);
 
 	DDbgPrint("<== DokanCompleteRead\n");
-
-	//FsRtlExitFileSystem();
 }
 
 

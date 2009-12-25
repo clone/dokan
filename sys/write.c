@@ -226,15 +226,17 @@ DokanCompleteWrite(
 	ULONG				bufferLen  = 0;
 	PVOID				buffer	   = NULL;
 	PDokanCCB			ccb;
+	PFILE_OBJECT		fileObject;
 
-	//FsRtlEnterFileSystem();
+	fileObject = IrpEntry->FileObject;
+	ASSERT(fileObject != NULL);
 
-	DDbgPrint("==> DokanCompleteWrite %wZ\n", &IrpEntry->FileObject->FileName);
+	DDbgPrint("==> DokanCompleteWrite %wZ\n", &fileObject->FileName);
 
 	irp   = IrpEntry->Irp;
 	irpSp = IrpEntry->IrpSp;	
 
-	ccb = IrpEntry->FileObject->FsContext2;
+	ccb = fileObject->FsContext2;
 	ASSERT(ccb != NULL);
 
 	ccb->UserContext = EventInfo->Context;
@@ -245,16 +247,18 @@ DokanCompleteWrite(
 	irp->IoStatus.Status = status;
 	irp->IoStatus.Information = EventInfo->BufferLength;
 
-	if (EventInfo->BufferLength != 0) {
-		IrpEntry->FileObject->CurrentByteOffset
-			= EventInfo->Write.CurrentByteOffset;
+	if (EventInfo->BufferLength != 0 &&
+		fileObject->Flags & FO_SYNCHRONOUS_IO &&
+		!(irp->Flags & IRP_PAGING_IO)) {
+		// update current byte offset only when synchronous IO and not pagind IO
+		fileObject->CurrentByteOffset = EventInfo->Write.CurrentByteOffset;
+		DDbgPrint("  Updated CurrentByteOffset %I64d\n",
+			fileObject->CurrentByteOffset.QuadPart);
 	}
 
 	IoCompleteRequest(irp, IO_NO_INCREMENT);
 
 	DokanPrintNTStatus(status);
 	DDbgPrint("<== DokanCompleteWrite\n");
-
-	//FsRtlExitFileSystem();
 }
 
