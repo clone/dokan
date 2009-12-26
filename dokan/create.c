@@ -54,6 +54,7 @@ DispatchCreate(
 	// this will be freed by Close
 	openInfo = malloc(sizeof(DOKAN_OPEN_INFO));
 	ZeroMemory(openInfo, sizeof(DOKAN_OPEN_INFO));
+	openInfo->OpenCount = 2;
 
 	// pass it to driver and when the same handle is used get it back
 	eventInfo->Context = (ULONG64)openInfo;
@@ -229,7 +230,7 @@ DispatchCreate(
 			eventInfo->Create.Flags |= DOKAN_FILE_DIRECTORY;
 	}
 	
-	SendEventInformation(Handle, eventInfo, length);
+	SendEventInformation(Handle, eventInfo, length, DokanInstance);
 	free(eventInfo);
 	return;
 }

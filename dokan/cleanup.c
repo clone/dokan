@@ -35,23 +35,23 @@ DispatchCleanup(
 
 	CheckFileName(EventContext->Cleanup.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
+	eventInfo = DispatchCommon(
+		EventContext, sizeOfEventInfo, DokanInstance, &fileInfo, &openInfo);
 	
 	eventInfo->Status = STATUS_SUCCESS; // return success at any case
-	
-	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
 
-	DbgPrint("###Cleanup %04d\n", openInfo->EventId);
+	DbgPrint("###Cleanup %04d\n", openInfo != NULL ? openInfo->EventId : -1);
 
 	if (DokanInstance->DokanOperations->Cleanup) {
 		// ignore return value
-		DokanInstance->DokanOperations->Cleanup(EventContext->Cleanup.FileName,
-								&fileInfo);
+		DokanInstance->DokanOperations->Cleanup(
+			EventContext->Cleanup.FileName,
+			&fileInfo);
 	}
 
 	openInfo->UserContext = fileInfo.Context;
 
-	SendEventInformation(Handle, eventInfo, sizeOfEventInfo);
+	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);
 
 	free(eventInfo);
 	return;

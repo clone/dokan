@@ -328,7 +328,7 @@ DispatchQueryVolumeInformation(
 	eventInfo->Status = STATUS_NOT_IMPLEMENTED;
 	eventInfo->BufferLength = 0;
 
-	DbgPrint("###QueryVolumeInfo %04d\n", openInfo ? openInfo->EventId : 9999);
+	DbgPrint("###QueryVolumeInfo %04d\n", openInfo ? openInfo->EventId : -1);
 
 	switch (EventContext->Volume.FsInformationClass) {
 	case FileFsVolumeInformation:
@@ -351,7 +351,7 @@ DispatchQueryVolumeInformation(
 		DbgPrint("error unknown volume info %d\n", EventContext->Volume.FsInformationClass);
 	}
 
-	SendEventInformation(Handle, eventInfo, sizeOfEventInfo);
+	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, NULL);
 	free(eventInfo);
 	return;
 }

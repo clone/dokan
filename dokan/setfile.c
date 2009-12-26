@@ -241,11 +241,10 @@ DispatchSetInformation(
 
 	CheckFileName(EventContext->SetFile.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
+	eventInfo = DispatchCommon(
+		EventContext, sizeOfEventInfo, DokanInstance, &fileInfo, &openInfo);
 	
-	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
-
-	DbgPrint("###SetFileInfo %04d\n", openInfo->EventId);
+	DbgPrint("###SetFileInfo %04d\n", openInfo != NULL ? openInfo->EventId : -1);
 
 	switch (EventContext->SetFile.FileInformationClass) {
 		case FileAllocationInformation:
@@ -293,7 +292,6 @@ DispatchSetInformation(
 
 	eventInfo->BufferLength = 0;
 
-
 	if (EventContext->SetFile.FileInformationClass == FileDispositionInformation) {
 		if (status == 0) {
 			PFILE_DISPOSITION_INFORMATION dispositionInfo =
@@ -326,7 +324,7 @@ DispatchSetInformation(
 
 	//DbgPrint("SetInfomation status = %d\n\n", status);
 
-	SendEventInformation(Handle, eventInfo, sizeOfEventInfo);
+	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);
 	free(eventInfo);
 	return;
 }

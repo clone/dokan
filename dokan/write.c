@@ -71,9 +71,8 @@ DispatchWrite(
 	ULONG					sizeOfEventInfo = sizeof(EVENT_INFORMATION);
 
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
-
-	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
+	eventInfo = DispatchCommon(
+		EventContext, sizeOfEventInfo, DokanInstance, &fileInfo, &openInfo);
 
 	// Since driver requested bigger memory,
 	// allocate enough memory and send it to driver
@@ -87,7 +86,7 @@ DispatchWrite(
 
 	CheckFileName(EventContext->Write.FileName);
 
-	DbgPrint("###WriteFile %04d\n", openInfo->EventId);
+	DbgPrint("###WriteFile %04d\n", openInfo != NULL ? openInfo->EventId : -1);
 
 	if (DokanInstance->DokanOperations->WriteFile) {
 		status = DokanInstance->DokanOperations->WriteFile(
@@ -116,7 +115,7 @@ DispatchWrite(
 		eventInfo->BufferLength = writtenLength;
 	}
 
-	SendEventInformation(Handle, eventInfo, sizeOfEventInfo);
+	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);
 	free(eventInfo);
 
 	if (bufferAllocated)

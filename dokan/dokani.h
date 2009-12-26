@@ -62,6 +62,7 @@ typedef struct _DOKAN_INSTANCE
 typedef struct _DOKAN_OPEN_INFO {
 
 	BOOL	IsDirectory;
+	ULONG	OpenCount;
 	ULONG64	Context;
 	ULONG64	UserContext;
 	ULONG	EventId;
@@ -104,7 +105,8 @@ VOID
 SendEventInformation(
 	HANDLE				Handle,
 	PEVENT_INFORMATION	EventInfo,
-	ULONG				EventLength);
+	ULONG				EventLength,
+	PDOKAN_INSTANCE		DokanInstance);
 
 
 PEVENT_INFORMATION
@@ -112,7 +114,8 @@ DispatchCommon(
 	PEVENT_CONTEXT		EventContext,
 	ULONG				SizeOfEventInfo,
 	PDOKAN_INSTANCE		DokanInstance,
-	PDOKAN_FILE_INFO	DokanFileInfo);
+	PDOKAN_FILE_INFO	DokanFileInfo,
+	PDOKAN_OPEN_INFO*	DokanOpenInfo);
 
 
 VOID
@@ -256,6 +259,17 @@ DokanKeepAlive(
 
 ULONG
 GetNTStatus(DWORD ErrorCode);
+
+PDOKAN_OPEN_INFO
+GetDokanOpenInfo(
+	PEVENT_CONTEXT		EventInfomation,
+	PDOKAN_INSTANCE		DokanInstance);
+
+VOID
+ReleaseDokanOpenInfo(
+	PEVENT_INFORMATION	EventInfomation,
+	PDOKAN_INSTANCE		DokanInstance);
+
 
 #ifdef __cplusplus
 }

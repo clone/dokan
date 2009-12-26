@@ -36,13 +36,12 @@ DispatchClose(
 
 	CheckFileName(EventContext->Close.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
-
-	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
+	eventInfo = DispatchCommon(
+		EventContext, sizeOfEventInfo, DokanInstance, &fileInfo, &openInfo);
 
 	eventInfo->Status = STATUS_SUCCESS; // return success at any case
 
-	DbgPrint("###Close %04d\n", openInfo->EventId);
+	DbgPrint("###Close %04d\n", openInfo != NULL ? openInfo->EventId : -1);
 
 	if (DokanInstance->DokanOperations->CloseFile) {
 		// ignore return value
@@ -53,16 +52,14 @@ DispatchClose(
 	// do not send it to the driver
 	//SendEventInformation(Handle, eventInfo, length);
 
+	if (openInfo != NULL) {
+		EnterCriticalSection(&DokanInstance->CriticalSection);
+		openInfo->OpenCount--;
+		LeaveCriticalSection(&DokanInstance->CriticalSection);
+	}
+	ReleaseDokanOpenInfo(eventInfo, DokanInstance);
 	free(eventInfo);
 
-	if (openInfo->DirListHead != NULL) {
-		ClearFindData(openInfo->DirListHead);
-		free(openInfo->DirListHead);
-		openInfo->DirListHead = NULL;
-	}
-
-	free(openInfo);
-	
 	return;
 }
 

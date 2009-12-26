@@ -446,7 +446,8 @@ DispatchDirectoryInformation(
 
 	CheckFileName(EventContext->Directory.DirectoryName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
+	eventInfo = DispatchCommon(
+		EventContext, sizeOfEventInfo, DokanInstance, &fileInfo, &openInfo);
 
 	// check whether this is handled FileInfoClass
 	if (fileInfoClass != FileDirectoryInformation &&
@@ -455,12 +456,12 @@ DispatchDirectoryInformation(
 		fileInfoClass != FileIdBothDirectoryInformation &&
 		fileInfoClass != FileBothDirectoryInformation) {
 		
-		DbgPrint("not suport type %d\n", fileInfoClass);
+		DbgPrint("not suported type %d\n", fileInfoClass);
 
 		// send directory info to driver
 		eventInfo->BufferLength = 0;
 		eventInfo->Status = STATUS_NOT_IMPLEMENTED;
-		SendEventInformation(Handle, eventInfo, sizeOfEventInfo);
+		SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);
 		free(eventInfo);
 		return;
 	}
@@ -469,8 +470,6 @@ DispatchDirectoryInformation(
 	// IMPORTANT!!
 	// this buffer length is fixed in MatchFiles funciton
 	eventInfo->BufferLength		= EventContext->Directory.BufferLength; 
-
-	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
 
 	if (openInfo->DirListHead == NULL) {
 		openInfo->DirListHead = malloc(sizeof(LIST_ENTRY));
@@ -569,7 +568,7 @@ DispatchDirectoryInformation(
 	openInfo->UserContext = fileInfo.Context;
 
 	// send directory information to driver
-	SendEventInformation(Handle, eventInfo, sizeOfEventInfo);
+	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);
 	free(eventInfo);
 	return;
 }

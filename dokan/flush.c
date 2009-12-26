@@ -37,10 +37,10 @@ DispatchFlush(
 
 	CheckFileName(EventContext->Flush.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
-	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
+	eventInfo = DispatchCommon(
+		EventContext, sizeOfEventInfo, DokanInstance, &fileInfo, &openInfo);
 
-	DbgPrint("###Flush %04d\n", openInfo->EventId);
+	DbgPrint("###Flush %04d\n", openInfo != NULL ? openInfo->EventId : -1);
 
 	eventInfo->Status = STATUS_SUCCESS;
 
@@ -56,7 +56,7 @@ DispatchFlush(
 
 	openInfo->UserContext = fileInfo.Context;
 
-	SendEventInformation(Handle, eventInfo, sizeOfEventInfo);
+	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);
 
 	free(eventInfo);
 	return;

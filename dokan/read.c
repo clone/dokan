@@ -34,15 +34,16 @@ DispatchRead(
 	ULONG					readLength = 0;
 	int						status;
 	DOKAN_FILE_INFO			fileInfo;
-	ULONG					sizeOfEventInfo = sizeof(EVENT_INFORMATION) - 8 + EventContext->Read.BufferLength;
+	ULONG					sizeOfEventInfo;
+	
+	sizeOfEventInfo = sizeof(EVENT_INFORMATION) - 8 + EventContext->Read.BufferLength;
 
 	CheckFileName(EventContext->Read.FileName);
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
+	eventInfo = DispatchCommon(
+		EventContext, sizeOfEventInfo, DokanInstance, &fileInfo, &openInfo);
 
-	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
-
-	DbgPrint("###Read %04d\n", openInfo->EventId);
+	DbgPrint("###Read %04d\n", openInfo != NULL ? openInfo->EventId : -1);
 
 	if (DokanInstance->DokanOperations->ReadFile) {
 		status = DokanInstance->DokanOperations->ReadFile(
@@ -71,7 +72,7 @@ DispatchRead(
 		eventInfo->BufferLength = readLength;
 	}
 
-	SendEventInformation(Handle, eventInfo, sizeOfEventInfo);
+	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);
 	free(eventInfo);
 	return;
 }

@@ -409,16 +409,18 @@ VOID
 SendEventInformation(
 	HANDLE				Handle,
 	PEVENT_INFORMATION	EventInfo,
-	ULONG				EventLength)
+	ULONG				EventLength,
+	PDOKAN_INSTANCE		DokanInstance)
 {
 	BOOL	status;
 	ULONG	returnedLength;
 
-
 	//DbgPrint("###EventInfo->Context %X\n", EventInfo->Context);
+	if (DokanInstance != NULL) {
+		ReleaseDokanOpenInfo(EventInfo, DokanInstance);
+	}
 
 	// send event info to driver
-	//printf("\nsend IOCTL_AA_EVENTINFO\n\n");
 	status = DeviceIoControl(
 					Handle,				// Handle to device
 					IOCTL_EVENT_INFO,	// IO Control code
@@ -434,7 +436,6 @@ SendEventInformation(
 		DWORD errorCode = GetLastError();
 		DbgPrint("Dokan Error: Ioctl failed with code %d\n", errorCode );
 	}
-
 }
 
 
@@ -460,19 +461,16 @@ DispatchCommon(
 	PEVENT_CONTEXT		EventContext,
 	ULONG				SizeOfEventInfo,
 	PDOKAN_INSTANCE		DokanInstance,
-	PDOKAN_FILE_INFO	DokanFileInfo)
+	PDOKAN_FILE_INFO	DokanFileInfo,
+	PDOKAN_OPEN_INFO*	DokanOpenInfo)
 {
 	PEVENT_INFORMATION	eventInfo = (PEVENT_INFORMATION)malloc(SizeOfEventInfo);
-	PDOKAN_OPEN_INFO	openInfo;
 
 	RtlZeroMemory(eventInfo, SizeOfEventInfo);
 	RtlZeroMemory(DokanFileInfo, sizeof(DOKAN_FILE_INFO));
 
-	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
-	
 	eventInfo->BufferLength = 0;
 	eventInfo->SerialNumber = EventContext->SerialNumber;
-	eventInfo->Context = (ULONG64)openInfo;
 
 	DokanFileInfo->ProcessId	= EventContext->ProcessId;
 	DokanFileInfo->DokanOptions = DokanInstance->DokanOptions;
@@ -483,17 +481,60 @@ DispatchCommon(
 		DokanFileInfo->PagingIo = 1;
 	}
 
-	//DbgPrint("### OpenInfo %X\n", openInfo);
-
-	if (!openInfo) {
+	*DokanOpenInfo = GetDokanOpenInfo(EventContext, DokanInstance);
+	if (*DokanOpenInfo == NULL) {
 		DbgPrint("error openInfo is NULL\n");
 		return eventInfo;
 	}
 
-	DokanFileInfo->Context		= (ULONG64)openInfo->UserContext;
-	DokanFileInfo->IsDirectory	= (UCHAR)openInfo->IsDirectory;
+	DokanFileInfo->Context		= (ULONG64)(*DokanOpenInfo)->UserContext;
+	DokanFileInfo->IsDirectory	= (UCHAR)(*DokanOpenInfo)->IsDirectory;
+
+	eventInfo->Context = (ULONG64)(*DokanOpenInfo);
 
 	return eventInfo;
+}
+
+
+PDOKAN_OPEN_INFO
+GetDokanOpenInfo(
+	PEVENT_CONTEXT		EventContext,
+	PDOKAN_INSTANCE		DokanInstance)
+{
+	PDOKAN_OPEN_INFO openInfo;
+	EnterCriticalSection(&DokanInstance->CriticalSection);
+
+	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
+	if (openInfo != NULL) {
+		openInfo->OpenCount++;
+	}
+	LeaveCriticalSection(&DokanInstance->CriticalSection);
+	return openInfo;
+}
+
+
+VOID
+ReleaseDokanOpenInfo(
+	PEVENT_INFORMATION	EventInformation,
+	PDOKAN_INSTANCE		DokanInstance)
+{
+	PDOKAN_OPEN_INFO openInfo;
+	EnterCriticalSection(&DokanInstance->CriticalSection);
+
+	openInfo = (PDOKAN_OPEN_INFO)EventInformation->Context;
+	if (openInfo != NULL) {
+		openInfo->OpenCount--;
+		if (openInfo->OpenCount < 1) {
+			if (openInfo->DirListHead != NULL) {
+				ClearFindData(openInfo->DirListHead);
+				free(openInfo->DirListHead);
+				openInfo->DirListHead = NULL;
+			}
+			free(openInfo);
+			EventInformation->Context = 0;
+		}
+	}
+	LeaveCriticalSection(&DokanInstance->CriticalSection);
 }
 
 

@@ -201,26 +201,28 @@ DispatchQueryInformation(
 	PEVENT_INFORMATION			eventInfo;
 	DOKAN_FILE_INFO				fileInfo;
 	BY_HANDLE_FILE_INFORMATION	byHandleFileInfo;
-	ULONG					remainingLength;
-	ULONG					status;
-	int						result;
-	PDOKAN_OPEN_INFO		openInfo;
-	ULONG					sizeOfEventInfo = sizeof(EVENT_INFORMATION) - 8 + EventContext->File.BufferLength;
+	ULONG				remainingLength;
+	ULONG				status;
+	int					result;
+	PDOKAN_OPEN_INFO	openInfo;
+	ULONG				sizeOfEventInfo;
+
+	sizeOfEventInfo = sizeof(EVENT_INFORMATION) - 8 + EventContext->File.BufferLength;
 
 	CheckFileName(EventContext->File.FileName);
 
 	ZeroMemory(&byHandleFileInfo, sizeof(BY_HANDLE_FILE_INFORMATION));
 
-	eventInfo = DispatchCommon(EventContext, sizeOfEventInfo, DokanInstance, &fileInfo);
+	eventInfo = DispatchCommon(
+		EventContext, sizeOfEventInfo, DokanInstance, &fileInfo, &openInfo);
 	
 	eventInfo->BufferLength = EventContext->File.BufferLength;
 
-	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
-
-	DbgPrint("###GetFileInfo %04d\n", openInfo->EventId);
+	DbgPrint("###GetFileInfo %04d\n", openInfo != NULL ? openInfo->EventId : -1);
 
 	if (DokanInstance->DokanOperations->GetFileInformation) {
-		result = DokanInstance->DokanOperations->GetFileInformation(EventContext->File.FileName,
+		result = DokanInstance->DokanOperations->GetFileInformation(
+										EventContext->File.FileName,
 										&byHandleFileInfo,
 										&fileInfo);
 	} else {
@@ -316,7 +318,7 @@ DispatchQueryInformation(
 	// information for FileSystem
 	openInfo->UserContext = fileInfo.Context;
 
-	SendEventInformation(Handle, eventInfo, sizeOfEventInfo);
+	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);
 	free(eventInfo);
 	return;
 
