@@ -51,9 +51,24 @@ Run Ågmirror.exe /r c:\ /l mÅh. This means mirror C driver under M driver. Can y
 To unmount M driver, run Ågdokanctl.exe /u mÅh
 You can see all options of mirror.exe by running mirror.exe without argument.
 
+
 ** Uninstall Driver
 
 Ågdokanctl.exe /r aÅh Uninstall both driver and service.
 Ågdokanctl.exe /r dÅh Uninstall driver.
 Ågdokanctl.exe /r sÅh Uninstall service.
 You should restart your computer after uninstalling driver.
+
+
+** For Windows Vista x64
+
+You are required a code signing certification to install driver on Windows Vista x64.
+You can disable driver signature enforcement using ReadyDriver Plus.
+http://www.citadelindustries.net/readydriverplus/
+
+
+** Windbg
+
+You can debug the driver with Windbg. http://www.microsoft.com/whdc/Devtools/Debugging/default.mspx
+You need to turn debug mode on. http://www.microsoft.com/whdc/driver/tips/Debug_Vista.mspx
+
