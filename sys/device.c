@@ -79,7 +79,13 @@ Return Value:
 			case IOCTL_SERVICE_WAIT:
 				status = DokanRegisterPendingIrpForService(DeviceObject, Irp);
 				break;
-
+			case IOCTL_TEST:
+				if (irpSp->Parameters.DeviceIoControl.OutputBufferLength >= sizeof(ULONG)) {
+					*(ULONG*)Irp->AssociatedIrp.SystemBuffer = DOKAN_VERSION;
+					Irp->IoStatus.Information = sizeof(ULONG);
+					status = STATUS_SUCCESS;
+					break;
+				}
 			default:
 				status = STATUS_INVALID_PARAMETER;
 				break;
