@@ -23,6 +23,13 @@ After installing WDK, launch the build environment from the Start menu. Change t
 Run Ågbuild /wcbgÅh command within each folders.
 
 
+** Embed a manifest in programs
+
+You have to embed a manifest in dokanctrl.exe and mirror.exe when you use Vista or Windows7. 
+In that case, please run the following command within \dokan_mirror and \dokan_control directory.
+"{PATH_TO_MT}\mt.exe" -manifest "mirror.exe.manifest"  -outputresource:"objchk_wlh_amd64\amd64\mirror.exe"
+
+
 ** Install Driver
 
 Now you can get binary programs for example under Åg\dokan\objchk_wlh_x86\i386Åç.
