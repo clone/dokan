@@ -11,11 +11,14 @@ namespace Dokan
         public ulong InfoId;
         public uint ProcessId;
         public bool DeleteOnClose;
+        public bool PagingIo;
 
         public DokanFileInfo()
         {
             Context = null;
             IsDirectory = false;
+            DeleteOnClose = false;
+            PagingIo = false;
             InfoId = 0;
         }
     }

@@ -32,7 +32,8 @@ namespace Dokan
         public uint ProcessId;
         public byte IsDirectory;
         public byte DeleteOnClose;
-        public IntPtr Dummy;
+        public byte PagingIo;
+        public byte Dummy;
     }
 
 
@@ -53,50 +54,53 @@ namespace Dokan
             infoTable_ = new Dictionary<ulong, DokanFileInfo>();
         }
 
-        private DokanFileInfo GetNewFileInfo(ref DOKAN_FILE_INFO FileInfo)
+        private void ConvertFileInfo(ref DOKAN_FILE_INFO rawInfo, DokanFileInfo info)
         {
-            DokanFileInfo info = new DokanFileInfo();
-
-            lock (infoTableLock_)
-            {
-                info.InfoId = ++infoId_;
-
-                FileInfo.Context = info.InfoId;
-                info.IsDirectory = FileInfo.IsDirectory == 1 ? true : false;
-                info.ProcessId = FileInfo.ProcessId;
-
-                // to avoid GC
-                infoTable_[info.InfoId] = info;
-            }
-            return info;
+            info.IsDirectory = rawInfo.IsDirectory == 1;
+            info.ProcessId = rawInfo.ProcessId;
+            info.PagingIo = rawInfo.PagingIo == 1;
+            info.DeleteOnClose = rawInfo.DeleteOnClose == 1;
         }
 
-        private DokanFileInfo GetFileInfo(ref DOKAN_FILE_INFO info)
+        private DokanFileInfo GetNewFileInfo(ref DOKAN_FILE_INFO rawFileInfo)
         {
-            DokanFileInfo fileinfo = null;
+            DokanFileInfo fileInfo = new DokanFileInfo();
+
             lock (infoTableLock_)
             {
-                if (info.Context != 0)
+                fileInfo.InfoId = ++infoId_;
+
+                rawFileInfo.Context = fileInfo.InfoId;
+                ConvertFileInfo(ref rawFileInfo, fileInfo);
+                // to avoid GC
+                infoTable_[fileInfo.InfoId] = fileInfo;
+            }
+            return fileInfo;
+        }
+
+        private DokanFileInfo GetFileInfo(ref DOKAN_FILE_INFO rawFileInfo)
+        {
+            DokanFileInfo fileInfo = null;
+            lock (infoTableLock_)
+            {
+                if (rawFileInfo.Context != 0)
                 {
-                    infoTable_.TryGetValue(info.Context, out fileinfo);
+                    infoTable_.TryGetValue(rawFileInfo.Context, out fileInfo);
                 }
 
-                if (fileinfo == null)
+                if (fileInfo == null)
                 {
                     // bug?
-                    fileinfo = new DokanFileInfo();
+                    fileInfo = new DokanFileInfo();
                 }
-
-                fileinfo.IsDirectory = info.IsDirectory == 1 ? true : false;
-                fileinfo.ProcessId = info.ProcessId;
-                fileinfo.DeleteOnClose = info.DeleteOnClose == 1 ? true : false;
+                ConvertFileInfo(ref rawFileInfo, fileInfo);
             }
-            return fileinfo;
+            return fileInfo;
         }
       
-        private string GetFileName(IntPtr FileName)
+        private string GetFileName(IntPtr fileName)
         {
-            return Marshal.PtrToStringUni(FileName);
+            return Marshal.PtrToStringUni(fileName);
         }
 
 
@@ -133,38 +137,37 @@ namespace Dokan
 
         
         public delegate int CreateFileDelegate(
-            IntPtr FileName,
-            uint AccessMode,
-            uint Share,
-            uint CreationDisposition,
-            uint FlagsAndAttributes,
-            ref DOKAN_FILE_INFO DokanFileInfo);
+            IntPtr rawFilName,
+            uint rawAccessMode,
+            uint rawShare,
+            uint rawCreationDisposition,
+            uint rawFlagsAndAttributes,
+            ref DOKAN_FILE_INFO dokanFileInfo);
 
         public int CreateFileProxy(
-            IntPtr FileName,
-            uint AccessMode,
-            uint Share,
-            uint CreationDisposition,
-            uint FlagsAndAttributes,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            uint rawAccessMode,
+            uint rawShare,
+            uint rawCreationDisposition,
+            uint rawFlagsAndAttributes,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
+                string file = GetFileName(rawFileName);
 
-                string file = GetFileName(FileName);
-
-                DokanFileInfo info = GetNewFileInfo(ref FileInfo);
+                DokanFileInfo info = GetNewFileInfo(ref rawFileInfo);
                 
                 FileAccess access = FileAccess.Read;
                 FileShare share = FileShare.None;
                 FileMode mode = FileMode.Open;
                 FileOptions options = FileOptions.None;
 
-                if ((AccessMode & FILE_READ_DATA) != 0 && (AccessMode & FILE_WRITE_DATA) != 0)
+                if ((rawAccessMode & FILE_READ_DATA) != 0 && (rawAccessMode & FILE_WRITE_DATA) != 0)
                 {
                     access = FileAccess.ReadWrite;
                 }
-                else if ((AccessMode & FILE_WRITE_DATA) != 0)
+                else if ((rawAccessMode & FILE_WRITE_DATA) != 0)
                 {
                     access = FileAccess.Write;
                 }
@@ -173,22 +176,22 @@ namespace Dokan
                     access = FileAccess.Read;
                 }
 
-                if ((Share & FILE_SHARE_READ) != 0)
+                if ((rawShare & FILE_SHARE_READ) != 0)
                 {
                     share = FileShare.Read;
                 }
 
-                if ((Share & FILE_SHARE_WRITE) != 0)
+                if ((rawShare & FILE_SHARE_WRITE) != 0)
                 {
                     share |= FileShare.Write;
                 }
 
-                if ((Share & FILE_SHARE_DELETE) != 0)
+                if ((rawShare & FILE_SHARE_DELETE) != 0)
                 {
                     share |= FileShare.Delete;
                 }
 
-                switch (CreationDisposition)
+                switch (rawCreationDisposition)
                 {
                     case CREATE_NEW:
                         mode = FileMode.CreateNew;
@@ -210,7 +213,7 @@ namespace Dokan
                 int ret = operations_.CreateFile(file, access, share, mode, options, info);
 
                 if (info.IsDirectory)
-                    FileInfo.IsDirectory = 1;
+                    rawFileInfo.IsDirectory = 1;
 
                 return ret;
             }
@@ -229,14 +232,14 @@ namespace Dokan
             ref DOKAN_FILE_INFO FileInfo);
 
         public int OpenDirectoryProxy(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
-                DokanFileInfo info = GetNewFileInfo(ref FileInfo);
+                DokanFileInfo info = GetNewFileInfo(ref rawFileInfo);
                 return operations_.OpenDirectory(file, info);
 
             }
@@ -250,18 +253,18 @@ namespace Dokan
         ////
 
         public delegate int CreateDirectoryDelegate(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int CreateDirectoryProxy(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
-                DokanFileInfo info = GetNewFileInfo(ref FileInfo);
+                DokanFileInfo info = GetNewFileInfo(ref rawFileInfo);
                 return operations_.CreateDirectory(file, info);
 
             }
@@ -275,17 +278,17 @@ namespace Dokan
         ////
 
         public delegate int CleanupDelegate(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int CleanupProxy(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
-                return operations_.Cleanup(file, GetFileInfo(ref FileInfo));
+                string file = GetFileName(rawFileName);
+                return operations_.Cleanup(file, GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -298,21 +301,21 @@ namespace Dokan
         ////
 
         public delegate int CloseFileDelegate(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int CloseFileProxy(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
-                DokanFileInfo info = GetFileInfo(ref FileInfo);
+                string file = GetFileName(rawFileName);
+                DokanFileInfo info = GetFileInfo(ref rawFileInfo);
 
                 int ret = operations_.CloseFile(file, info);
 
-                FileInfo.Context = 0;
+                rawFileInfo.Context = 0;
                 infoTable_.Remove(info.InfoId);
 
                 return ret;
@@ -328,34 +331,34 @@ namespace Dokan
         ////
 
         public delegate int ReadFileDelegate(
-            IntPtr FileName,
-            IntPtr Buffer,
-            uint BufferLength,
-            ref uint ReadLength,
-            long Offset,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            IntPtr rawBuffer,
+            uint rawBufferLength,
+            ref uint rawReadLength,
+            long rawOffset,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int ReadFileProxy(
-            IntPtr FileName,
-            IntPtr Buffer,
-            uint BufferLength,
-            ref uint ReadLength,
-            long Offset,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            IntPtr rawBuffer,
+            uint rawBufferLength,
+            ref uint rawReadLength,
+            long rawOffset,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
-                byte[] buf = new Byte[BufferLength];
+                byte[] buf = new Byte[rawBufferLength];
 
                 uint readLength = 0;
                 int ret = operations_.ReadFile(
-                    file, buf, ref readLength, Offset, GetFileInfo(ref FileInfo));
+                    file, buf, ref readLength, rawOffset, GetFileInfo(ref rawFileInfo));
                 if (ret == 0)
                 {
-                    ReadLength = readLength;
-                    Marshal.Copy(buf, 0, Buffer, (int)BufferLength);
+                    rawReadLength = readLength;
+                    Marshal.Copy(buf, 0, rawBuffer, (int)rawBufferLength);
                 }
                 return ret;
 
@@ -370,33 +373,33 @@ namespace Dokan
         ////
 
         public delegate int WriteFileDelegate(
-            IntPtr FileName,
-            IntPtr Buffer,
-            uint NumberOfBytesToWrite,
-            ref uint NumberOfBytesWritten,
-            long Offset,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            IntPtr rawBuffer,
+            uint rawNumberOfBytesToWrite,
+            ref uint rawNumberOfBytesWritten,
+            long rawOffset,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int WriteFileProxy(
-            IntPtr FileName,
-            IntPtr Buffer,
-            uint NumberOfBytesToWrite,
-            ref uint NumberOfBytesWritten,
-            long Offset,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            IntPtr rawBuffer,
+            uint rawNumberOfBytesToWrite,
+            ref uint rawNumberOfBytesWritten,
+            long rawOffset,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
-                Byte[] buf = new Byte[NumberOfBytesToWrite];
-                Marshal.Copy(Buffer, buf, 0, (int)NumberOfBytesToWrite);
+                Byte[] buf = new Byte[rawNumberOfBytesToWrite];
+                Marshal.Copy(rawBuffer, buf, 0, (int)rawNumberOfBytesToWrite);
 
                 uint bytesWritten = 0;
                 int ret = operations_.WriteFile(
-                    file, buf, ref bytesWritten, Offset, GetFileInfo(ref FileInfo));
+                    file, buf, ref bytesWritten, rawOffset, GetFileInfo(ref rawFileInfo));
                 if (ret == 0)
-                    NumberOfBytesWritten = bytesWritten;
+                    rawNumberOfBytesWritten = bytesWritten;
                 return ret;
 
             }
@@ -410,17 +413,17 @@ namespace Dokan
         ////
 
         public delegate int FlushFileBuffersDelegate(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int FlushFileBuffersProxy(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
-                int ret = operations_.FlushFileBuffers(file, GetFileInfo(ref FileInfo));
+                string file = GetFileName(rawFileName);
+                int ret = operations_.FlushFileBuffers(file, GetFileInfo(ref rawFileInfo));
                 return ret;
 
             }
@@ -439,40 +442,40 @@ namespace Dokan
             ref DOKAN_FILE_INFO FileInfo);
 
         public int GetFileInformationProxy(
-            IntPtr FileName,
-            ref BY_HANDLE_FILE_INFORMATION HandleFileInformation,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            ref BY_HANDLE_FILE_INFORMATION rawHandleFileInformation,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
                 FileInformation fi = new FileInformation();
 
-                int ret = operations_.GetFileInformation(file, fi, GetFileInfo(ref FileInfo));
+                int ret = operations_.GetFileInformation(file, fi, GetFileInfo(ref rawFileInfo));
 
                 if (ret == 0)
                 {
-                    HandleFileInformation.dwFileAttributes = (uint)fi.Attributes;
+                    rawHandleFileInformation.dwFileAttributes = (uint)fi.Attributes;
 
-                    HandleFileInformation.ftCreationTime.dwHighDateTime =
+                    rawHandleFileInformation.ftCreationTime.dwHighDateTime =
                         (int)(fi.CreationTime.ToFileTime() >> 32);
-                    HandleFileInformation.ftCreationTime.dwLowDateTime =
+                    rawHandleFileInformation.ftCreationTime.dwLowDateTime =
                         (int)(fi.CreationTime.ToFileTime() & 0xffffffff);
 
-                    HandleFileInformation.ftLastAccessTime.dwHighDateTime =
+                    rawHandleFileInformation.ftLastAccessTime.dwHighDateTime =
                         (int)(fi.LastAccessTime.ToFileTime() >> 32);
-                    HandleFileInformation.ftLastAccessTime.dwLowDateTime =
+                    rawHandleFileInformation.ftLastAccessTime.dwLowDateTime =
                         (int)(fi.LastAccessTime.ToFileTime() & 0xffffffff);
 
-                    HandleFileInformation.ftLastWriteTime.dwHighDateTime =
+                    rawHandleFileInformation.ftLastWriteTime.dwHighDateTime =
                         (int)(fi.LastWriteTime.ToFileTime() >> 32);
-                    HandleFileInformation.ftLastWriteTime.dwLowDateTime =
+                    rawHandleFileInformation.ftLastWriteTime.dwLowDateTime =
                         (int)(fi.LastWriteTime.ToFileTime() & 0xffffffff);
 
-                    HandleFileInformation.nFileSizeLow =
+                    rawHandleFileInformation.nFileSizeLow =
                         (uint)(fi.Length & 0xffffffff);
-                    HandleFileInformation.nFileSizeHigh =
+                    rawHandleFileInformation.nFileSizeHigh =
                         (uint)(fi.Length >> 32);
                 }
 
@@ -507,28 +510,28 @@ namespace Dokan
         }
 
         private delegate int FILL_FIND_DATA(
-            ref WIN32_FIND_DATA FindData,
-            ref DOKAN_FILE_INFO FileInfo);
+            ref WIN32_FIND_DATA rawFindData,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public delegate int FindFilesDelegate(
-            IntPtr FileName,
-            IntPtr FillFindData, // function pointer
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            IntPtr rawFillFindData, // function pointer
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int FindFilesProxy(
-            IntPtr FileName,
-            IntPtr FillFindData, // function pointer
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            IntPtr rawFillFindData, // function pointer
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
                 ArrayList files = new ArrayList();
-                int ret = operations_.FindFiles(file, files, GetFileInfo(ref FileInfo));
+                int ret = operations_.FindFiles(file, files, GetFileInfo(ref rawFileInfo));
 
                 FILL_FIND_DATA fill = (FILL_FIND_DATA)Marshal.GetDelegateForFunctionPointer(
-                    FillFindData, typeof(FILL_FIND_DATA));
+                    rawFillFindData, typeof(FILL_FIND_DATA));
 
                 if (ret == 0)
                 {
@@ -563,7 +566,7 @@ namespace Dokan
 
                         data.cFileName = fi.FileName;
 
-                        fill(ref data, ref FileInfo);
+                        fill(ref data, ref rawFileInfo);
                     }
 
                 }
@@ -581,20 +584,20 @@ namespace Dokan
         ////
 
         public delegate int SetEndOfFileDelegate(
-            IntPtr FileName,
-            long ByteOffset,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            long rawByteOffset,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int SetEndOfFileProxy(
-            IntPtr FileName,
-            long ByteOffset,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            long rawByteOffset,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
-                return operations_.SetEndOfFile(file, ByteOffset, GetFileInfo(ref FileInfo));
+                return operations_.SetEndOfFile(file, rawByteOffset, GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -607,20 +610,20 @@ namespace Dokan
 
 
         public delegate int SetAllocationSizeDelegate(
-            IntPtr FileName,
-            long Length,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            long rawLength,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int SetAllocationSizeProxy(
-            IntPtr FileName,
-            long Length,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            long rawLength,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
-                return operations_.SetAllocationSize(file, Length, GetFileInfo(ref FileInfo));
+                return operations_.SetAllocationSize(file, rawLength, GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -635,21 +638,21 @@ namespace Dokan
       ////
 
         public delegate int SetFileAttributesDelegate(
-            IntPtr FileName,
-            uint Attributes,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            uint rawAttributes,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int SetFileAttributesProxy(
-            IntPtr FileName,
-            uint Attributes,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            uint rawAttributes,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
-                FileAttributes attr = (FileAttributes)Attributes;
-                return operations_.SetFileAttributes(file, attr, GetFileInfo(ref FileInfo));
+                FileAttributes attr = (FileAttributes)rawAttributes;
+                return operations_.SetFileAttributes(file, attr, GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -662,45 +665,45 @@ namespace Dokan
         ////
 
         public delegate int SetFileTimeDelegate(
-            IntPtr FileName,
-            ref ComTypes.FILETIME CreationTime,
-            ref ComTypes.FILETIME LastAccessTime,
-            ref ComTypes.FILETIME LastWriteTime,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            ref ComTypes.FILETIME rawCreationTime,
+            ref ComTypes.FILETIME rawLastAccessTime,
+            ref ComTypes.FILETIME rawLastWriteTime,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int SetFileTimeProxy(
-            IntPtr FileName,
-            ref ComTypes.FILETIME CreationTime,
-            ref ComTypes.FILETIME LastAccessTime,
-            ref ComTypes.FILETIME LastWriteTime,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            ref ComTypes.FILETIME rawCreationTime,
+            ref ComTypes.FILETIME rawLastAccessTime,
+            ref ComTypes.FILETIME rawLastWriteTime,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
                 long time;
 
-                time = ((long)CreationTime.dwHighDateTime << 32) + (uint)CreationTime.dwLowDateTime;
+                time = ((long)rawCreationTime.dwHighDateTime << 32) + (uint)rawCreationTime.dwLowDateTime;
                 DateTime ctime = DateTime.FromFileTime(time);
                 
                 if (time == 0)
                     ctime = DateTime.MinValue;
 
-                time = ((long)LastAccessTime.dwHighDateTime << 32) + (uint)LastAccessTime.dwLowDateTime;
+                time = ((long)rawLastAccessTime.dwHighDateTime << 32) + (uint)rawLastAccessTime.dwLowDateTime;
                 DateTime atime = DateTime.FromFileTime(time);
 
                 if (time == 0)
                     atime = DateTime.MinValue;
 
-                time = ((long)LastWriteTime.dwHighDateTime << 32) + (uint)LastWriteTime.dwLowDateTime;
+                time = ((long)rawLastWriteTime.dwHighDateTime << 32) + (uint)rawLastWriteTime.dwLowDateTime;
                 DateTime mtime = DateTime.FromFileTime(time);
 
                 if (time == 0)
                     mtime = DateTime.MinValue;
 
                 return operations_.SetFileTime(
-                    file, ctime, atime, mtime, GetFileInfo(ref FileInfo));
+                    file, ctime, atime, mtime, GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -713,18 +716,18 @@ namespace Dokan
         ////
 
         public delegate int DeleteFileDelegate(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int DeleteFileProxy(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
 
-                return operations_.DeleteFile(file, GetFileInfo(ref FileInfo));
+                return operations_.DeleteFile(file, GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -737,17 +740,17 @@ namespace Dokan
         ////
 
         public delegate int DeleteDirectoryDelegate(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int DeleteDirectoryProxy(
-            IntPtr FileName,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
-                return operations_.DeleteDirectory(file, GetFileInfo(ref FileInfo));
+                string file = GetFileName(rawFileName);
+                return operations_.DeleteDirectory(file, GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -760,25 +763,25 @@ namespace Dokan
        ////
 
         public delegate int MoveFileDelegate(
-            IntPtr FileName,
-            IntPtr NewFileName,
-            int ReplaceIfExisting,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            IntPtr rawNewFileName,
+            int rawReplaceIfExisting,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int MoveFileProxy(
-            IntPtr FileName,
-            IntPtr NewFileName,
-            int ReplaceIfExisting,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            IntPtr rawNewFileName,
+            int rawReplaceIfExisting,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
-                string newfile = GetFileName(NewFileName);
+                string file = GetFileName(rawFileName);
+                string newfile = GetFileName(rawNewFileName);
 
                 return operations_.MoveFile(
-                    file, newfile, ReplaceIfExisting != 0 ? true : false,
-                    GetFileInfo(ref FileInfo));
+                    file, newfile, rawReplaceIfExisting != 0 ? true : false,
+                    GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -791,22 +794,22 @@ namespace Dokan
         ////
 
         public delegate int LockFileDelegate(
-            IntPtr FileName,
-            long ByteOffset,
-            long Length,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            long rawByteOffset,
+            long rawLength,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int LockFileProxy(
-            IntPtr FileName,
-            long ByteOffset,
-            long Length,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            long rawByteOffset,
+            long rawLength,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
                 return operations_.LockFile(
-                    file, ByteOffset, Length, GetFileInfo(ref FileInfo));
+                    file, rawByteOffset, rawLength, GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -819,22 +822,22 @@ namespace Dokan
        ////
 
         public delegate int UnlockFileDelegate(
-            IntPtr FileName,
-            long ByteOffset,
-            long Length,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawFileName,
+            long rawByteOffset,
+            long rawLength,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int UnlockFileProxy(
-            IntPtr FileName,
-            long ByteOffset,
-            long Length,
-            ref DOKAN_FILE_INFO FileInfo)
+            IntPtr rawFileName,
+            long rawByteOffset,
+            long rawLength,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                string file = GetFileName(FileName);
+                string file = GetFileName(rawFileName);
                 return operations_.UnlockFile(
-                    file, ByteOffset, Length, GetFileInfo(ref FileInfo));
+                    file, rawByteOffset, rawLength, GetFileInfo(ref rawFileInfo));
 
             }
             catch (Exception e)
@@ -847,24 +850,24 @@ namespace Dokan
         ////
 
         public delegate int GetDiskFreeSpaceDelegate(
-            ref ulong FreeBytesAvailable,
-            ref ulong TotalNumberOfBytes,
-            ref ulong TotalNumberOfFreeBytes,
-            ref DOKAN_FILE_INFO FileInfo);
+            ref ulong rawFreeBytesAvailable,
+            ref ulong rawTotalNumberOfBytes,
+            ref ulong rawTotalNumberOfFreeBytes,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int GetDiskFreeSpaceProxy(
-            ref ulong FreeBytesAvailable,
-            ref ulong TotalNumberOfBytes,
-            ref ulong TotalNumberOfFreeBytes,
-            ref DOKAN_FILE_INFO FileInfo)
+            ref ulong rawFreeBytesAvailable,
+            ref ulong rawTotalNumberOfBytes,
+            ref ulong rawTotalNumberOfFreeBytes,
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
                 return operations_.GetDiskFreeSpace(
-                    ref FreeBytesAvailable,
-                    ref TotalNumberOfBytes,
-                    ref TotalNumberOfFreeBytes,
-                    GetFileInfo(ref FileInfo));
+                    ref rawFreeBytesAvailable,
+                    ref rawTotalNumberOfBytes,
+                    ref rawTotalNumberOfFreeBytes,
+                    GetFileInfo(ref rawFileInfo));
             }
             catch (Exception e)
             {
@@ -874,50 +877,50 @@ namespace Dokan
         }
 
         public delegate int GetVolumeInformationDelegate(
-            IntPtr VolumeNameBuffer,
-            uint VolumeNameSize,
-            ref uint VolumeSerialNumber,
-            ref uint MaximumComponentLength,
-            ref uint FileSystemFlags,
-            IntPtr FileSystemNameBuffer,
-            uint FileSystemNameSize,
-            ref DOKAN_FILE_INFO FileInfo);
+            IntPtr rawVolumeNameBuffer,
+            uint rawVolumeNameSize,
+            ref uint rawVolumeSerialNumber,
+            ref uint rawMaximumComponentLength,
+            ref uint rawFileSystemFlags,
+            IntPtr rawFileSystemNameBuffer,
+            uint rawFileSystemNameSize,
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int GetVolumeInformationProxy(
-            IntPtr VolumeNameBuffer,
-            uint VolumeNameSize,
-            ref uint VolumeSerialNumber,
-            ref uint MaximumComponentLength,
-            ref uint FileSystemFlags,
-            IntPtr FileSystemNameBuffer,
-            uint FileSystemNameSize,
+            IntPtr rawVolumeNameBuffer,
+            uint rawVolumeNameSize,
+            ref uint rawVolumeSerialNumber,
+            ref uint rawMaximumComponentLength,
+            ref uint rawFileSystemFlags,
+            IntPtr rawFileSystemNameBuffer,
+            uint rawFileSystemNameSize,
             ref DOKAN_FILE_INFO FileInfo)
         {
             byte[] volume = System.Text.Encoding.Unicode.GetBytes(options_.VolumeLabel);
-            Marshal.Copy(volume, 0, VolumeNameBuffer, Math.Min((int)VolumeNameSize, volume.Length));
-            VolumeSerialNumber = 0x19831116;
-            MaximumComponentLength = 256;
+            Marshal.Copy(volume, 0, rawVolumeNameBuffer, Math.Min((int)rawVolumeNameSize, volume.Length));
+            rawVolumeSerialNumber = 0x19831116;
+            rawMaximumComponentLength = 256;
 
             // FILE_CASE_SENSITIVE_SEARCH | 
             // FILE_CASE_PRESERVED_NAMES |
             // FILE_UNICODE_ON_DISK
-            FileSystemFlags = 7;
+            rawFileSystemFlags = 7;
 
             byte[] sys = System.Text.Encoding.Unicode.GetBytes("DOKAN");
-            Marshal.Copy(sys, 0, FileSystemNameBuffer, Math.Min((int)FileSystemNameSize, sys.Length));
+            Marshal.Copy(sys, 0, rawFileSystemNameBuffer, Math.Min((int)rawFileSystemNameSize, sys.Length));
             return 0;
         }
 
 
         public delegate int UnmountDelegate(
-            ref DOKAN_FILE_INFO FileInfo);
+            ref DOKAN_FILE_INFO rawFileInfo);
 
         public int UnmountProxy(
-            ref DOKAN_FILE_INFO FileInfo)
+            ref DOKAN_FILE_INFO rawFileInfo)
         {
             try
             {
-                return operations_.Unmount(GetFileInfo(ref FileInfo));
+                return operations_.Unmount(GetFileInfo(ref rawFileInfo));
             }
             catch (Exception e)
             {
