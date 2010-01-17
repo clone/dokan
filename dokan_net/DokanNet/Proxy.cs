@@ -316,8 +316,11 @@ namespace Dokan
                 int ret = operations_.CloseFile(file, info);
 
                 rawFileInfo.Context = 0;
-                infoTable_.Remove(info.InfoId);
 
+                lock (infoTableLock_)
+                {
+                    infoTable_.Remove(info.InfoId);
+                }
                 return ret;
 
             }
