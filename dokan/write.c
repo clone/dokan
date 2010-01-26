@@ -70,7 +70,6 @@ DispatchWrite(
 	BOOL					bufferAllocated = FALSE;
 	ULONG					sizeOfEventInfo = sizeof(EVENT_INFORMATION);
 
-
 	eventInfo = DispatchCommon(
 		EventContext, sizeOfEventInfo, DokanInstance, &fileInfo, &openInfo);
 
@@ -100,7 +99,6 @@ DispatchWrite(
 		status = -1;
 	}
 
-
 	openInfo->UserContext = fileInfo.Context;
 	eventInfo->BufferLength = 0;
 
@@ -108,9 +106,6 @@ DispatchWrite(
 		eventInfo->Status = STATUS_INVALID_PARAMETER;
 	
 	} else {
-		eventInfo->Write.CurrentByteOffset.QuadPart
-			= EventContext->Write.ByteOffset.QuadPart
-			+ writtenLength;
 		eventInfo->Status = STATUS_SUCCESS;
 		eventInfo->BufferLength = writtenLength;
 	}
@@ -123,4 +118,3 @@ DispatchWrite(
 
 	return;
 }
-

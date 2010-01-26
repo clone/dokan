@@ -26,6 +26,7 @@ Dokan library contains LGPL, MIT licensed programs.
 - driver (dokan.sys)             LGPL
 - control program (dokanctl.exe) MIT
 - mount service (mouter.exe)     MIT
+- samples (mirror.c)             MIT
 
 For detals, please check license files.
 LGPL license.lgpl.txt

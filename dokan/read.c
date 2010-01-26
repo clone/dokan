@@ -58,17 +58,14 @@ DispatchRead(
 	}
 
 	openInfo->UserContext = fileInfo.Context;
-
-	eventInfo->Read.CurrentByteOffset = EventContext->Read.ByteOffset;
 	eventInfo->BufferLength = 0;
 
-	if (status < 0)
+	if (status < 0) {
 		eventInfo->Status = STATUS_INVALID_PARAMETER;
-	else if(readLength == 0)
+	} else if(readLength == 0) {
 		eventInfo->Status = STATUS_END_OF_FILE;
-	else {
+	} else {
 		eventInfo->Status = STATUS_SUCCESS;
-		eventInfo->Read.CurrentByteOffset.QuadPart += readLength;
 		eventInfo->BufferLength = readLength;
 	}
 
