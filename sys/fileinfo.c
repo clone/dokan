@@ -373,7 +373,6 @@ DokanDispatchSetInformation(
 
 				DDbgPrint("  FilePositionInformation %lld\n",
 								posInfo->CurrentByteOffset.QuadPart);
-
 				fileObject->CurrentByteOffset = posInfo->CurrentByteOffset;
 
 				status = STATUS_SUCCESS;

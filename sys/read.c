@@ -259,16 +259,18 @@ DokanCompleteRead(
 		RtlZeroMemory(buffer, bufferLen);
 		RtlCopyMemory(buffer, EventInfo->Buffer, EventInfo->BufferLength);
 
-		if (fileObject->Flags & FO_SYNCHRONOUS_IO && !(irp->Flags & IRP_PAGING_IO)) {
+		// read length which is actually read
+		readLength = EventInfo->BufferLength;
+		status = EventInfo->Status;
+
+		if ((fileObject->Flags & FO_SYNCHRONOUS_IO) &&
+			!(irp->Flags & IRP_PAGING_IO)) {
 			// update current byte offset only when synchronous IO and not pagind IO
-			fileObject->CurrentByteOffset = EventInfo->Read.CurrentByteOffset;
+			fileObject->CurrentByteOffset.QuadPart =
+				irpSp->Parameters.Read.ByteOffset.QuadPart + readLength;
 			DDbgPrint("  Updated CurrentByteOffset %I64d\n",
 				fileObject->CurrentByteOffset.QuadPart); 
 		}
-
-		// read length which is acctuary read
-		readLength = EventInfo->BufferLength;
-		status = EventInfo->Status;
 	}
 
 	if (status == STATUS_SUCCESS) {

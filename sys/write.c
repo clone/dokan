@@ -248,18 +248,20 @@ DokanCompleteWrite(
 	ASSERT(ccb != NULL);
 
 	ccb->UserContext = EventInfo->Context;
-	DDbgPrint("   set Context %X\n", (ULONG)ccb->UserContext);
+	//DDbgPrint("   set Context %X\n", (ULONG)ccb->UserContext);
 
 	status = EventInfo->Status;
 
 	irp->IoStatus.Status = status;
 	irp->IoStatus.Information = EventInfo->BufferLength;
 
-	if (EventInfo->BufferLength != 0 &&
+	if (NT_SUCCESS(status) &&
+		EventInfo->BufferLength != 0 &&
 		fileObject->Flags & FO_SYNCHRONOUS_IO &&
 		!(irp->Flags & IRP_PAGING_IO)) {
 		// update current byte offset only when synchronous IO and not pagind IO
-		fileObject->CurrentByteOffset = EventInfo->Write.CurrentByteOffset;
+		fileObject->CurrentByteOffset.QuadPart =
+			irpSp->Parameters.Write.ByteOffset.QuadPart + EventInfo->BufferLength;
 		DDbgPrint("  Updated CurrentByteOffset %I64d\n",
 			fileObject->CurrentByteOffset.QuadPart);
 	}

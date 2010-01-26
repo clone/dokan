@@ -450,6 +450,7 @@ Return Value:
 		fileObject->FsContext2 = ccb;
 		fileObject->PrivateCacheMap = NULL;
 		fileObject->SectionObjectPointer = &fcb->SectionObjectPointers;
+		fileObject->Flags |= FILE_NO_INTERMEDIATE_BUFFERING;
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
 		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
