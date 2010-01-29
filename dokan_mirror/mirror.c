@@ -369,8 +369,6 @@ MirrorReadFile(
 	if (opened)
 		CloseHandle(handle);
 
-	DokanResetTimeout(1000 * 30, DokanFileInfo);
-	Sleep(1000 * 20);
 	return 0;
 }
 

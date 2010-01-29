@@ -289,7 +289,7 @@ DokanDriverVersion();
 BOOL DOKANAPI
 DokanResetTimeout(
 	ULONG				Timeout,	// timeout in millisecond
-	 PDOKAN_FILE_INFO	DokanFileInfo);
+	PDOKAN_FILE_INFO	DokanFileInfo);
 
 
 
