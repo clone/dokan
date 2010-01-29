@@ -312,7 +312,7 @@ DokanFillFileData(
 	PWIN32_FIND_DATAW	FindData,
 	PDOKAN_FILE_INFO	FileInfo)
 {
-	PLIST_ENTRY listHead = (PLIST_ENTRY)FileInfo->DokanContext;
+	PLIST_ENTRY listHead = ((PDOKAN_OPEN_INFO)FileInfo->DokanContext)->DirListHead;
 	PDOKAN_FIND_DATA	findData = malloc(sizeof(DOKAN_FIND_DATA));
 	
 	ZeroMemory(findData, sizeof(DOKAN_FIND_DATA));
@@ -481,9 +481,6 @@ DispatchDirectoryInformation(
 	}
 
 	if (IsListEmpty(openInfo->DirListHead)) {
-
-		// this is used to store directory entries
-		fileInfo.DokanContext = (ULONG64)openInfo->DirListHead;
 
 		DbgPrint("###FindFiles %04d\n", openInfo->EventId);
 

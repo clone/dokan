@@ -39,8 +39,7 @@ DokanCheckKeepAlive(
 	KeQueryTickCount(&tickCount);
 	ExAcquireResourceSharedLite(&Dcb->Resource, TRUE);
 
-	if ( (tickCount.QuadPart - Dcb->TickCount.QuadPart) * KeQueryTimeIncrement()
-		> DOKAN_KEEPALIVE_TIMEOUT * 10000 * 1000) {
+	if (Dcb->TickCount.QuadPart < tickCount.QuadPart) {
 
 		mounted = Dcb->Mounted;
 
@@ -120,8 +119,7 @@ ReleaseTimeoutPendingIrp(
         irpEntry = CONTAINING_RECORD(thisEntry, IRP_ENTRY, ListEntry);
 
 		// this IRP is NOT timeout yet
-		if ( (tickCount.QuadPart - irpEntry->TickCount.QuadPart) * KeQueryTimeIncrement()
-			< DOKAN_IPR_PENDING_TIMEOUT * 10000 * 1000) {
+		if (tickCount.QuadPart < irpEntry->TickCount.QuadPart) {
 			break;
 		}
 
@@ -170,6 +168,61 @@ ReleaseTimeoutPendingIrp(
 	return STATUS_SUCCESS;
 }
 
+
+NTSTATUS
+DokanResetPendingIrpTimeout(
+   __in PDEVICE_OBJECT	DeviceObject,
+   __in PIRP			Irp
+   )
+{
+	KIRQL				oldIrql;
+    PLIST_ENTRY			thisEntry, nextEntry, listHead;
+	PIRP_ENTRY			irpEntry;
+	PDokanVCB			vcb;
+	PEVENT_INFORMATION	eventInfo;
+	ULONG				timeout; // in milisecond
+
+
+	DDbgPrint("==> ResetPendingIrpTimeout\n");
+
+	eventInfo		= (PEVENT_INFORMATION)Irp->AssociatedIrp.SystemBuffer;
+	ASSERT(eventInfo != NULL);
+
+	timeout = eventInfo->ResetTimeout.Timeout;
+	if (DOKAN_IRP_PENDING_TIMEOUT_RESET_MAX < timeout) {
+		timeout = DOKAN_IRP_PENDING_TIMEOUT_RESET_MAX;
+	}
+	
+	vcb = DeviceObject->DeviceExtension;
+	if (GetIdentifierType(vcb) != VCB) {
+		return STATUS_INVALID_PARAMETER;
+	}
+	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
+	KeAcquireSpinLock(&vcb->Dcb->PendingIrp.ListLock, &oldIrql);
+
+	// search corresponding IRP through pending IRP list
+	listHead = &vcb->Dcb->PendingIrp.ListHead;
+
+    for (thisEntry = listHead->Flink; thisEntry != listHead; thisEntry = nextEntry) {
+
+		PIRP				irp;
+		PIO_STACK_LOCATION	irpSp;
+
+        nextEntry = thisEntry->Flink;
+
+        irpEntry = CONTAINING_RECORD(thisEntry, IRP_ENTRY, ListEntry);
+
+		if (irpEntry->SerialNumber != eventInfo->SerialNumber)  {
+			continue;
+		}
+
+		DokanUpdateTimeout(&irpEntry->TickCount, timeout);
+		break;
+	}
+	KeReleaseSpinLock(&vcb->Dcb->PendingIrp.ListLock, oldIrql);
+	DDbgPrint("<== ResetPendingIrpTimeout\n");
+	return STATUS_SUCCESS;
+}
 
 
 VOID
@@ -291,3 +344,13 @@ DokanInformServiceAboutUnmount(
 	return STATUS_SUCCESS;
 }
 
+
+VOID
+DokanUpdateTimeout(
+	__out PLARGE_INTEGER TickCount,
+	__in ULONG	Timeout
+	)
+{
+	KeQueryTickCount(TickCount);
+	TickCount->QuadPart += Timeout * 1000 * 10 / KeQueryTimeIncrement();
+}

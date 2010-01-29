@@ -37,8 +37,7 @@ extern "C" {
 
 
 
-typedef struct _DOKAN_INSTANCE
-{
+typedef struct _DOKAN_INSTANCE {
 	// to ensure that unmount dispatch is called at once
 	CRITICAL_SECTION	CriticalSection;
 
@@ -55,18 +54,17 @@ typedef struct _DOKAN_INSTANCE
 	PDOKAN_OPERATIONS	DokanOperations;
 
 	LIST_ENTRY	ListEntry;
-
 } DOKAN_INSTANCE, *PDOKAN_INSTANCE;
 
 
 typedef struct _DOKAN_OPEN_INFO {
-
-	BOOL	IsDirectory;
-	ULONG	OpenCount;
-	ULONG64	Context;
-	ULONG64	UserContext;
-	ULONG	EventId;
-	PLIST_ENTRY	DirListHead;
+	BOOL			IsDirectory;
+	ULONG			OpenCount;
+	PEVENT_CONTEXT	EventContext;
+	PDOKAN_INSTANCE	DokanInstance;
+	ULONG64			UserContext;
+	ULONG			EventId;
+	PLIST_ENTRY		DirListHead;
 } DOKAN_OPEN_INFO, *PDOKAN_OPEN_INFO;
 
 

@@ -138,7 +138,7 @@ RegisterPendingIrpMain(
 	irpEntry->IrpSp				= irpSp;
 	irpEntry->IrpList			= IrpList;
 
-	KeQueryTickCount(&irpEntry->TickCount);
+	DokanUpdateTimeout(&irpEntry->TickCount, DOKAN_IRP_PENDING_TIMEOUT);
 
 	//DDbgPrint("  Lock IrpList.ListLock\n");
 	ASSERT(KeGetCurrentIrql() <= DISPATCH_LEVEL);
@@ -467,7 +467,7 @@ DokanEventStart(
 	driverInfo->Status = DOKAN_MOUNTED;
 	driverInfo->DriverVersion = DOKAN_VERSION;
 	dcb->Mounted = eventStart.DriveLetter;
-	KeQueryTickCount(&dcb->TickCount);
+	DokanUpdateTimeout(&dcb->TickCount, DOKAN_KEEPALIVE_TIMEOUT);
 
 	dcb->UseAltStream = 0;
 	if (eventStart.Flags & DOKAN_EVENT_ALTERNATIVE_STREAM_ON) {

@@ -283,7 +283,6 @@ DokanCompleteRead(
 		DDbgPrint("  status = 0x%X\n", status);
 	}
 
-	DDbgPrint("  readLength %d\n", readLength);
 	irp->IoStatus.Status = status;
 	irp->IoStatus.Information = readLength;
 	IoCompleteRequest(irp, IO_NO_INCREMENT);

@@ -56,8 +56,8 @@ main(int argc, PCHAR argv[])
 	GetSystemDirectory(driverFullPath, MAX_PATH);
 	wcscat_s(driverFullPath, MAX_PATH, L"\\drivers\\dokan.sys");
 
-	//fwprintf(stderr, L"driver path %s\n", driverFullPath);
-	//fwprintf(stderr, L"mounter path %s\n", mounterFullPath);
+	fwprintf(stderr, L"driver path %s\n", driverFullPath);
+	fwprintf(stderr, L"mounter path %s\n", mounterFullPath);
 
 
 	if (argc == 2 && strlen(argv[1]) == 2 && argv[1][0] == '/' && argv[1][1] == 'v') {

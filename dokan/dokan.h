@@ -284,6 +284,14 @@ DokanVersion();
 ULONG DOKANAPI
 DokanDriverVersion();
 
+// DokanResetTimeout
+//   extends the time out of the current IO operation in driver.
+BOOL DOKANAPI
+DokanResetTimeout(
+	ULONG				Timeout,	// timeout in millisecond
+	 PDOKAN_FILE_INFO	DokanFileInfo);
+
+
 
 // for internal use
 // don't call

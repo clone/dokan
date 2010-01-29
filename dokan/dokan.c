@@ -35,7 +35,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "list.h"
 
 // DokanOptions->DebugMode is ON?
-BOOL	g_DebugMode = FALSE;
+BOOL	g_DebugMode = TRUE;
 
 // DokanOptions->UseStdErr is ON?
 BOOL	g_UseStdErr = FALSE;
@@ -357,53 +357,6 @@ DokanLoop(
 }
 
 
-DWORD WINAPI
-DokanKeepAlive(
-	PDOKAN_INSTANCE DokanInstance)
-{
-	HANDLE	device;
-	ULONG	ReturnedLength;
-	WCHAR   volumeName[] = L"\\\\.\\ :";
-	ULONG	returnedLength;
-	BOOL	status;
-	volumeName[4] = DokanInstance->DokanOptions->DriveLetter;
-
-	device = CreateFile(
-				volumeName,
-				GENERIC_READ | GENERIC_WRITE,       // dwDesiredAccess
-                FILE_SHARE_READ | FILE_SHARE_WRITE, // dwShareMode
-                NULL,                               // lpSecurityAttributes
-                OPEN_EXISTING,                      // dwCreationDistribution
-                0,                                  // dwFlagsAndAttributes
-                NULL                                // hTemplateFile
-			);
-
-    while(device != INVALID_HANDLE_VALUE &&
-		DokanInstance->DokanOptions->DriveLetter != 0) {
-
-		status = DeviceIoControl(
-					device,                 // Handle to device
-					IOCTL_KEEPALIVE,			// IO Control code
-					NULL,		    // Input Buffer to driver.
-					0,			// Length of input buffer in bytes.
-					NULL,           // Output Buffer from driver.
-					0,			// Length of output buffer in bytes.
-					&ReturnedLength,		    // Bytes placed in buffer.
-					NULL                    // synchronous call
-				);
-		if (!status) {
-			break;
-		}
-		Sleep(DOKAN_KEEPALIVE_TIME);
-	}
-
-	CloseHandle(device);
-
-	_endthreadex(0);
-	return 0;
-}
-
-
 
 VOID
 SendEventInformation(
@@ -489,6 +442,7 @@ DispatchCommon(
 
 	DokanFileInfo->Context		= (ULONG64)(*DokanOpenInfo)->UserContext;
 	DokanFileInfo->IsDirectory	= (UCHAR)(*DokanOpenInfo)->IsDirectory;
+	DokanFileInfo->DokanContext = (ULONG64)(*DokanOpenInfo);
 
 	eventInfo->Context = (ULONG64)(*DokanOpenInfo);
 
@@ -507,6 +461,8 @@ GetDokanOpenInfo(
 	openInfo = (PDOKAN_OPEN_INFO)EventContext->Context;
 	if (openInfo != NULL) {
 		openInfo->OpenCount++;
+		openInfo->EventContext = EventContext;
+		openInfo->DokanInstance = DokanInstance;
 	}
 	LeaveCriticalSection(&DokanInstance->CriticalSection);
 	return openInfo;

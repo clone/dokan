@@ -129,10 +129,14 @@ Return Value:
 		case IOCTL_KEEPALIVE:
 			KeEnterCriticalRegion();
 			ExAcquireResourceExclusiveLite(&dcb->Resource, TRUE);
-			KeQueryTickCount(&dcb->TickCount);
+			DokanUpdateTimeout(&dcb->TickCount, DOKAN_KEEPALIVE_TIMEOUT);
 			ExReleaseResourceLite(&dcb->Resource);
 			KeLeaveCriticalRegion();
 			status = STATUS_SUCCESS;
+			break;
+
+		case IOCTL_RESET_TIMEOUT:
+			status = DokanResetPendingIrpTimeout(DeviceObject, Irp);
 			break;
 
 		case IOCTL_DISK_CHECK_VERIFY:

@@ -10,5 +10,6 @@ DokanServiceInstall
 DokanServiceDelete
 DokanVersion
 DokanDriverVersion
+DokanResetTimeout
 DokanNetworkProviderInstall
 DokanNetworkProviderUninstall

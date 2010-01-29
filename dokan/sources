@@ -25,7 +25,8 @@ SOURCES=dokan.c \
 	cleanup.c \
 	create.c \
 	read.c \
-	status.c
+	status.c \
+	timeout.c
 
 UMTYPE=windows
 

@@ -53,16 +53,13 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 #define DRIVER_CONTEXT_EVENT		2
 #define DRIVER_CONTEXT_IRP_ENTRY	3
 
-
-#define DOKAN_NOTIFICATION_TIMEOUT	15 // in seconds
-#define DOKAN_UNMOUNT_NOTIFICATION_TIMEOUT 5 // in seconds
-
-#define DOKAN_IPR_PENDING_TIMEOUT	15 // in seconds
+#define DOKAN_IRP_PENDING_TIMEOUT	(1000 * 15) // in millisecond
+#define DOKAN_IRP_PENDING_TIMEOUT_RESET_MAX (1000 * 60 * 5) // in millisecond
 #define DOKAN_CHECK_INTERVAL		(1000 * 5) // in millisecond
 
-#define DOKAN_KEEPALIVE_TIMEOUT		15 // in seconds
+#define DOKAN_KEEPALIVE_TIMEOUT		(1000 * 15) // in millisecond
 
-//#define USE_DBGPRINT 1
+#define USE_DBGPRINT 1
 
 #ifdef USE_DBGPRINT
 	#define DDbgPrint(...)		DbgPrint(__VA_ARGS__)
@@ -317,6 +314,8 @@ DRIVER_DISPATCH DokanRegisterPendingIrpForService;
 
 DRIVER_DISPATCH DokanCompleteIrp;
 
+DRIVER_DISPATCH DokanResetPendingIrpTimeout;
+
 NTSTATUS
 DokanEventRelease(
 	__in PDEVICE_OBJECT DeviceObject);
@@ -498,6 +497,13 @@ DokanStartEventNotificationThread(
 VOID
 DokanStopEventNotificationThread(
 	__in PDokanDCB	Dcb);
+
+
+VOID
+DokanUpdateTimeout(
+	__out PLARGE_INTEGER KickCount,
+	__in ULONG Timeout);
+
 
 #endif // _DOKAN_H_
 
