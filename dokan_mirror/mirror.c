@@ -409,7 +409,12 @@ MirrorWriteFile(
 		opened = TRUE;
 	}
 
-	if (SetFilePointer(handle, offset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+	if (DokanFileInfo->WriteToEndOfFile) {
+		if (SetFilePointer(handle, 0, NULL, FILE_END) == INVALID_SET_FILE_POINTER) {
+			DbgPrint(L"\tseek error, offset = EOF, error = %d\n", GetLastError());
+			return -1;
+		}
+	} else if (SetFilePointer(handle, offset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
 		DbgPrint(L"\tseek error, offset = %d, error = %d\n", offset, GetLastError());
 		return -1;
 	}

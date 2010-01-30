@@ -433,6 +433,15 @@ DispatchCommon(
 	if (EventContext->FileFlags & DOKAN_PAGING_IO) {
 		DokanFileInfo->PagingIo = 1;
 	}
+	if (EventContext->FileFlags & DOKAN_WRITE_TO_END_OF_FILE) {
+		DokanFileInfo->WriteToEndOfFile = 1;
+	}
+	if (EventContext->FileFlags & DOKAN_SYNCHRONOUS_IO) {
+		DokanFileInfo->SynchronousIo = 1;
+	}
+	if (EventContext->FileFlags & DOKAN_NOCACHE) {
+		DokanFileInfo->Nocache = 1;
+	}
 
 	*DokanOpenInfo = GetDokanOpenInfo(EventContext, DokanInstance);
 	if (*DokanOpenInfo == NULL) {

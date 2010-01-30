@@ -57,12 +57,15 @@ typedef struct _DOKAN_OPTIONS {
 typedef struct _DOKAN_FILE_INFO {
 	ULONG64	Context;      // FileSystem can use this variable
 	ULONG64	DokanContext; // Don't touch this
+	PDOKAN_OPTIONS DokanOptions; // A pointer to DOKAN_OPTIONS which was  passed to DokanMain.
 	ULONG	ProcessId;    // process id for the thread that originally requested a given I/O operation
 	UCHAR	IsDirectory;  // requesting a directory file
 	UCHAR	DeleteOnClose; // Delete on when "cleanup" is called
-	UCHAR	PagingIo;	// Read or write is paging IO
-	UCHAR	Dummy;
-	PDOKAN_OPTIONS DokanOptions;
+	UCHAR	PagingIo;	// Read or write is paging IO.
+	UCHAR	SynchronousIo;  // Read or write is synchronous IO.
+	UCHAR	Nocache;
+	UCHAR	WriteToEndOfFile; //  If true, write to the current end of file instead of Offset parameter.
+
 } DOKAN_FILE_INFO, *PDOKAN_FILE_INFO;
 
 

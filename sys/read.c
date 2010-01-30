@@ -127,16 +127,6 @@ Return Value:
 				__leave;
 			}
 		}
-		
-		if (Irp->Flags & IRP_PAGING_IO) {
-			DDbgPrint("  Paging IO\n");
-		}
-		if (Irp->Flags & IRP_NOCACHE) {
-			DDbgPrint("  Nocache\n");
-		}
-		if (fileObject->Flags & FO_SYNCHRONOUS_IO) {
-			DDbgPrint("  Synchronous IO\n");
-		}
 
 		ccb	= fileObject->FsContext2;
 		ASSERT(ccb != NULL);
@@ -163,10 +153,17 @@ Return Value:
 		//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
 
 		if (Irp->Flags & IRP_PAGING_IO) {
+			DDbgPrint("  Paging IO\n");
 			eventContext->FileFlags |= DOKAN_PAGING_IO;
 		}
 		if (fileObject->Flags & FO_SYNCHRONOUS_IO) {
+			DDbgPrint("  Synchronous IO\n");
 			eventContext->FileFlags |= DOKAN_SYNCHRONOUS_IO;
+		}
+
+		if (Irp->Flags & IRP_NOCACHE) {
+			DDbgPrint("  Nocache\n");
+			eventContext->FileFlags |= DOKAN_NOCACHE;
 		}
 
 		// offset of file to read

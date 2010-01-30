@@ -130,10 +130,17 @@ DokanDispatchWrite(
 		eventContext->Write.ByteOffset = irpSp->Parameters.Write.ByteOffset;
 
 		if (irpSp->Parameters.Write.ByteOffset.LowPart == FILE_WRITE_TO_END_OF_FILE
-			&& irpSp->Parameters.Write.ByteOffset.HighPart == 0xFFFFFFFF) {
+			&& irpSp->Parameters.Write.ByteOffset.HighPart == -1) {
 
-			// TODO: offset should be file size?
+			eventContext->FileFlags |= DOKAN_WRITE_TO_END_OF_FILE;
 			DDbgPrint("  WriteOffset = end of file\n");
+		}
+
+		if ((fileObject->Flags & FO_SYNCHRONOUS_IO) &&
+			(irpSp->Parameters.Write.ByteOffset.QuadPart == 0 ||
+			((irpSp->Parameters.Write.ByteOffset.LowPart == FILE_USE_FILE_POINTER_POSITION) &&
+			(irpSp->Parameters.Write.ByteOffset.HighPart == -1)))) {
+			eventContext->Write.ByteOffset.QuadPart = fileObject->CurrentByteOffset.QuadPart;
 		}
 
 		// the size of buffer to write

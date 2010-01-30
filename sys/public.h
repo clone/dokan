@@ -79,6 +79,8 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #define DOKAN_DELETE_ON_CLOSE	16
 #define DOKAN_PAGING_IO			32
 #define DOKAN_SYNCHRONOUS_IO	64
+#define DOKAN_WRITE_TO_END_OF_FILE 128
+#define DOKAN_NOCACHE			256
 
 
 // used in DOKAN_START->DeviceType
