@@ -332,7 +332,7 @@ Return Value:
 
 		DDbgPrint("==> DokanCreate\n");
 
-		irpSp = IoGetCurrentIrpStackLocation( Irp );
+		irpSp = IoGetCurrentIrpStackLocation(Irp);
 		fileObject = irpSp->FileObject;
 		relatedFileObject = fileObject->RelatedFileObject;
 
@@ -417,7 +417,7 @@ Return Value:
 							relatedFileObject->FileName.Length);
 			// add null char
 			// Because the type of FileName is PWCHAR, the last index is length/sizeof(WCHAR)
-			fileName[relatedFileObject->FileName.Length/sizeof(WCHAR)] = L'\\';
+			fileName[relatedFileObject->FileName.Length/sizeof(WCHAR)] = 0;
 
 			// adjust start address by adding file name length of releated file object and last null char
 			// copy the file name of fileObject
