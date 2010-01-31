@@ -34,6 +34,37 @@ DokanUserFsRequest(
 	irpSp = IoGetCurrentIrpStackLocation(Irp);
 
 	switch(irpSp->Parameters.FileSystemControl.FsControlCode) {
+
+	case FSCTL_REQUEST_OPLOCK_LEVEL_1:
+		DDbgPrint("    FSCTL_REQUEST_OPLOCK_LEVEL_1\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_REQUEST_OPLOCK_LEVEL_2:
+		DDbgPrint("    FSCTL_REQUEST_OPLOCK_LEVEL_2\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_REQUEST_BATCH_OPLOCK:
+		DDbgPrint("    FSCTL_REQUEST_BATCH_OPLOCK\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_OPLOCK_BREAK_ACKNOWLEDGE:
+		DDbgPrint("    FSCTL_OPLOCK_BREAK_ACKNOWLEDGE\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_OPBATCH_ACK_CLOSE_PENDING:
+		DDbgPrint("    FSCTL_OPBATCH_ACK_CLOSE_PENDING\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_OPLOCK_BREAK_NOTIFY:
+		DDbgPrint("    FSCTL_OPLOCK_BREAK_NOTIFY\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
 	case FSCTL_LOCK_VOLUME:
 		DDbgPrint("    FSCTL_LOCK_VOLUME\n");
 		status = STATUS_SUCCESS;
@@ -46,11 +77,7 @@ DokanUserFsRequest(
 
 	case FSCTL_DISMOUNT_VOLUME:
 		DDbgPrint("    FSCTL_DISMOUNT_VOLUME\n");
-		break;
-
-	case FSCTL_MARK_VOLUME_DIRTY:
-		DDbgPrint("    FSCTL_MARK_VOLUME_DIRTY\n");
-		status = STATUS_SUCCESS;
+		status = STATUS_INVALID_PARAMETER;
 		break;
 
 	case FSCTL_IS_VOLUME_MOUNTED:
@@ -60,11 +87,236 @@ DokanUserFsRequest(
 
 	case FSCTL_IS_PATHNAME_VALID:
 		DDbgPrint("    FSCTL_IS_PATHNAME_VALID\n");
-		status = STATUS_SUCCESS;
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_MARK_VOLUME_DIRTY:
+		DDbgPrint("    FSCTL_MARK_VOLUME_DIRTY\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_QUERY_RETRIEVAL_POINTERS:
+		DDbgPrint("    FSCTL_QUERY_RETRIEVAL_POINTERS\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_GET_COMPRESSION:
+		DDbgPrint("    FSCTL_GET_COMPRESSION\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SET_COMPRESSION:
+		DDbgPrint("    FSCTL_SET_COMPRESSION\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_MARK_AS_SYSTEM_HIVE:
+		DDbgPrint("    FSCTL_MARK_AS_SYSTEM_HIVE\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_OPLOCK_BREAK_ACK_NO_2:
+		DDbgPrint("    FSCTL_OPLOCK_BREAK_ACK_NO_2\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_INVALIDATE_VOLUMES:
+		DDbgPrint("    FSCTL_INVALIDATE_VOLUMES\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_QUERY_FAT_BPB:
+		DDbgPrint("    FSCTL_QUERY_FAT_BPB\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_REQUEST_FILTER_OPLOCK:
+		DDbgPrint("    FSCTL_REQUEST_FILTER_OPLOCK\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_FILESYSTEM_GET_STATISTICS:
+		DDbgPrint("    FSCTL_FILESYSTEM_GET_STATISTICS\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_GET_NTFS_VOLUME_DATA:
+		DDbgPrint("    FSCTL_GET_NTFS_VOLUME_DATA\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_GET_NTFS_FILE_RECORD:
+		DDbgPrint("    FSCTL_GET_NTFS_FILE_RECORD\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_GET_VOLUME_BITMAP:
+		DDbgPrint("    FSCTL_GET_VOLUME_BITMAP\n");
+		status = STATUS_INVALID_PARAMETER;
 		break;
 
 	case FSCTL_GET_RETRIEVAL_POINTERS:
 		DDbgPrint("    FSCTL_GET_RETRIEVAL_POINTERS\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_MOVE_FILE:
+		DDbgPrint("    FSCTL_MOVE_FILE\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_IS_VOLUME_DIRTY:
+		DDbgPrint("    FSCTL_IS_VOLUME_DIRTY\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_ALLOW_EXTENDED_DASD_IO:
+		DDbgPrint("    FSCTL_ALLOW_EXTENDED_DASD_IO\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_FIND_FILES_BY_SID:
+		DDbgPrint("    FSCTL_FIND_FILES_BY_SID\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SET_OBJECT_ID:
+		DDbgPrint("    FSCTL_SET_OBJECT_ID\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_GET_OBJECT_ID:
+		DDbgPrint("    FSCTL_GET_OBJECT_ID\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_DELETE_OBJECT_ID:
+		DDbgPrint("    FSCTL_DELETE_OBJECT_ID\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SET_REPARSE_POINT:
+		DDbgPrint("    FSCTL_SET_REPARSE_POINT\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_GET_REPARSE_POINT:
+		DDbgPrint("    FSCTL_GET_REPARSE_POINT\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_DELETE_REPARSE_POINT:
+		DDbgPrint("    FSCTL_DELETE_REPARSE_POINT\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_ENUM_USN_DATA:
+		DDbgPrint("    FSCTL_ENUM_USN_DATA\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SECURITY_ID_CHECK:
+		DDbgPrint("    FSCTL_SECURITY_ID_CHECK\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_READ_USN_JOURNAL:
+		DDbgPrint("    FSCTL_READ_USN_JOURNAL\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SET_OBJECT_ID_EXTENDED:
+		DDbgPrint("    FSCTL_SET_OBJECT_ID_EXTENDED\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_CREATE_OR_GET_OBJECT_ID:
+		DDbgPrint("    FSCTL_CREATE_OR_GET_OBJECT_ID\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SET_SPARSE:
+		DDbgPrint("    FSCTL_SET_SPARSE\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SET_ZERO_DATA:
+		DDbgPrint("    FSCTL_SET_ZERO_DATA\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_QUERY_ALLOCATED_RANGES:
+		DDbgPrint("    FSCTL_QUERY_ALLOCATED_RANGES\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SET_ENCRYPTION:
+		DDbgPrint("    FSCTL_SET_ENCRYPTION\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_ENCRYPTION_FSCTL_IO:
+		DDbgPrint("    FSCTL_ENCRYPTION_FSCTL_IO\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_WRITE_RAW_ENCRYPTED:
+		DDbgPrint("    FSCTL_WRITE_RAW_ENCRYPTED\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_READ_RAW_ENCRYPTED:
+		DDbgPrint("    FSCTL_READ_RAW_ENCRYPTED\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_CREATE_USN_JOURNAL:
+		DDbgPrint("    FSCTL_CREATE_USN_JOURNAL\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_READ_FILE_USN_DATA:
+		DDbgPrint("    FSCTL_READ_FILE_USN_DATA\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_WRITE_USN_CLOSE_RECORD:
+		DDbgPrint("    FSCTL_WRITE_USN_CLOSE_RECORD\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_EXTEND_VOLUME:
+		DDbgPrint("    FSCTL_EXTEND_VOLUME\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_QUERY_USN_JOURNAL:
+		DDbgPrint("    FSCTL_QUERY_USN_JOURNAL\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_DELETE_USN_JOURNAL:
+		DDbgPrint("    FSCTL_DELETE_USN_JOURNAL\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_MARK_HANDLE:
+		DDbgPrint("    FSCTL_MARK_HANDLE\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SIS_COPYFILE:
+		DDbgPrint("    FSCTL_SIS_COPYFILE\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_SIS_LINK_FILES:
+		DDbgPrint("    FSCTL_SIS_LINK_FILES\n");
+		status = STATUS_INVALID_PARAMETER;
+		break;
+
+	case FSCTL_RECALL_FILE:
+		DDbgPrint("    FSCTL_RECALL_FILE\n");
 		status = STATUS_INVALID_PARAMETER;
 		break;
 
@@ -103,26 +355,34 @@ DokanDispatchFileSystemControl(
 		switch(irpSp->MinorFunction) {
 		case IRP_MN_KERNEL_CALL:
 			DDbgPrint("	IRP_MN_KERNEL_CALL\n");
+			status = STATUS_INVALID_PARAMETER;
 			break;
+
 		case IRP_MN_LOAD_FILE_SYSTEM:
 			DDbgPrint("	IRP_MN_LOAD_FILE_SYSTEM\n");
+			status = STATUS_INVALID_PARAMETER;
 			break;
+
 		case IRP_MN_MOUNT_VOLUME:
 			DDbgPrint("	IRP_MN_MOUNT_VOLUME\n");
+			status = STATUS_INVALID_PARAMETER;
 			break;
+
 		case IRP_MN_USER_FS_REQUEST:
-			{
-				DDbgPrint("	IRP_MN_USER_FS_REQUEST\n");
-				DDbgPrint("  code %d\n", irpSp->Parameters.FileSystemControl.FsControlCode);
-				status = DokanUserFsRequest(DeviceObject, Irp);
-			}
+			DDbgPrint("	IRP_MN_USER_FS_REQUEST\n");
+			status = DokanUserFsRequest(DeviceObject, Irp);
 			break;
+
 		case IRP_MN_VERIFY_VOLUME:
 			DDbgPrint("	IRP_MN_VERIFY_VOLUME\n");
+			status = STATUS_INVALID_PARAMETER;
 			break;
+
 		default:
 			DDbgPrint("  unknown %d\n", irpSp->MinorFunction);
+			status = STATUS_INVALID_PARAMETER;
 			break;
+
 		}
 
 	} __finally {

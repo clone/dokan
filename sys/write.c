@@ -117,12 +117,13 @@ DokanDispatchWrite(
 		// saves pointer in DiverContext to copy EventContext after allocating
 		// more bigger memory.
 		Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = eventContext;
-
 		
 		if (Irp->Flags & IRP_PAGING_IO) {
+			DDbgPrint("  Paging IO\n");
 			eventContext->FileFlags |= DOKAN_PAGING_IO;
 		}
 		if (fileObject->Flags & FO_SYNCHRONOUS_IO) {
+			DDbgPrint("  Synchronous IO\n");
 			eventContext->FileFlags |= DOKAN_SYNCHRONOUS_IO;
 		}
 
@@ -266,7 +267,7 @@ DokanCompleteWrite(
 		EventInfo->BufferLength != 0 &&
 		fileObject->Flags & FO_SYNCHRONOUS_IO &&
 		!(irp->Flags & IRP_PAGING_IO)) {
-		// update current byte offset only when synchronous IO and not pagind IO
+		// update current byte offset only when synchronous IO and not paging IO
 		fileObject->CurrentByteOffset.QuadPart =
 			irpSp->Parameters.Write.ByteOffset.QuadPart + EventInfo->BufferLength;
 		DDbgPrint("  Updated CurrentByteOffset %I64d\n",

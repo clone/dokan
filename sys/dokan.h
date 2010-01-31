@@ -505,5 +505,9 @@ DokanUpdateTimeout(
 	__in ULONG Timeout);
 
 
+VOID
+PrintIdType(
+	__in VOID* Id);
+
 #endif // _DOKAN_H_
 

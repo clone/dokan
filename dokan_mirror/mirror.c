@@ -496,6 +496,7 @@ MirrorGetFileInformation(
 		// FileName is a root directory
 		// in this case, FindFirstFile can't get directory information
 		if (wcslen(FileName) == 1) {
+			DbgPrint(L"  root dir\n");
 			HandleFileInformation->dwFileAttributes = GetFileAttributes(filePath);
 
 		} else {
@@ -512,9 +513,12 @@ MirrorGetFileInformation(
 			HandleFileInformation->ftLastWriteTime = find.ftLastWriteTime;
 			HandleFileInformation->nFileSizeHigh = find.nFileSizeHigh;
 			HandleFileInformation->nFileSizeLow = find.nFileSizeLow;
-			DbgPrint(L"\tFindFiles OK\n");
+			DbgPrint(L"\tFindFiles OK, file size = %d\n", find.nFileSizeLow);
 			FindClose(handle);
 		}
+	} else {
+		DbgPrint(L"\tGetFileInformationByHandle success, file size = %d\n",
+			HandleFileInformation->nFileSizeLow);
 	}
 
 	DbgPrint(L"\n");

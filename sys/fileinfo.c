@@ -125,7 +125,7 @@ DokanDispatchQueryInformation(
 
 					nameInfo->FileNameLength = fcb->FileName.Length;
 					RtlCopyMemory(nameInfo->FileName, fcb->FileName.Buffer, fcb->FileName.Length);
-					info = fcb->FileName.Length + sizeof(ULONG);
+					info = FIELD_OFFSET(FILE_NAME_INFORMATION, FileName[0]) + fcb->FileName.Length;
 					status = STATUS_SUCCESS;
 				}
 				__leave;
@@ -598,10 +598,13 @@ DokanCompleteSetInformation(
 					FILE_ACTION_MODIFIED);
 				break;
 			case FileDispositionInformation:
-				if (fcb->Flags & DOKAN_FILE_DIRECTORY)
+				/*
+				if (fcb->Flags & DOKAN_FILE_DIRECTORY) {
 					DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_DIR_NAME, FILE_ACTION_REMOVED);
-				else
+				} else {
 					DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_FILE_NAME, FILE_ACTION_REMOVED);
+				}
+				*/
 				break;
 			case FileEndOfFileInformation:
 				DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_SIZE, FILE_ACTION_MODIFIED);

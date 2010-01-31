@@ -346,23 +346,37 @@ Return Value:
 		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
 
 		vcb = DeviceObject->DeviceExtension;
+		PrintIdType(vcb);
 		if (GetIdentifierType(vcb) != VCB) {
 			status = STATUS_SUCCESS;
 			__leave;
 		}
-
 		dcb = vcb->Dcb;
 
 		DDbgPrint("  IrpSp->Flags = %d\n", irpSp->Flags);
-		if (irpSp->Flags & SL_CASE_SENSITIVE)
+		if (irpSp->Flags & SL_CASE_SENSITIVE) {
 			DDbgPrint("  IrpSp->Flags SL_CASE_SENSITIVE\n");
-		if (irpSp->Flags & SL_FORCE_ACCESS_CHECK)
+		}
+		if (irpSp->Flags & SL_FORCE_ACCESS_CHECK) {
 			DDbgPrint("  IrpSp->Flags SL_FORCE_ACCESS_CHECK\n");
-		if (irpSp->Flags & SL_OPEN_PAGING_FILE)
+		}
+		if (irpSp->Flags & SL_OPEN_PAGING_FILE) {
 			DDbgPrint("  IrpSp->Flags SL_OPEN_PAGING_FILE\n");
-		if (irpSp->Flags & SL_OPEN_TARGET_DIRECTORY)
+		}
+		if (irpSp->Flags & SL_OPEN_TARGET_DIRECTORY) {
 			DDbgPrint("  IrpSp->Flags SL_OPEN_TARGET_DIRECTORY\n");
+		}
 
+	   if ((fileObject->FileName.Length > sizeof(WCHAR)) &&
+			(fileObject->FileName.Buffer[1] == L'\\') &&
+			(fileObject->FileName.Buffer[0] == L'\\')) {
+
+			fileObject->FileName.Length -= sizeof(WCHAR);
+
+			RtlMoveMemory(&fileObject->FileName.Buffer[0],
+						&fileObject->FileName.Buffer[1],
+						fileObject->FileName.Length);
+	   }
 
 		if (relatedFileObject != NULL) {
 			fileObject->Vpb = relatedFileObject->Vpb;
@@ -383,6 +397,11 @@ Return Value:
 			__leave;
 		}
 
+	   if (fileObject->FileName.Length > sizeof(WCHAR) &&
+		   fileObject->FileName.Buffer[fileObject->FileName.Length/sizeof(WCHAR)-1] == L'\\') {
+			fileObject->FileName.Length -= sizeof(WCHAR);
+	   }
+
 		if (relatedFileObject) {
 			fileNameLength += relatedFileObject->FileName.Length;
 			fileNameLength += sizeof(WCHAR); // add null char
@@ -393,6 +412,7 @@ Return Value:
 		// don't open file like stream
 		if (!dcb->UseAltStream &&
 			DokanUnicodeStringChar(&fileObject->FileName, L':') != -1) {
+			DDbgPrint("    alternate stream\n");
 			status = STATUS_INVALID_PARAMETER;
 			info = 0;
 			__leave;
@@ -450,7 +470,7 @@ Return Value:
 		fileObject->FsContext2 = ccb;
 		fileObject->PrivateCacheMap = NULL;
 		fileObject->SectionObjectPointer = &fcb->SectionObjectPointers;
-		fileObject->Flags |= FILE_NO_INTERMEDIATE_BUFFERING;
+		//fileObject->Flags |= FILE_NO_INTERMEDIATE_BUFFERING;
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
 		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
@@ -508,8 +528,6 @@ DokanCompleteCreate(
 	irp   = IrpEntry->Irp;
 	irpSp = IrpEntry->IrpSp;	
 
-	FsRtlEnterFileSystem();
-
 	DDbgPrint("==> DokanCompleteCreate\n");
 
 	ccb	= IrpEntry->FileObject->FsContext2;
@@ -527,6 +545,27 @@ DokanCompleteCreate(
 
 	info = EventInfo->Create.Information;
 
+	switch (info) {
+	case FILE_OPENED:
+		DDbgPrint("  FILE_OPENED\n");
+		break;
+	case FILE_CREATED:
+		DDbgPrint("  FILE_CREATED\n");
+		break;
+	case FILE_OVERWRITTEN:
+		DDbgPrint("  FILE_OVERWRITTEN\n");
+		break;
+	case FILE_DOES_NOT_EXIST:
+		DDbgPrint("  FILE_DOES_NOT_EXIST\n");
+		break;
+	case FILE_EXISTS:
+		DDbgPrint("  FILE_EXISTS\n");
+		break;
+	default:
+		DDbgPrint("  info = %d\n", info);
+		break;
+	}
+
 	ExAcquireResourceExclusiveLite(&fcb->Resource, TRUE);
 	if (NT_SUCCESS(status) &&
 		(irpSp->Parameters.Create.Options & FILE_DIRECTORY_FILE ||
@@ -541,20 +580,21 @@ DokanCompleteCreate(
 	ExReleaseResourceLite(&fcb->Resource);
 
 	ExAcquireResourceExclusiveLite(&ccb->Resource, TRUE);
-	if (NT_SUCCESS(status))
+	if (NT_SUCCESS(status)) {
 		ccb->Flags |= DOKAN_FILE_OPENED;
+	}
 	ExReleaseResourceLite(&ccb->Resource);
 
 
 	if (NT_SUCCESS(status)) {
 		if (info == FILE_CREATED) {
-			if (fcb->Flags & DOKAN_FILE_DIRECTORY)
+			if (fcb->Flags & DOKAN_FILE_DIRECTORY) {
 				DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_DIR_NAME, FILE_ACTION_ADDED);
-			else
+			} else {
 				DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_FILE_NAME, FILE_ACTION_ADDED);
+			}
 		}
 	}
-
 	
 	irp->IoStatus.Status = status;
 	irp->IoStatus.Information = info;
@@ -562,8 +602,6 @@ DokanCompleteCreate(
 
 	DokanPrintNTStatus(status);
 	DDbgPrint("<== DokanCompleteCreate\n");
-
-	FsRtlExitFileSystem();
 }
 
 

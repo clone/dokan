@@ -447,6 +447,37 @@ DokanNotifyReportChange(
 }
 
 
+VOID
+PrintIdType(
+	__in VOID* Id)
+{
+	if (Id == NULL) {
+		DbgPrint("    IdType = NULL\n");
+		return;
+	}
+	switch (GetIdentifierType(Id)) {
+	case DGL:
+		DbgPrint("    IdType = DGL\n");
+		break;
+	case DCB:
+		DDbgPrint("   IdType = DCB\n");
+		break;
+	case VCB:
+		DDbgPrint("   IdType = VCB\n");
+		break;
+	case FCB:
+		DDbgPrint("   IdType = FCB\n");
+		break;
+	case CCB:
+		DDbgPrint("   IdType = CCB\n");
+		break;
+	default:
+		DDbgPrint("   IdType = Unknown\n");
+		break;
+	}
+}
+
+
 BOOLEAN
 DokanCheckCCB(
 	__in PDokanDCB	Dcb,
@@ -454,10 +485,12 @@ DokanCheckCCB(
 {
 	ASSERT(Dcb != NULL);
 	if (GetIdentifierType(Dcb) != DCB) {
+		PrintIdType(Dcb);
 		return FALSE;
 	}
 
 	if (Ccb == NULL) {
+		PrintIdType(Dcb);
 		DDbgPrint("   ccb is NULL\n");
 		return FALSE;
 	}
