@@ -57,6 +57,7 @@ DokanControlMount(
 
     if (device != INVALID_HANDLE_VALUE) {
 		DbgPrintW(L"DokanControl Mount failed: %wc: is alredy used\n", DriveLetter);
+		CloseHandle(device);
         return FALSE;
     }
 
