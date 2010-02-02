@@ -78,6 +78,11 @@ DokanDispatchWrite(
 			__leave;
 		}
 
+		if (irpSp->Parameters.Write.Length == 0) {
+			status = STATUS_SUCCESS;
+			__leave;
+		}
+
 		if (Irp->MdlAddress) {
 			DDbgPrint("  use MdlAddress\n");
 			buffer = MmGetSystemAddressForMdlSafe(Irp->MdlAddress, NormalPagePriority);
@@ -89,11 +94,6 @@ DokanDispatchWrite(
 		if (buffer == NULL) {
 			DDbgPrint("  buffer == NULL\n");
 			status = STATUS_INVALID_PARAMETER;
-			__leave;
-		}
-
-		if (irpSp->Parameters.Write.Length == 0) {
-			status = STATUS_SUCCESS;
 			__leave;
 		}
 

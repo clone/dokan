@@ -508,8 +508,6 @@ DokanCompleteSetInformation(
 
 	__try {
 
-		FsRtlEnterFileSystem();
-
 		DDbgPrint("==> DokanCompleteSetInformation\n");
 
 		irp = IrpEntry->Irp;
@@ -539,10 +537,12 @@ DokanCompleteSetInformation(
 				if (EventInfo->Delete.DeleteOnClose) {
 					ccb->Flags |= DOKAN_DELETE_ON_CLOSE;
 					fcb->Flags |= DOKAN_DELETE_ON_CLOSE;
+					DbgPrint("   FileObject->DeletePending = TRUE\n");
 					IrpEntry->FileObject->DeletePending = TRUE;
 				} else {
 					ccb->Flags &= ~DOKAN_DELETE_ON_CLOSE;
 					fcb->Flags &= ~DOKAN_DELETE_ON_CLOSE;
+					DbgPrint("   FileObject->DeletePending = FALSE\n");
 					IrpEntry->FileObject->DeletePending = FALSE;
 				}
 			}
@@ -646,7 +646,5 @@ DokanCompleteSetInformation(
 		DokanPrintNTStatus(status);
 
 		DDbgPrint("<== DokanCompleteSetInformation\n");
-
-		FsRtlExitFileSystem();
 	}
 }
