@@ -12,14 +12,22 @@ namespace Dokan
         public uint ProcessId;
         public bool DeleteOnClose;
         public bool PagingIo;
+        public bool SynchronousIo;
+        public bool Nocache;
+        public bool WriteToEndOfFile;
+        public readonly ulong DokanContext; // for internal use
 
-        public DokanFileInfo()
+        public DokanFileInfo(ulong dokanContext)
         {
             Context = null;
             IsDirectory = false;
             DeleteOnClose = false;
             PagingIo = false;
+            SynchronousIo = false;
+            Nocache = false;
+            WriteToEndOfFile = false;
             InfoId = 0;
+            DokanContext = dokanContext;
         }
     }
 

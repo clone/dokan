@@ -29,11 +29,14 @@ namespace Dokan
     {
         public ulong Context;
         public ulong DokanContext;
+        public uint DokanOptions;
         public uint ProcessId;
         public byte IsDirectory;
         public byte DeleteOnClose;
         public byte PagingIo;
-        public byte Dummy;
+        public byte SynchronousIo;
+        public byte Nocache;
+        public byte WriteToEndOfFile;
     }
 
 
@@ -60,6 +63,9 @@ namespace Dokan
             info.ProcessId = rawInfo.ProcessId;
             info.PagingIo = rawInfo.PagingIo == 1;
             info.DeleteOnClose = rawInfo.DeleteOnClose == 1;
+            info.SynchronousIo = rawInfo.SynchronousIo == 1;
+            info.Nocache = rawInfo.Nocache == 1;
+            info.WriteToEndOfFile = rawInfo.WriteToEndOfFile == 1;
         }
 
         private DokanFileInfo GetNewFileInfo(ref DOKAN_FILE_INFO rawFileInfo)
