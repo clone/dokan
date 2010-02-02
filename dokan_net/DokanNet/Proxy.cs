@@ -29,7 +29,7 @@ namespace Dokan
     {
         public ulong Context;
         public ulong DokanContext;
-        public uint DokanOptions;
+        public IntPtr DokanOptions;
         public uint ProcessId;
         public byte IsDirectory;
         public byte DeleteOnClose;
@@ -70,7 +70,7 @@ namespace Dokan
 
         private DokanFileInfo GetNewFileInfo(ref DOKAN_FILE_INFO rawFileInfo)
         {
-            DokanFileInfo fileInfo = new DokanFileInfo();
+            DokanFileInfo fileInfo = new DokanFileInfo(rawFileInfo.DokanContext);
 
             lock (infoTableLock_)
             {
@@ -97,7 +97,7 @@ namespace Dokan
                 if (fileInfo == null)
                 {
                     // bug?
-                    fileInfo = new DokanFileInfo();
+                    fileInfo = new DokanFileInfo(rawFileInfo.DokanContext);
                 }
                 ConvertFileInfo(ref rawFileInfo, fileInfo);
             }
