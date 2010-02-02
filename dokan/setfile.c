@@ -247,45 +247,45 @@ DispatchSetInformation(
 	DbgPrint("###SetFileInfo %04d\n", openInfo != NULL ? openInfo->EventId : -1);
 
 	switch (EventContext->SetFile.FileInformationClass) {
-		case FileAllocationInformation:
-			status = DokanSetAllocationInformation(
-						EventContext, &fileInfo, DokanInstance->DokanOperations);
-			break;
+	case FileAllocationInformation:
+		status = DokanSetAllocationInformation(
+				EventContext, &fileInfo, DokanInstance->DokanOperations);
+		break;
+	
+	case FileBasicInformation:
+		status = DokanSetBasicInformation(
+				EventContext, &fileInfo, DokanInstance->DokanOperations);
+		break;
 		
-		case FileBasicInformation:
-			status = DokanSetBasicInformation(
-						EventContext, &fileInfo, DokanInstance->DokanOperations);
-			break;
+	case FileDispositionInformation:
+		status = DokanSetDispositionInformation(
+				EventContext, &fileInfo, DokanInstance->DokanOperations);
+		break;
 		
-		case FileDispositionInformation:
-			status = DokanSetDispositionInformation(
-						EventContext, &fileInfo, DokanInstance->DokanOperations);
-			break;
+	case FileEndOfFileInformation:
+		status = DokanSetEndOfFileInformation(
+				EventContext, &fileInfo, DokanInstance->DokanOperations);
+		break;
 		
-		case FileEndOfFileInformation:
-			status = DokanSetEndOfFileInformation(
-						EventContext, &fileInfo, DokanInstance->DokanOperations);
-			break;
+	case FileLinkInformation:
+		status = DokanSetLinkInformation(
+				EventContext, &fileInfo, DokanInstance->DokanOperations);
+		break;
+	
+	case FilePositionInformation:
+		// this case is dealed with by driver
+		status = -1;
+		break;
 		
-		case FileLinkInformation:
-			status = DokanSetLinkInformation(
-						EventContext, &fileInfo, DokanInstance->DokanOperations);
-			break;
-		
-		case FilePositionInformation:
-			// this case is dealed with by driver
-			status = -1;
-			break;
-		
-		case FileRenameInformation:
-			status = DokanSetRenameInformation(
-						EventContext, &fileInfo, DokanInstance->DokanOperations);
-			break;
+	case FileRenameInformation:
+		status = DokanSetRenameInformation(
+				EventContext, &fileInfo, DokanInstance->DokanOperations);
+		break;
 
-		case FileValidDataLengthInformation:
-			status = DokanSetValidDataLengthInformation(
-						EventContext, &fileInfo, DokanInstance->DokanOperations);
-			break;
+	case FileValidDataLengthInformation:
+		status = DokanSetValidDataLengthInformation(
+				EventContext, &fileInfo, DokanInstance->DokanOperations);
+		break;
 	}
 
 	openInfo->UserContext = fileInfo.Context;
@@ -297,10 +297,13 @@ DispatchSetInformation(
 			PFILE_DISPOSITION_INFORMATION dispositionInfo =
 				(PFILE_DISPOSITION_INFORMATION)((PCHAR)EventContext + EventContext->SetFile.BufferOffset);
 			eventInfo->Delete.DeleteOnClose = dispositionInfo->DeleteFile ? TRUE : FALSE;
+			DbgPrint("  dispositionInfo->DeleteFile = %d\n", dispositionInfo->DeleteFile);
 			eventInfo->Status = STATUS_SUCCESS;
 		} else if (status == -ERROR_DIR_NOT_EMPTY) {
+			DbgPrint("  DispositionInfo status = STATUS_DIRECTORY_NOT_EMPTY\n");
 			eventInfo->Status = STATUS_DIRECTORY_NOT_EMPTY;
 		} else if (status < 0) {
+			DbgPrint("  DispositionInfo status = STATUS_CANNOT_DELETE\n");
 			eventInfo->Status = STATUS_CANNOT_DELETE;
 		}
 
