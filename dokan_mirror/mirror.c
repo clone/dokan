@@ -622,7 +622,7 @@ MirrorDeleteDirectory(
 			wcscmp(findData.cFileName, L".") != 0) {
 			FindClose(hFind);
 			DbgPrint(L"  Directory is not empty: %s\n", findData.cFileName);
-			return -(int)STATUS_DIRECTORY_NOT_EMPTY;
+			return -(int)ERROR_DIR_NOT_EMPTY;
 		}
 		if (!FindNextFile(hFind, &findData)) {
 			break;
