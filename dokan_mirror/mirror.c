@@ -603,25 +603,38 @@ MirrorDeleteDirectory(
 	HANDLE	handle = (HANDLE)DokanFileInfo->Context;
 	HANDLE	hFind;
 	WIN32_FIND_DATAW	findData;
+	ULONG	fileLen;
 
+	ZeroMemory(filePath, sizeof(filePath));
 	GetFilePath(filePath, FileName);
 
 	DbgPrint(L"DeleteDirectory %s\n", filePath);
 
-	hFind = FindFirstFile(filePath, &findData);
-	if (hFind == INVALID_HANDLE_VALUE) {
-		if (GetLastError() == ERROR_NO_MORE_FILES) {
-			return 0;
-		} else {
-			DbgPrint(L"\tinvalid file handle. Error is %u\n\n", GetLastError());
-			return -1;
-		}
-	} else {
-		FindClose(hFind);
-		return -(int)STATUS_DIRECTORY_NOT_EMPTY;
+	fileLen = wcslen(filePath);
+	if (filePath[fileLen-1] != L'\\') {
+		filePath[fileLen++] = L'\\';
 	}
-	
-	return 0;
+	filePath[fileLen] = L'*';
+
+	hFind = FindFirstFile(filePath, &findData);
+	while (hFind != INVALID_HANDLE_VALUE) {
+		if (wcscmp(findData.cFileName, L"..") != 0 &&
+			wcscmp(findData.cFileName, L".") != 0) {
+			FindClose(hFind);
+			DbgPrint(L"  Directory is not empty: %s\n", findData.cFileName);
+			return -(int)STATUS_DIRECTORY_NOT_EMPTY;
+		}
+		if (!FindNextFile(hFind, &findData)) {
+			break;
+		}
+	}
+	FindClose(hFind);
+
+	if (GetLastError() == ERROR_NO_MORE_FILES) {
+		return 0;
+	} else {
+		return -1;
+	}
 }
 
 

@@ -598,10 +598,12 @@ DokanCompleteSetInformation(
 					FILE_ACTION_MODIFIED);
 				break;
 			case FileDispositionInformation:
-				if (fcb->Flags & DOKAN_FILE_DIRECTORY) {
-					DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_DIR_NAME, FILE_ACTION_REMOVED);
-				} else {
-					DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_FILE_NAME, FILE_ACTION_REMOVED);
+				if (IrpEntry->FileObject->DeletePending) {
+					if (fcb->Flags & DOKAN_FILE_DIRECTORY) {
+						DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_DIR_NAME, FILE_ACTION_REMOVED);
+					} else {
+						DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_FILE_NAME, FILE_ACTION_REMOVED);
+					}
 				}
 				break;
 			case FileEndOfFileInformation:

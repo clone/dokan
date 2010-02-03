@@ -324,6 +324,7 @@ Return Value:
 	PDokanFCB			fcb;
 	PDokanCCB			ccb;
 	PWCHAR				fileName;
+	BOOLEAN				needBackSlashAfterRelatedFile = FALSE;
 
 	PAGED_CODE();
 
@@ -402,12 +403,21 @@ Return Value:
 			fileObject->FileName.Length -= sizeof(WCHAR);
 	   }
 
+   		fileNameLength = fileObject->FileName.Length;
 		if (relatedFileObject) {
 			fileNameLength += relatedFileObject->FileName.Length;
-			fileNameLength += sizeof(WCHAR); // add null char
-		}
-		fileNameLength += fileObject->FileName.Length;
 
+			if (fileObject->FileName.Length > 0 &&
+				fileObject->FileName.Buffer[0] == '\\') {
+				DbgPrint("  when RelatedFileObject is specified, the file name should be relative path\n");
+				status = STATUS_OBJECT_NAME_INVALID;
+				__leave;
+			}
+			if (relatedFileObject->FileName.Buffer[relatedFileObject->FileName.Length/sizeof(WCHAR)-1] != '\\') {
+				needBackSlashAfterRelatedFile = TRUE;
+				fileNameLength += sizeof(WCHAR);
+			}
+		}
 
 		// don't open file like stream
 		if (!dcb->UseAltStream &&
@@ -435,14 +445,14 @@ Return Value:
 			RtlCopyMemory(fileName,
 							relatedFileObject->FileName.Buffer,
 							relatedFileObject->FileName.Length);
-			// add null char
-			// Because the type of FileName is PWCHAR, the last index is length/sizeof(WCHAR)
-			fileName[relatedFileObject->FileName.Length/sizeof(WCHAR)] = 0;
 
-			// adjust start address by adding file name length of releated file object and last null char
+			if (needBackSlashAfterRelatedFile) {
+				((PWCHAR)fileName)[relatedFileObject->FileName.Length/sizeof(WCHAR)] = '\\';
+			}
 			// copy the file name of fileObject
 			RtlCopyMemory((PCHAR)fileName +
-							relatedFileObject->FileName.Length + sizeof(WCHAR),
+							relatedFileObject->FileName.Length +
+							(needBackSlashAfterRelatedFile? sizeof(WCHAR) : 0),
 							fileObject->FileName.Buffer,
 							fileObject->FileName.Length);
 
