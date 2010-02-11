@@ -57,6 +57,7 @@ DispatchCreate(
 	openInfo->OpenCount = 2;
 	openInfo->EventContext = EventContext;
 	openInfo->DokanInstance = DokanInstance;
+	fileInfo.DokanContext = (ULONG64)openInfo;
 
 	// pass it to driver and when the same handle is used get it back
 	eventInfo->Context = (ULONG64)openInfo;
