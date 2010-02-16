@@ -81,8 +81,8 @@ UninstPage instfiles
 */
 
 !macro DokanSetup
-  ExecWait '"$PROGRAMFILES32\Dokan\DokanLibrary\dokanctrl.exe" /i a' $0
-  DetailPrint "dokanctrl returned $0"
+  ExecWait '"$PROGRAMFILES32\Dokan\DokanLibrary\dokanctl.exe" /i a' $0
+  DetailPrint "dokanctl returned $0"
   WriteUninstaller $PROGRAMFILES32\Dokan\DokanLibrary\uninstaller.exe
 !macroend
 
@@ -151,8 +151,8 @@ SectionEnd
 */
 
 Section "Uninstall"
-  ExecWait '"$PROGRAMFILES32\Dokan\DokanLibrary\dokanctrl.exe" /r a' $0
-  DetailPrint "dokanctrl.exe returned $0"
+  ExecWait '"$PROGRAMFILES32\Dokan\DokanLibrary\dokanctl.exe" /r a' $0
+  DetailPrint "dokanctl.exe returned $0"
 
   RMDir /r $PROGRAMFILES32\Dokan\DokanLibrary
   RMDir $PROGRAMFILES32\Dokan
