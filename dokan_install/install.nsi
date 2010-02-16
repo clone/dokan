@@ -1,4 +1,4 @@
-!define VERSION "1.0.0"
+!define VERSION "0.5.0"
 
 !include LogicLib.nsh
 !include x64.nsh
@@ -83,7 +83,14 @@ UninstPage instfiles
 !macro DokanSetup
   ExecWait '"$PROGRAMFILES32\Dokan\DokanLibrary\dokanctl.exe" /i a' $0
   DetailPrint "dokanctl returned $0"
-  WriteUninstaller $PROGRAMFILES32\Dokan\DokanLibrary\uninstaller.exe
+  WriteUninstaller $PROGRAMFILES32\Dokan\DokanLibrary\DokanUninstall.exe
+
+  ; Write the uninstall keys for Windows
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DokanLibrary" "DisplayName" "Dokan Library ${VERSION}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DokanLibrary" "UninstallString" '"$PROGRAMFILES32\Dokan\DokanLibrary\DokanUninstall.exe"'
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DokanLibrary" "NoModify" 1
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DokanLibrary" "NoRepair" 1
+
 !macroend
 
 !macro X86Driver os
@@ -166,6 +173,9 @@ Section "Uninstall"
     Delete $SYSDIR\drivers\dokan.sys
   ${EndIf}
 
+  ; Remove registry keys
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DokanLibrary"
+
   MessageBox MB_YESNO "A reboot is required to finish the uninstallation. Do you wish to reboot now?" IDNO noreboot
     Reboot
   noreboot:
@@ -173,13 +183,14 @@ Section "Uninstall"
 SectionEnd
 
 Function .onInit
+  IntOp $0 ${SF_SELECTED} | ${SF_RO}
   ${If} ${RunningX64}
-    SectionSetFlags ${section_x86} ${SF_SELECTED}
+    SectionSetFlags ${section_x86} $0
     SectionSetFlags ${section_x86_driver} ${SF_RO}  ; disable
-    SectionSetFlags ${section_x64_driver} ${SF_SELECTED}
+    SectionSetFlags ${section_x64_driver} $0
   ${Else}
-    SectionSetFlags ${section_x86} ${SF_SELECTED}
-    SectionSetFlags ${section_x86_driver} ${SF_SELECTED}
+    SectionSetFlags ${section_x86} $0
+    SectionSetFlags ${section_x86_driver} $0
     SectionSetFlags ${section_x64_driver} ${SF_RO}  ; disable
   ${EndIf}
 
