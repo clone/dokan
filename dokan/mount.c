@@ -23,8 +23,6 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include "dokani.h"
 
-
-
 static BOOL
 DokanServiceCheck(
 	LPCWSTR	ServiceName)
@@ -76,7 +74,7 @@ DokanServiceControl(
 		SERVICE_START | SERVICE_STOP | SERVICE_QUERY_STATUS | DELETE);
 
 	if (serviceHandle == NULL) {
-		DokanDbgPrint("failed to open Service: %d\n", GetLastError());
+		DokanDbgPrintW(L"failed to open Service (%s): %d\n", ServiceName, GetLastError());
 		CloseServiceHandle(controlHandle);
 		return FALSE;
 	}
@@ -85,29 +83,29 @@ DokanServiceControl(
 
 	if (Type == DOKAN_SERVICE_DELETE) {
 		if (DeleteService(serviceHandle)) {
-			DokanDbgPrint("Service deleted\n");
+			DokanDbgPrintW(L"Service (%s) deleted\n", ServiceName);
 			result = TRUE;
 		} else {
-			DokanDbgPrint("failed to delete service: %d\n", GetLastError());
+			DokanDbgPrintW(L"failed to delete service (%s): %d\n", ServiceName, GetLastError());
 			result = FALSE;
 		}
 
 	} else if (ss.dwCurrentState == SERVICE_STOPPED && Type == DOKAN_SERVICE_START) {
 		if (StartService(serviceHandle, 0, NULL)) {
-			DokanDbgPrint("Service started\n");
+			DokanDbgPrintW(L"Service (%s) started\n", ServiceName);
 			result = TRUE;
 		} else {
-			DokanDbgPrint("failed to start service: %d\n", GetLastError());
+			DokanDbgPrintW(L"failed to start service (%s): %d\n", ServiceName, GetLastError());
 			result = FALSE;
 		}
 	
 	} else if (ss.dwCurrentState == SERVICE_RUNNING && Type == DOKAN_SERVICE_STOP) {
 
 		if (ControlService(serviceHandle, SERVICE_CONTROL_STOP, &ss)) {
-			DokanDbgPrint("Service stopped\n");
+			DokanDbgPrintW(L"Service (%s) stopped\n");
 			result = TRUE;
 		} else {
-			DokanDbgPrint("failed to stop service: %d\n", GetLastError());
+			DokanDbgPrintW(L"failed to stop service (%s): %d\n", ServiceName, GetLastError());
 			result = FALSE;
 		}
 	}
@@ -187,9 +185,9 @@ DokanServiceInstall(
 	
 	if (serviceHandle == NULL) {
 		if (GetLastError() == ERROR_SERVICE_EXISTS) {
-			DokanDbgPrint("Service is already installed\n");
+			DokanDbgPrintW(L"Service (%s) is already installed\n", ServiceName);
 		} else {
-			DokanDbgPrint("failted to install service: %d\n", GetLastError());
+			DokanDbgPrintW(L"failted to install service (%s): %d\n", ServiceName, GetLastError());
 		}
 		CloseServiceHandle(controlHandle);
 		return FALSE;
@@ -198,13 +196,13 @@ DokanServiceInstall(
 	CloseServiceHandle(serviceHandle);
 	CloseServiceHandle(controlHandle);
 
-	DokanDbgPrint("Service isntalled\n");
+	DokanDbgPrintW(L"Service (%s) isntalled\n", ServiceName);
 
 	if (DokanServiceControl(ServiceName, DOKAN_SERVICE_START)) {
-		DokanDbgPrint("Service started\n");
+		DokanDbgPrintW(L"Service (%s) started\n", ServiceName);
 		return TRUE;
 	} else {
-		DokanDbgPrint("Service start failed\n");
+		DokanDbgPrintW(L"Service (%s) start failed\n", ServiceName);
 		return FALSE;
 	}
 }
