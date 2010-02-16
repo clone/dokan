@@ -102,7 +102,7 @@ DokanServiceControl(
 	} else if (ss.dwCurrentState == SERVICE_RUNNING && Type == DOKAN_SERVICE_STOP) {
 
 		if (ControlService(serviceHandle, SERVICE_CONTROL_STOP, &ss)) {
-			DokanDbgPrintW(L"Service (%s) stopped\n");
+			DokanDbgPrintW(L"Service (%s) stopped\n", ServiceName);
 			result = TRUE;
 		} else {
 			DokanDbgPrintW(L"failed to stop service (%s): %d\n", ServiceName, GetLastError());
