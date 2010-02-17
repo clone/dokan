@@ -75,14 +75,11 @@ DokanKeepAlive(
 {
 	HANDLE	device;
 	ULONG	ReturnedLength;
-	WCHAR   deviceName[MAX_PATH];
 	ULONG	returnedLength;
 	BOOL	status;
 
-	wsprintf(deviceName, DOKAN_DEVICE_NAME, DokanInstance->DeviceNumber);
-
 	device = CreateFile(
-				deviceName,
+				DokanInstance->DeviceName,
 				GENERIC_READ | GENERIC_WRITE,       // dwDesiredAccess
                 FILE_SHARE_READ | FILE_SHARE_WRITE, // dwShareMode
                 NULL,                               // lpSecurityAttributes
