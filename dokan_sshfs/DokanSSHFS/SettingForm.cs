@@ -183,9 +183,12 @@ namespace DokanSSHFS
 
             if (DokanNet.DokanUnmount(opt.DriveLetter) < 0)
             {
-                // ª‚ªŽ¸”s‚µ‚½‚ç–¾Ž¦“I‚Éconnection‚ðØ‚é
-                sshfs.Unmount(null);
+                // If DokanUmount failed, call sshfs.Unmount to disconnect.
+                ;// sshfs.Unmount(null);
             }
+            // This should be called from Dokan, but not called.
+            // Call here explicitly.
+            sshfs.Unmount(null); 
             unmount.Visible = false;
             mount.Visible = true;
         }
@@ -205,7 +208,6 @@ namespace DokanSSHFS
             public void Start()
             {
                 System.IO.Directory.SetCurrentDirectory(Application.StartupPath);
-
                 int ret = DokanNet.DokanMain(opt_, sshfs_);
                 if (ret < 0)
                 {
@@ -250,7 +252,10 @@ namespace DokanSSHFS
             Debug.WriteLine("SSHFS Thread Waitting");
 
             if (dokan.IsAlive)
+            {
+                Debug.WriteLine("doka.Join");
                 dokan.Join();
+            }
             
             Debug.WriteLine("SSHFS Thread End");
             Application.Exit();

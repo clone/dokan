@@ -16,8 +16,6 @@ namespace DokanSSHFS
         {
             //ConsoleWin.Open();
 
-            
-
             string[] args = System.Environment.GetCommandLineArgs();
             foreach (string arg in args)
             {
