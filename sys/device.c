@@ -127,12 +127,17 @@ Return Value:
 			break;
 
 		case IOCTL_KEEPALIVE:
-			KeEnterCriticalRegion();
-			ExAcquireResourceExclusiveLite(&dcb->Resource, TRUE);
-			DokanUpdateTimeout(&dcb->TickCount, DOKAN_KEEPALIVE_TIMEOUT);
-			ExReleaseResourceLite(&dcb->Resource);
-			KeLeaveCriticalRegion();
-			status = STATUS_SUCCESS;
+			if (dcb->Mounted) {
+				KeEnterCriticalRegion();
+				ExAcquireResourceExclusiveLite(&dcb->Resource, TRUE);
+				DokanUpdateTimeout(&dcb->TickCount, DOKAN_KEEPALIVE_TIMEOUT);
+				ExReleaseResourceLite(&dcb->Resource);
+				KeLeaveCriticalRegion();
+				status = STATUS_SUCCESS;
+			} else {
+				DDbgPrint(" device is not mounted\n");
+				status = STATUS_INSUFFICIENT_RESOURCES;
+			}
 			break;
 
 		case IOCTL_RESET_TIMEOUT:
