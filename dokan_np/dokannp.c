@@ -33,12 +33,12 @@ NPGetCaps(
 		break;
  
 	case WNNC_NET_TYPE:
-		DbgPrintW(L"  WNNC_NET_TYP\n");
+		DbgPrintW(L"  WNNC_NET_TYPE\n");
 		rc = WNNC_NET_RDR2SAMPLE;
 		break;
   
 	case WNNC_DRIVER_VERSION:
-		DbgPrintW(L"  WNNC_DRIVER_VERSIN\n");
+		DbgPrintW(L"  WNNC_DRIVER_VERSION\n");
 		rc = 1;
 		break;
 
@@ -149,11 +149,14 @@ NPAddConnection3(
 	}
 
 	if (QueryDosDevice(local, temp, 128)) {
+		DbgPrintW(L"  WN_ALREADY_CONNECTED");
 		status = WN_ALREADY_CONNECTED;
 	} else {
+		DbgPrintW(L"  WN_BAD_NETNAME");
 		status = WN_BAD_NETNAME;
 	}
 
+	NetResource->
 	return status;
 }
 
