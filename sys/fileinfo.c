@@ -535,10 +535,19 @@ DokanCompleteSetInformation(
 			if (infoClass == FileDispositionInformation) {
 
 				if (EventInfo->Delete.DeleteOnClose) {
-					ccb->Flags |= DOKAN_DELETE_ON_CLOSE;
-					fcb->Flags |= DOKAN_DELETE_ON_CLOSE;
-					DbgPrint("   FileObject->DeletePending = TRUE\n");
-					IrpEntry->FileObject->DeletePending = TRUE;
+
+					if (!MmFlushImageSection(
+						&fcb->SectionObjectPointers,
+						MmFlushForDelete)) {
+						DbgPrint("  Cannot delete user mapped image\n");
+						status = STATUS_CANNOT_DELETE;
+					} else {
+						ccb->Flags |= DOKAN_DELETE_ON_CLOSE;
+						fcb->Flags |= DOKAN_DELETE_ON_CLOSE;
+						DbgPrint("   FileObject->DeletePending = TRUE\n");
+						IrpEntry->FileObject->DeletePending = TRUE;
+					}
+
 				} else {
 					ccb->Flags &= ~DOKAN_DELETE_ON_CLOSE;
 					fcb->Flags &= ~DOKAN_DELETE_ON_CLOSE;
