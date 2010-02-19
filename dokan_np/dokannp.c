@@ -51,7 +51,7 @@ NPGetCaps(
 		break;
 
 	case WNNC_ENUMERATION:
-		DbgPrintW(L"  WNNC_ENUMERATIO\n");
+		DbgPrintW(L"  WNNC_ENUMERATION\n");
 		rc = WNNC_ENUM_LOCAL;
 		break;
 		
@@ -156,7 +156,6 @@ NPAddConnection3(
 		status = WN_BAD_NETNAME;
 	}
 
-	NetResource->
 	return status;
 }
 
