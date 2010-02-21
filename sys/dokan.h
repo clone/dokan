@@ -59,7 +59,7 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 
 #define DOKAN_KEEPALIVE_TIMEOUT		(1000 * 15) // in millisecond
 
-#define USE_DBGPRINT 1
+//#define USE_DBGPRINT 1
 
 #ifdef USE_DBGPRINT
 	#define DDbgPrint(...)		DbgPrint(__VA_ARGS__)

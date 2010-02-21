@@ -100,11 +100,11 @@ UninstPage instfiles
 
 !macro X64Driver os
   ${DisableX64FSRedirection}
-
+/*
   SetOutPath $SYSDIR\drivers
 
     File ..\sys\objchk_${os}_amd64\amd64\dokan.sys
-
+*/
   ${EnableX64FSRedirection}
 !macroend
 
@@ -197,13 +197,15 @@ Function .onInit
   ; Windows Version check
 
   ${If} ${RunningX64}
-    ${If} ${IsWin2003}
-    ${ElseIf} ${IsWinVista}
-    ${ElseIf} ${IsWin7}
-    ${Else}
-      MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows 2003, Vista and 7 for x64."
-      Abort
-    ${EndIf}
+    ;${If} ${IsWin2003}
+    ;${ElseIf} ${IsWinVista}
+    ;${ElseIf} ${IsWin7}
+    ;${Else}
+    ;  MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows 2003, Vista and 7 for x64."
+    ;  Abort
+    ;${EndIf}
+    MessageBox MB_OK "This version doesn't support x64. Please wait for the next version."
+    Abort
   ${Else}
     ${If} ${IsWinXP}
     ${ElseIf} ${IsWin2003}
