@@ -25,10 +25,11 @@ Run Ågbuild /wcbgÅh command within each folders.
 
 ** Embed a manifest in programs
 
-You have to embed a manifest in dokanctrl.exe and mirror.exe when you use Vista or Windows7. 
+You may need to embed a manifest in dokanctrl.exe when you use Vista or Windows7. 
 In that case, please run the following command within \dokan_mirror and \dokan_control directory.
-"{PATH_TO_MT}\mt.exe" -manifest "mirror.exe.manifest"  -outputresource:"objchk_wlh_amd64\amd64\mirror.exe"
+"{PATH_TO_MT}\mt.exe" -manifest "dokanctl.exe.manifest"  -outputresource:"objchk_wlh_amd64\amd64\dokanctl.exe"
 Please replace the target names besed on your environment.
+
 
 ** Install Driver
 
@@ -72,6 +73,18 @@ You should restart your computer after uninstalling driver.
 You are required a code signing certification to install driver on Windows Vista x64.
 You can disable driver signature enforcement using ReadyDriver Plus.
 http://www.citadelindustries.net/readydriverplus/
+
+
+** Network filesystem/provider support
+
+Dokan supports network filesystem mode. You need dokan network provider dll in \dokan_np.
+Please build it and copy dokannp.dll into Windows\system32 directly.
+You need to register network provider dll to system : dokanctl.exe /i n 
+(Unregister network provider : dokanctl.exe /r n) 
+You probably need to restart your computer after register or unregister network provider.
+And try "mirror.exe /r root_path /l drive_letter /n". 
+/n option means to mount as network drive 
+Network filesystem mode is an experimental implementation and not tested well. 
 
 
 ** Windbg
