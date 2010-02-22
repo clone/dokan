@@ -1,4 +1,4 @@
-!define VERSION "0.5.0"
+!define VERSION "0.5.1"
 
 !include LogicLib.nsh
 !include x64.nsh
@@ -100,11 +100,11 @@ UninstPage instfiles
 
 !macro X64Driver os
   ${DisableX64FSRedirection}
-/*
+
   SetOutPath $SYSDIR\drivers
 
     File ..\sys\objchk_${os}_amd64\amd64\dokan.sys
-*/
+
   ${EnableX64FSRedirection}
 !macroend
 
@@ -197,15 +197,13 @@ Function .onInit
   ; Windows Version check
 
   ${If} ${RunningX64}
-    ;${If} ${IsWin2003}
-    ;${ElseIf} ${IsWinVista}
-    ;${ElseIf} ${IsWin7}
-    ;${Else}
-    ;  MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows 2003, Vista and 7 for x64."
-    ;  Abort
-    ;${EndIf}
-    MessageBox MB_OK "This version doesn't support x64. Please wait for the next version."
-    Abort
+    ${If} ${IsWin2003}
+    ${ElseIf} ${IsWinVista}
+    ${ElseIf} ${IsWin7}
+    ${Else}
+      MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows 2003, Vista and 7 for x64."
+      Abort
+    ${EndIf}
   ${Else}
     ${If} ${IsWinXP}
     ${ElseIf} ${IsWin2003}
@@ -220,16 +218,21 @@ Function .onInit
   ; Previous version
   ${If} ${RunningX64}
     ${DisableX64FSRedirection}
-      IfFileExists $SYSDIR\drivers\dokan.sys HasPreviousVersion NoPreviousVersion
+      IfFileExists $SYSDIR\drivers\dokan.sys HasPreviousVersionX64 NoPreviousVersionX64
+      ; To make EnableX64FSRedirection called in both cases, needs duplicated MessageBox code. How can I avoid this?
+      HasPreviousVersionX64:
+        MessageBox MB_OK "Please unstall the previous version and restart your computer before running this installer."
+        Abort
+      NoPreviousVersionX64:
     ${EnableX64FSRedirection}
   ${Else}
     IfFileExists $SYSDIR\drivers\dokan.sys HasPreviousVersion NoPreviousVersion
+    HasPreviousVersion:
+      MessageBox MB_OK "Please unstall the previous version and restart your computer before running this installer."
+      Abort
+    NoPreviousVersion:
   ${EndIf}
 
-  HasPreviousVersion:
-    MessageBox MB_OK "Please unstall the previous version and restart your computer before running this installer."
-    Abort
-  NoPreviousVersion:
 
 FunctionEnd
 
