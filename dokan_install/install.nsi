@@ -114,6 +114,8 @@ Section "Dokan Library x86" section_x86
     !insertmacro X86Files "win7"
   ${ElseIf} ${IsWinVista}
     !insertmacro X86Files "wlh"
+  ${ElseIf} ${IsWin2008}
+    !insertmacro X86Files "wlh"
   ${ElseIf} ${IsWin2003}
     !insertmacro X86Files "wnet"
   ${ElseIf} ${IsWinXp}
@@ -125,6 +127,8 @@ Section "Dokan Driver x86" section_x86_driver
   ${If} ${IsWin7}
     !insertmacro X86Driver "win7"
   ${ElseIf} ${IsWinVista}
+    !insertmacro X86Driver "wlh"
+  ${ElseIf} ${IsWin2008}
     !insertmacro X86Driver "wlh"
   ${ElseIf} ${IsWin2003}
     !insertmacro X86Driver "wnet"
@@ -139,6 +143,8 @@ Section "Dokan Driver x64" section_x64_driver
     !insertmacro X64Driver "win7"
   ${ElseIf} ${IsWinVista}
     !insertmacro X64Driver "wlh"
+  ${ElseIf} ${IsWin2008}
+    !insertmacro X64Driver "wlh"
   ${ElseIf} ${IsWin2003}
     !insertmacro X64Driver "wnet"
   ${EndIf}
@@ -150,6 +156,8 @@ Section "Dokan Library x64" section_x64
   ${If} ${IsWin7}
     !insertmacro X64Files "win7"
   ${ElseIf} ${IsWinVista}
+    !insertmacro X64Files "wlh"
+  ${ElseIf} ${IsWin2008}
     !insertmacro X64Files "wlh"
   ${ElseIf} ${IsWin2003}
     !insertmacro X64Files "wnet"
@@ -199,18 +207,20 @@ Function .onInit
   ${If} ${RunningX64}
     ${If} ${IsWin2003}
     ${ElseIf} ${IsWinVista}
+    ${ElseIf} ${IsWin2008}
     ${ElseIf} ${IsWin7}
     ${Else}
-      MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows 2003, Vista and 7 for x64."
+      MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows 2003, Vista, 2008 and 7 for x64."
       Abort
     ${EndIf}
   ${Else}
     ${If} ${IsWinXP}
     ${ElseIf} ${IsWin2003}
     ${ElseIf} ${IsWinVista}
+    ${ElseIf} ${IsWin2008}
     ${ElseIf} ${IsWin7}
     ${Else}
-      MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows XP, 2003, Vista and 7 for x86."
+      MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows XP, 2003, Vista, 2008 and 7 for x86."
       Abort
     ${EndIf}
   ${EndIf}
