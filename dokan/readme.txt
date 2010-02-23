@@ -39,7 +39,8 @@ You can obtain source files from http://dokan-dev.net/en/download
 Environment
 ===========
 
-Dokan Library works on Windowx XP,Vista,2003 x86 and Vista x64.
+Dokan Library works on Windowx XP,2003,Vista,2008,7 x86 and Windows
+2003,Vista,2008,7 x64.
 
 
 How it works

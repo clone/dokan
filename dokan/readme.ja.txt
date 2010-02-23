@@ -32,7 +32,7 @@ MIT  license.mit.txt
 
 ■ 動作環境
 
-Windowx XP,Vista,2003 x86版，Windows Vista x64版で動作します．
+Windowx XP,2003,Vista,2008,7 x86版，Windows 2003,Vista,2008,7 x64版で動作します．
 
 
 ■ 動作の仕組み
@@ -241,7 +241,7 @@ DOKAN_OPTIONS
    DebugMode  : 1 にセットすると，デバッグメッセージがデバッグ出力に出力
                 されます．
    UseStdErr  : 1 にセットすると，デバッグメッセージが標準エラー出力に出
-   　　　　　　力されます．
+                力されます．
    UseAltStream : 代替ストリーム(alternate stream, 副ストリーム)を使用し
                   ます．
 
