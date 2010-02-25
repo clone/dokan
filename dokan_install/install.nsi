@@ -112,6 +112,8 @@ UninstPage instfiles
 Section "Dokan Library x86" section_x86
   ${If} ${IsWin7}
     !insertmacro X86Files "win7"
+  ${ElseIf} ${IsWin2008R2}
+    !insertmacro X86Files "win7"
   ${ElseIf} ${IsWinVista}
     !insertmacro X86Files "wlh"
   ${ElseIf} ${IsWin2008}
@@ -140,6 +142,8 @@ SectionEnd
 
 Section "Dokan Driver x64" section_x64_driver
   ${If} ${IsWin7}
+    !insertmacro X64Driver "win7"
+  ${ElseIf} ${IsWin2008R2}
     !insertmacro X64Driver "win7"
   ${ElseIf} ${IsWinVista}
     !insertmacro X64Driver "wlh"
@@ -208,9 +212,10 @@ Function .onInit
     ${If} ${IsWin2003}
     ${ElseIf} ${IsWinVista}
     ${ElseIf} ${IsWin2008}
+    ${ElseIf} ${IsWin2008R2}
     ${ElseIf} ${IsWin7}
     ${Else}
-      MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows 2003, Vista, 2008 and 7 for x64."
+      MessageBox MB_OK "Your OS is not supported. Dokan library supports Windows 2003, Vista, 2008, 2008R2 and 7 for x64."
       Abort
     ${EndIf}
   ${Else}
