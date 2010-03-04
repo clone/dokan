@@ -445,6 +445,11 @@ DokanDeleteDeviceObject(
 	DDbgPrint("  Delete Symbolic Name: %wZ\n", &symbolicLinkName);
 	IoDeleteSymbolicLink(&symbolicLinkName);
 
+	//swprintf(symbolicLinkBuf, UNIQUE_VOLUME_NAME);
+	//RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
+	//DDbgPrint("  Delete Symbolic Name: %wZ\n", &symbolicLinkName);
+	//IoDeleteSymbolicLink(&symbolicLinkName);
+
 	// delete diskDeviceObject
 	DDbgPrint("  Delete DeviceObject\n");
 	IoDeleteDevice(vcb->DeviceObject);

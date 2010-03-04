@@ -107,6 +107,7 @@ DokanCreateDiskDevice(
 	UNICODE_STRING		fsDeviceName;
 	UNICODE_STRING		symbolicLinkName;
 	NTSTATUS			status;
+	WCHAR				uniqueVolumeNameBuf[] = UNIQUE_VOLUME_NAME;
 
 	//FS_FILTER_CALLBACKS filterCallbacks;
 
@@ -120,6 +121,7 @@ DokanCreateDiskDevice(
 	RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
 
 	RtlInitUnicodeString(&fsDeviceName, fsDeviceNameBuf);
+
 
 	//
 	// make a DeviceObject for Disk Device
@@ -257,6 +259,9 @@ DokanCreateDiskDevice(
 	// Create a symbolic link for userapp to interact with the driver.
 	//
 	status = IoCreateSymbolicLink(&symbolicLinkName, &deviceName);
+	
+	//RtlInitUnicodeString(&symbolicLinkName, uniqueVolumeNameBuf);
+	//IoCreateSymbolicLink(&symbolicLinkName, &deviceName);
 
 	if (!NT_SUCCESS(status)) {
 		IoDeleteDevice(diskDeviceObject);

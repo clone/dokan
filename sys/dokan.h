@@ -41,6 +41,7 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 #define NTDEVICE_NAME_STRING	L"\\Device\\dokan"
 #define SYMBOLIC_NAME_STRING    L"\\DosDevices\\Global\\dokan"
 #define VOLUME_LABEL			L"DOKAN"
+#define UNIQUE_VOLUME_NAME		L"\\DosDevices\\Global\\Volume{dca0e0a5-d2ca-4f0f-8416-a6414657a77a}"
 
 #define TAG (ULONG)'AKOD'
 
@@ -59,7 +60,7 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 
 #define DOKAN_KEEPALIVE_TIMEOUT		(1000 * 15) // in millisecond
 
-//#define USE_DBGPRINT 1
+#define USE_DBGPRINT 1
 
 #ifdef USE_DBGPRINT
 	#define DDbgPrint(...)		DbgPrint(__VA_ARGS__)
@@ -146,6 +147,8 @@ typedef struct _DokanDiskControlBlock {
 
 	// while mounted, Mounted is set to drive letter
 	ULONG					Mounted;
+
+	UNICODE_STRING			VolumeName;
 
 	// When timeout is occuerd, KillEvent is triggered.
 	KEVENT					KillEvent;
