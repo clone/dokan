@@ -33,11 +33,10 @@ DokanControlMount(
 {
 	WCHAR   volumeName[] = L"\\\\.\\ :";
 	WCHAR	driveLetterAndSlash[] = L"C:\\";
-	WCHAR	uniqueVolumeName[MAX_PATH];
 	HANDLE  device;
 	WCHAR	deviceName[MAX_PATH];
 	
-	wsprintf(deviceName, DOKAN_DEVICE_NAME, DeviceNumber);
+	wsprintf(deviceName, DOKAN_RAW_DEVICE_NAME, DeviceNumber);
 
 	volumeName[4] = DriveLetter;
 	driveLetterAndSlash[0] = DriveLetter;
@@ -61,29 +60,36 @@ DokanControlMount(
         return FALSE;
     }
 
-    if (!DefineDosDevice(0, &volumeName[4], deviceName)) {
+    if (!DefineDosDevice(DDD_RAW_TARGET_PATH, &volumeName[4], deviceName)) {
 		DbgPrintW(L"DokanControl DefineDosDevice failed: %d\n", GetLastError());
         return FALSE;
     }
 
-	/*
+	/* NOTE: IOCTL_MOUNTDEV_QUERY_DEVICE_NAME in sys/device.cc handles
+	   GetVolumeNameForVolumeMountPoint. But it returns error even if driver
+	   return success.
+
+	wsprintf(deviceName, L"\\\\?\\Volume{dca0e0a5-d2ca-4f0f-8416-a6414657a77a}\\");
+	DbgPrintW(L"DeviceName %s\n",deviceName);
+
 	if (!GetVolumeNameForVolumeMountPoint(
 			driveLetterAndSlash, 
 			uniqueVolumeName,
 			MAX_PATH)) {
 
-		DbgPrint("Error: GetVolumeNameForValumeMountPoint failed : %d\n", GetLastError());
-	}
+		DbgPrint("Error: GetVolumeNameForVolumeMountPoint failed : %d\n", GetLastError());
+	} else {
+	
+		DbgPrintW(L"UniqueVolumeName %s\n", uniqueVolumeName);
+		DefineDosDevice(DDD_REMOVE_DEFINITION,
+						&volumeName[4],
+				        NULL);
 
-	DefineDosDevice(DDD_REMOVE_DEFINITION,
-					&volumeName[4],
-                    NULL);
-
-	if (!SetVolumeMountPoint(driveLetterAndSlash, uniqueVolumeName)) {
-		fprintf(stderr, "Error: SetVolumeMountPoint failed : %d\n", GetLastError());
-		return FALSE;
-	}
-	*/
+		if (!SetVolumeMountPoint(driveLetterAndSlash, deviceName)) {
+			DbgPrint("Error: SetVolumeMountPoint failed : %d\n", GetLastError());
+			return FALSE;
+		}
+	}*/
 
     device = CreateFile(
         volumeName,
