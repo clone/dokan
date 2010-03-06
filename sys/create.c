@@ -413,7 +413,8 @@ Return Value:
 				status = STATUS_OBJECT_NAME_INVALID;
 				__leave;
 			}
-			if (relatedFileObject->FileName.Buffer[relatedFileObject->FileName.Length/sizeof(WCHAR)-1] != '\\') {
+			if (relatedFileObject->FileName.Length > 0 &&
+				relatedFileObject->FileName.Buffer[relatedFileObject->FileName.Length/sizeof(WCHAR)-1] != '\\') {
 				needBackSlashAfterRelatedFile = TRUE;
 				fileNameLength += sizeof(WCHAR);
 			}
