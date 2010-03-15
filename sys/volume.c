@@ -86,7 +86,13 @@ DokanDispatchQueryVolumeInformation(
 				PFILE_FS_DEVICE_INFORMATION device;
 				DDbgPrint("  FileFsDeviceInformation\n");
 				device = (PFILE_FS_DEVICE_INFORMATION)Irp->AssociatedIrp.SystemBuffer;
-				device->DeviceType = FILE_DEVICE_NETWORK_FILE_SYSTEM;
+				if (irpSp->Parameters.QueryVolume.Length < sizeof(FILE_FS_DEVICE_INFORMATION)) {
+					status = STATUS_BUFFER_TOO_SMALL;
+					info = 0;
+					__leave;
+				}
+				// TODO: make DeviceType and Characteristics contollable by user-mode. 
+				device->DeviceType = FILE_DEVICE_VIRTUAL_DISK;
 				device->Characteristics = FILE_REMOTE_DEVICE | FILE_DEVICE_IS_MOUNTED;
 				status = STATUS_SUCCESS;
 				info = sizeof(FILE_FS_DEVICE_INFORMATION);
