@@ -909,7 +909,8 @@ main(ULONG argc, PCHAR argv[])
 			"  /t ThreadCount (ex. /t 5)\n"
 			"  /d (enable debug output)\n"
 			"  /s (use stderr for output)\n"
-			"  /n (use network drive)");
+			"  /n (use network drive)\n"
+			"  /m (use removable drive)\n");
 		return -1;
 	}
 
@@ -942,6 +943,9 @@ main(ULONG argc, PCHAR argv[])
 			break;
 		case 'n':
 			dokanOptions->Options |= DOKAN_OPTION_NETWORK;
+			break;
+		case 'm':
+			dokanOptions->Options |= DOKAN_OPTION_REMOVABLE;
 			break;
 		default:
 			fprintf(stderr, "unknown command: %s\n", argv[command]);
