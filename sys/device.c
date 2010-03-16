@@ -329,8 +329,14 @@ Return Value:
 					status = STATUS_BUFFER_OVERFLOW;
 				}
 			}
+		case IOCTL_STORAGE_EJECT_MEDIA:
+			{
+				// TODO: impleentat this.
+				DDbgPrint("   IOCTL_STORAGE_EJECT_MEDIA\n");
+				status = STATUS_NOT_IMPLEMENTED;
+				break;
+			}
 		default:
-			//ASSERT(FALSE);	// should never hit this
 			DDbgPrint("   Unknown Code 0x%x\n", irpSp->Parameters.DeviceIoControl.IoControlCode);
 			status = STATUS_NOT_IMPLEMENTED;
 			break;
