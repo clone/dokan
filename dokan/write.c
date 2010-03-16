@@ -108,6 +108,8 @@ DispatchWrite(
 	} else {
 		eventInfo->Status = STATUS_SUCCESS;
 		eventInfo->BufferLength = writtenLength;
+		eventInfo->Write.CurrentByteOffset.QuadPart =
+			EventContext->Write.ByteOffset.QuadPart + writtenLength;
 	}
 
 	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);

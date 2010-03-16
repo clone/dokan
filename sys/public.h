@@ -24,7 +24,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000183
+#define DOKAN_VERSION	0x0000184
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 
@@ -224,6 +224,12 @@ typedef struct _EVENT_INFORMATION {
 			ULONG	Flags;
 			ULONG	Information;
 		} Create;
+		struct {
+			LARGE_INTEGER CurrentByteOffset;
+		} Read;
+		struct {
+			LARGE_INTEGER CurrentByteOffset;
+		} Write;
 		struct {
 			UCHAR	DeleteOnClose;
 		} Delete;

@@ -67,6 +67,8 @@ DispatchRead(
 	} else {
 		eventInfo->Status = STATUS_SUCCESS;
 		eventInfo->BufferLength = readLength;
+		eventInfo->Read.CurrentByteOffset.QuadPart =
+			EventContext->Read.ByteOffset.QuadPart + readLength;
 	}
 
 	SendEventInformation(Handle, eventInfo, sizeOfEventInfo, DokanInstance);

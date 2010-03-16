@@ -264,7 +264,7 @@ DokanCompleteRead(
 			!(irp->Flags & IRP_PAGING_IO)) {
 			// update current byte offset only when synchronous IO and not pagind IO
 			fileObject->CurrentByteOffset.QuadPart =
-				irpSp->Parameters.Read.ByteOffset.QuadPart + readLength;
+				EventInfo->Read.CurrentByteOffset.QuadPart;
 			DDbgPrint("  Updated CurrentByteOffset %I64d\n",
 				fileObject->CurrentByteOffset.QuadPart); 
 		}
