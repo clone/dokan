@@ -24,7 +24,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000184
+#define DOKAN_VERSION	0x0000185
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 
@@ -246,7 +246,7 @@ typedef struct _EVENT_INFORMATION {
 
 #define DOKAN_EVENT_ALTERNATIVE_STREAM_ON	1
 #define DOKAN_EVENT_KEEP_ALIVE_ON			2
-
+#define DOKAN_EVENT_REMOVABLE				4
 
 typedef struct _EVENT_DRIVER_INFO {
 	ULONG	DriverVersion;

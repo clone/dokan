@@ -150,6 +150,10 @@ typedef struct _DokanDiskControlBlock {
 
 	UNICODE_STRING			VolumeName;
 
+	DEVICE_TYPE				DeviceType;
+	ULONG					DeviceCharacteristics;
+
+
 	// When timeout is occuerd, KillEvent is triggered.
 	KEVENT					KillEvent;
 
@@ -433,6 +437,7 @@ DokanCreateDiskDevice(
 	__in ULONG			MountId,
 	__in PDOKAN_GLOBAL	DokanGlobal,
 	__in DEVICE_TYPE	DeviceType,
+	__in ULONG			DeviceCharacteristics,
 	__out PDokanDCB* Dcb);
 
 

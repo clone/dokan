@@ -46,6 +46,7 @@ extern "C" {
 #define DOKAN_OPTION_ALT_STREAM	4 // use alternate stream
 #define DOKAN_OPTION_KEEP_ALIVE	8 // use auto unmount
 #define DOKAN_OPTION_NETWORK	16 // use network drive
+#define DOKAN_OPTION_REMOVABLE	32 // use removable drive
 
 typedef struct _DOKAN_OPTIONS {
 	WCHAR	DriveLetter; // drive letter to be mounted

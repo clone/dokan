@@ -605,6 +605,9 @@ DokanStart(PDOKAN_INSTANCE Instance)
 	if (Instance->DokanOptions->Options & DOKAN_OPTION_NETWORK) {
 		eventStart.DeviceType = DOKAN_NETWORK_FILE_SYSTEM;
 	}
+	if (Instance->DokanOptions->Options & DOKAN_OPTION_REMOVABLE) {
+		eventStart.Flags |= DOKAN_EVENT_REMOVABLE;
+	}
 
 	SendToDevice(
 		DOKAN_GLOBAL_DEVICE_NAME,

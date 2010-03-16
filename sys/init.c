@@ -93,6 +93,7 @@ DokanCreateDiskDevice(
 	__in ULONG			MountId,
 	__in PDOKAN_GLOBAL	DokanGlobal,
 	__in DEVICE_TYPE	DeviceType,
+	__in ULONG			DeviceCharacteristics,
 	__out PDokanDCB*	Dcb
 	)
 {
@@ -129,9 +130,8 @@ DokanCreateDiskDevice(
 	status = IoCreateDevice(DriverObject,				// DriverObject
 							sizeof(DokanDCB),			// DeviceExtensionSize
 							NULL,//&deviceName,			// DeviceName
-							//FILE_DEVICE_DISK,			// DeviceType
-							FILE_DEVICE_VIRTUAL_DISK,
-							0,							// DeviceCharacteristics
+							FILE_DEVICE_VIRTUAL_DISK,	// DeviceType
+							DeviceCharacteristics,		// DeviceCharacteristics
 							FALSE,						// Not Exclusive
 							&diskDeviceObject			// DeviceObject
 							);
@@ -161,6 +161,9 @@ DokanCreateDiskDevice(
 	dcb->Identifier.Size = sizeof(DokanDCB);
 
 	dcb->MountId = MountId;
+
+	dcb->DeviceType = FILE_DEVICE_VIRTUAL_DISK;
+	dcb->DeviceCharacteristics = DeviceCharacteristics;
 
 	//
 	// Establish user-buffer access method.
@@ -193,9 +196,9 @@ DokanCreateDiskDevice(
 				DriverObject,		// DriverObject
 				sizeof(DokanVCB),	// DeviceExtensionSize
 				&deviceName,		// DeviceName
-				DeviceType, // DeviceType
-				0,			// DeviceCharacteristics
-				FALSE,		// Not Exclusive
+				DeviceType,			// DeviceType
+				DeviceCharacteristics,	// DeviceCharacteristics
+				FALSE,				// Not Exclusive
 				&SDDL_DEVOBJ_SYS_ALL_ADM_RWX_WORLD_RW_RES_R, // Default SDDL String
 				NULL,				// Device Class GUID
 				&fsDeviceObject);	// DeviceObject

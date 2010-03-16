@@ -33,6 +33,7 @@ DokanDispatchQueryVolumeInformation(
 	PVOID				buffer;
 	PFILE_OBJECT		fileObject;
 	PDokanVCB			vcb;
+	PDokanDCB			dcb;
 	PDokanCCB			ccb;
 	ULONG               info = 0;
 
@@ -49,6 +50,7 @@ DokanDispatchQueryVolumeInformation(
 		if (GetIdentifierType(vcb) != VCB) {
 			return STATUS_INVALID_PARAMETER;
 		}
+		dcb = vcb->Dcb;
 
 		irpSp			= IoGetCurrentIrpStackLocation(Irp);
 		buffer			= Irp->AssociatedIrp.SystemBuffer;
@@ -91,9 +93,8 @@ DokanDispatchQueryVolumeInformation(
 					info = 0;
 					__leave;
 				}
-				// TODO: make DeviceType and Characteristics contollable by user-mode. 
-				device->DeviceType = FILE_DEVICE_VIRTUAL_DISK;
-				device->Characteristics = FILE_REMOTE_DEVICE | FILE_DEVICE_IS_MOUNTED;
+				device->DeviceType = dcb->DeviceType;
+				device->Characteristics = dcb->DeviceCharacteristics;
 				status = STATUS_SUCCESS;
 				info = sizeof(FILE_FS_DEVICE_INFORMATION);
 				__leave;

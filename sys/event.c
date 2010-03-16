@@ -404,6 +404,7 @@ DokanEventStart(
 	PDokanDCB			dcb;
 	NTSTATUS			status;
 	DEVICE_TYPE			deviceType;
+	ULONG				deviceCharacteristics;
 
 	DDbgPrint("==> DokanEventStart\n");
 
@@ -445,6 +446,12 @@ DokanEventStart(
 		deviceType = FILE_DEVICE_DISK_FILE_SYSTEM;
 	}
 
+	deviceCharacteristics = 0;
+	if (eventStart.Flags & DOKAN_EVENT_REMOVABLE) {
+		DDbgPrint("  DeviceCharacteristics = FILE_REMOVABLE_MEDIA\n");
+		deviceCharacteristics = FILE_REMOVABLE_MEDIA;
+	}
+
 	KeEnterCriticalRegion();
 	ExAcquireResourceExclusiveLite(&dokanGlobal->Resource, TRUE);
 
@@ -453,6 +460,7 @@ DokanEventStart(
 				dokanGlobal->MountId,
 				dokanGlobal,
 				deviceType,
+				deviceCharacteristics,
 				&dcb);
 
 	if (!NT_SUCCESS(status)) {
