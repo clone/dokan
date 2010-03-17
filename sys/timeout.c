@@ -25,8 +25,39 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 
 VOID
+DokanUnmount(
+	__in PDokanDCB Dcb
+	)
+{
+	ULONG				eventLength;
+	PEVENT_CONTEXT		eventContext;
+	PDokanVCB			vcb = Dcb->Vcb;
+
+	eventLength = sizeof(EVENT_CONTEXT);
+	eventContext = ExAllocatePool(eventLength);
+				
+	if (eventContext == NULL) {
+		;//STATUS_INSUFFICIENT_RESOURCES;
+		DokanEventRelease(vcb->DeviceObject);
+		return;
+	}
+
+	RtlZeroMemory(eventContext, eventLength);
+	eventContext->Length = eventLength;
+
+	// set drive letter
+	eventContext->Flags = Dcb->Mounted;
+
+	DokanEventNotification(&Dcb->Global->NotifyService, eventContext);
+
+	DokanEventRelease(vcb->DeviceObject);
+}
+
+
+VOID
 DokanCheckKeepAlive(
-	PDokanDCB	Dcb)
+	__in PDokanDCB	Dcb
+	)
 {
 	LARGE_INTEGER		tickCount;
 	ULONG				eventLength;
@@ -51,25 +82,7 @@ DokanCheckKeepAlive(
 			// not mounted
 			return;
 		}
-
-		eventLength = sizeof(EVENT_CONTEXT);
-		eventContext = ExAllocatePool(eventLength);
-				
-		if (eventContext == NULL) {
-			;//STATUS_INSUFFICIENT_RESOURCES;
-			DokanEventRelease(vcb->DeviceObject);
-			return;
-		}
-
-		RtlZeroMemory(eventContext, eventLength);
-		eventContext->Length = eventLength;
-
-		// set drive letter
-		eventContext->Flags = mounted;
-
-		DokanEventNotification(&Dcb->Global->NotifyService, eventContext);
-
-		DokanEventRelease(vcb->DeviceObject);
+		DokanUnmount(Dcb);
 
 	} else {
 		ExReleaseResourceLite(&Dcb->Resource);
@@ -82,7 +95,7 @@ DokanCheckKeepAlive(
 
 NTSTATUS
 ReleaseTimeoutPendingIrp(
-   PDokanDCB	Dcb
+   __in PDokanDCB	Dcb
    )
 {
 	KIRQL				oldIrql;

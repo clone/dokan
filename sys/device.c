@@ -331,9 +331,9 @@ Return Value:
 			}
 		case IOCTL_STORAGE_EJECT_MEDIA:
 			{
-				// TODO: impleentat this.
 				DDbgPrint("   IOCTL_STORAGE_EJECT_MEDIA\n");
-				status = STATUS_NOT_IMPLEMENTED;
+				DokanUnmount(dcb);				
+				status = STATUS_SUCCESS;
 				break;
 			}
 		default:

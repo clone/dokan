@@ -512,6 +512,9 @@ DokanUpdateTimeout(
 	__out PLARGE_INTEGER KickCount,
 	__in ULONG Timeout);
 
+VOID
+DokanUnmount(
+	__in PDokanDCB Dcb);
 
 VOID
 PrintIdType(
