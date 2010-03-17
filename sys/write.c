@@ -138,9 +138,12 @@ DokanDispatchWrite(
 		}
 
 		if ((fileObject->Flags & FO_SYNCHRONOUS_IO) &&
-			(irpSp->Parameters.Write.ByteOffset.QuadPart == 0 ||
 			((irpSp->Parameters.Write.ByteOffset.LowPart == FILE_USE_FILE_POINTER_POSITION) &&
-			(irpSp->Parameters.Write.ByteOffset.HighPart == -1)))) {
+			(irpSp->Parameters.Write.ByteOffset.HighPart == -1))) {
+			// NOTE:
+			// http://msdn.microsoft.com/en-us/library/ms795960.aspx
+			// Do not check IrpSp->Parameters.Write.ByteOffset.QuadPart == 0
+			// Probably the document is wrong.
 			eventContext->Write.ByteOffset.QuadPart = fileObject->CurrentByteOffset.QuadPart;
 		}
 
