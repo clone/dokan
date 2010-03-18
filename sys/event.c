@@ -434,22 +434,24 @@ DokanEventStart(
 		return STATUS_SUCCESS;
 	}
 
+	deviceCharacteristics = 0;
+
 	switch (eventStart.DeviceType) {
 	case DOKAN_DISK_FILE_SYSTEM:
 		deviceType = FILE_DEVICE_DISK_FILE_SYSTEM;
 		break;
 	case DOKAN_NETWORK_FILE_SYSTEM:
 		deviceType = FILE_DEVICE_NETWORK_FILE_SYSTEM;
+		deviceCharacteristics |= FILE_REMOTE_DEVICE;
 		break;
 	default:
 		DDbgPrint("  Unknown device type: %d\n", eventStart.DeviceType);
 		deviceType = FILE_DEVICE_DISK_FILE_SYSTEM;
 	}
 
-	deviceCharacteristics = 0;
 	if (eventStart.Flags & DOKAN_EVENT_REMOVABLE) {
-		DDbgPrint("  DeviceCharacteristics = FILE_REMOVABLE_MEDIA\n");
-		deviceCharacteristics = FILE_REMOVABLE_MEDIA;
+		DDbgPrint("  DeviceCharacteristics |= FILE_REMOVABLE_MEDIA\n");
+		deviceCharacteristics |= FILE_REMOVABLE_MEDIA;
 	}
 
 	KeEnterCriticalRegion();

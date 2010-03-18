@@ -455,37 +455,6 @@ DokanStopEventNotificationThread(
 }
 
 
-VOID
-DokanDeleteDeviceObject(
-	__in PDokanDCB Dcb)
-{
-	UNICODE_STRING		symbolicLinkName;
-	WCHAR				symbolicLinkBuf[MAXIMUM_FILENAME_LENGTH];
-	PDokanVCB			vcb;
-
-	ASSERT(GetIdentifierType(Dcb) == DCB);
-	vcb = Dcb->Vcb;
-
-	swprintf(symbolicLinkBuf, SYMBOLIC_NAME_STRING L"%u", Dcb->MountId);
-	RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
-	DDbgPrint("  Delete Symbolic Name: %wZ\n", &symbolicLinkName);
-	IoDeleteSymbolicLink(&symbolicLinkName);
-
-	//swprintf(symbolicLinkBuf, UNIQUE_VOLUME_NAME);
-	//RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
-	//DDbgPrint("  Delete Symbolic Name: %wZ\n", &symbolicLinkName);
-	//IoDeleteSymbolicLink(&symbolicLinkName);
-
-	// delete diskDeviceObject
-	DDbgPrint("  Delete DeviceObject\n");
-	IoDeleteDevice(vcb->DeviceObject);
-
-	// delete DeviceObject
-	DDbgPrint("  Delete Disk DeviceObject\n");
-	IoDeleteDevice(Dcb->DeviceObject);
-}
-
-
 NTSTATUS
 DokanEventRelease(
 	__in PDEVICE_OBJECT DeviceObject)

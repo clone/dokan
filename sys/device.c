@@ -336,6 +336,11 @@ Return Value:
 				status = STATUS_SUCCESS;
 				break;
 			}
+		case IOCTL_REDIR_QUERY_PATH:
+			{
+				DbgPrint("  IOCTL_REDIR_QUERY_PATH\n");
+				break;
+			}
 		default:
 			DDbgPrint("   Unknown Code 0x%x\n", irpSp->Parameters.DeviceIoControl.IoControlCode);
 			status = STATUS_NOT_IMPLEMENTED;

@@ -152,7 +152,7 @@ typedef struct _DokanDiskControlBlock {
 
 	DEVICE_TYPE				DeviceType;
 	ULONG					DeviceCharacteristics;
-
+	HANDLE					MupHandle;
 
 	// When timeout is occuerd, KillEvent is triggered.
 	KEVENT					KillEvent;
@@ -433,7 +433,6 @@ DokanNoOpAcquire(
     IN PVOID Fcb,
     IN BOOLEAN Wait);
 
-
 NTSTATUS
 DokanCreateGlobalDiskDevice(
 	__in PDRIVER_OBJECT DriverObject);
@@ -447,6 +446,10 @@ DokanCreateDiskDevice(
 	__in ULONG			DeviceCharacteristics,
 	__out PDokanDCB* Dcb);
 
+
+VOID
+DokanDeleteDeviceObject(
+	__in PDokanDCB Dcb);
 
 VOID
 DokanPrintNTStatus(
