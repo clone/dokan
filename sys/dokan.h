@@ -269,6 +269,7 @@ typedef struct _IRP_ENTRY {
 
 typedef struct _DRIVER_EVENT_CONTEXT {
 	LIST_ENTRY		ListEntry;
+	PKEVENT			Completed;
 	EVENT_CONTEXT	EventContext;
 } DRIVER_EVENT_CONTEXT, *PDRIVER_EVENT_CONTEXT;
 
@@ -331,6 +332,12 @@ DokanEventRelease(
 DRIVER_DISPATCH DokanEventStart;
 
 DRIVER_DISPATCH DokanEventWrite;
+
+
+PEVENT_CONTEXT
+AllocateEventContextRaw(
+	__in ULONG	EventContextLength
+	);
 
 PEVENT_CONTEXT
 AllocateEventContext(

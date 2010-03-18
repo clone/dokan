@@ -29,12 +29,15 @@ DokanUnmount(
 	__in PDokanDCB Dcb
 	)
 {
-	ULONG				eventLength;
-	PEVENT_CONTEXT		eventContext;
-	PDokanVCB			vcb = Dcb->Vcb;
+	ULONG					eventLength;
+	PEVENT_CONTEXT			eventContext;
+	PDRIVER_EVENT_CONTEXT	driverEventContext;	
+	PKEVENT					completedEvent;
+	LARGE_INTEGER			timeout;
+	PDokanVCB				vcb = Dcb->Vcb;
 
 	eventLength = sizeof(EVENT_CONTEXT);
-	eventContext = ExAllocatePool(eventLength);
+	eventContext = AllocateEventContextRaw(eventLength);
 				
 	if (eventContext == NULL) {
 		;//STATUS_INSUFFICIENT_RESOURCES;
@@ -42,15 +45,31 @@ DokanUnmount(
 		return;
 	}
 
-	RtlZeroMemory(eventContext, eventLength);
-	eventContext->Length = eventLength;
+	driverEventContext =
+		CONTAINING_RECORD(eventContext, DRIVER_EVENT_CONTEXT, EventContext);
+	completedEvent = ExAllocatePool(sizeof(KEVENT));
+	if (completedEvent) {
+		KeInitializeEvent(completedEvent, NotificationEvent, FALSE);
+		driverEventContext->Completed = completedEvent;
+	}
 
 	// set drive letter
 	eventContext->Flags = Dcb->Mounted;
 
+	DbgPrint("  Send Unmount to Service : %wc\n", Dcb->Mounted);
+
 	DokanEventNotification(&Dcb->Global->NotifyService, eventContext);
 
+	if (completedEvent) {
+		timeout.QuadPart = -1 * 10 * 1000 * 10; // 10 sec
+		KeWaitForSingleObject(completedEvent, Executive, KernelMode, FALSE, &timeout);
+	}
+
 	DokanEventRelease(vcb->DeviceObject);
+
+	if (completedEvent) {
+		ExFreePool(completedEvent);
+	}
 }
 
 

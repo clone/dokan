@@ -84,11 +84,8 @@ SetCommonEventContext(
 
 
 PEVENT_CONTEXT
-AllocateEventContext(
-	__in PDokanDCB	Dcb,
-	__in PIRP		Irp,
-	__in ULONG		EventContextLength,
-	__in PDokanCCB	Ccb
+AllocateEventContextRaw(
+	__in ULONG	EventContextLength
 	)
 {
 	ULONG driverContextLength;
@@ -104,9 +101,27 @@ AllocateEventContext(
 
 	RtlZeroMemory(driverEventContext, driverContextLength);
 	InitializeListHead(&driverEventContext->ListEntry);
+
 	eventContext = &driverEventContext->EventContext;
 	eventContext->Length = EventContextLength;
 
+	return eventContext;
+}
+
+
+PEVENT_CONTEXT
+AllocateEventContext(
+	__in PDokanDCB	Dcb,
+	__in PIRP		Irp,
+	__in ULONG		EventContextLength,
+	__in PDokanCCB	Ccb
+	)
+{
+	PEVENT_CONTEXT eventContext;
+	eventContext = AllocateEventContextRaw(EventContextLength);
+	if (eventContext == NULL) {
+		return NULL;
+	}
 	SetCommonEventContext(Dcb, eventContext, Irp, Ccb);
 	eventContext->SerialNumber = InterlockedIncrement(&Dcb->SerialNumber);
 
@@ -260,9 +275,9 @@ NotificationLoop(
 
 		listHead = RemoveHeadList(&PendingIrp->ListHead);
 		irpEntry = CONTAINING_RECORD(listHead, IRP_ENTRY, ListEntry);
-			
+
 		eventLen = driverEventContext->EventContext.Length;
-			
+
 		// ensure this eventIrp is not cancelled
 		irp = irpEntry->Irp;
 
@@ -306,6 +321,10 @@ NotificationLoop(
 			RtlCopyMemory(buffer, &driverEventContext->EventContext, eventLen);
 			// save event length
 			irpEntry->SerialNumber = eventLen;
+
+			if (driverEventContext->Completed) {
+				KeSetEvent(driverEventContext->Completed, IO_NO_INCREMENT, FALSE);
+			}
 			ExFreePool(driverEventContext);
 		}
 		InsertTailList(&completeList, &irpEntry->ListEntry);
@@ -342,10 +361,16 @@ NotificationThread(
 	)
 {
 	PKEVENT events[5];
+	PKWAIT_BLOCK waitBlock;
 	NTSTATUS status;
 
 	DDbgPrint("==> NotificationThread\n");
 
+	waitBlock = ExAllocatePool(sizeof(KWAIT_BLOCK) * 5);
+	if (waitBlock == NULL) {
+		DbgPrint("  Can't allocate WAIT_BLOCK\n");
+		return;
+	}
 	events[0] = &Dcb->ReleaseEvent;
 	events[1] = &Dcb->NotifyEvent.NotEmpty;
 	events[2] = &Dcb->PendingEvent.NotEmpty;
@@ -354,7 +379,7 @@ NotificationThread(
 
 	while (1) {
 		status = KeWaitForMultipleObjects(
-			3, events, WaitAny, Executive, KernelMode, FALSE, NULL, NULL);
+			5, events, WaitAny, Executive, KernelMode, FALSE, NULL, waitBlock);
 
 		if (status == STATUS_WAIT_0) {
 			;
@@ -373,6 +398,7 @@ NotificationThread(
 		}
 	}
 
+	ExFreePool(waitBlock);
 	DDbgPrint("<== NotificationThread\n");
 }
 
