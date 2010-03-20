@@ -23,6 +23,103 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include <mountdev.h>
 #include <mountmgr.h>
+#include <ntddvol.h>
+
+
+VOID
+PrintUnknownDeviceIoctlCode(
+	__in ULONG	IoctlCode
+	)
+{
+	PCHAR baseCodeStr = "unknown";
+	ULONG baseCode = DEVICE_TYPE_FROM_CTL_CODE(IoctlCode);
+	ULONG functionCode = (IoctlCode & (~0xffffc003)) >> 2;
+
+	DDbgPrint("   Unknown Code 0x%x\n", IoctlCode);
+
+	switch (baseCode) {
+	case IOCTL_STORAGE_BASE:
+		baseCodeStr = "IOCTL_STORAGE_BASE";
+		break;
+	case IOCTL_DISK_BASE:
+		baseCodeStr = "IOCTL_DISK_BASE";
+		break;
+	case IOCTL_VOLUME_BASE:
+		baseCodeStr = "IOCTL_VOLUME_BASE";
+		break;
+	case MOUNTDEVCONTROLTYPE:
+		baseCodeStr = "MOUNTDEVCONTROLTYPE";
+		break;
+	case MOUNTMGRCONTROLTYPE:
+		baseCodeStr = "MOUNTMGRCONTROLTYPE";
+		break;
+	}
+	DDbgPrint("   BaseCode: 0x%x(%s) FunctionCode 0x%x(%d)\n",
+		baseCode, baseCodeStr, functionCode, functionCode);
+}
+
+
+NTSTATUS
+GlobalDeviceControl(
+	__in PDEVICE_OBJECT DeviceObject,
+	__in PIRP Irp
+	)
+{
+	PIO_STACK_LOCATION	irpSp;
+	NTSTATUS			status = STATUS_NOT_IMPLEMENTED;
+	
+	DDbgPrint("   => DokanGlobalDeviceControl\n");
+	irpSp = IoGetCurrentIrpStackLocation(Irp);
+
+	switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
+	case IOCTL_EVENT_START:
+		DDbgPrint("  IOCTL_EVENT_START\n");
+		status = DokanEventStart(DeviceObject, Irp);
+		break;
+	case IOCTL_SERVICE_WAIT:
+		status = DokanRegisterPendingIrpForService(DeviceObject, Irp);
+		break;
+	case IOCTL_TEST:
+		if (irpSp->Parameters.DeviceIoControl.OutputBufferLength >= sizeof(ULONG)) {
+			*(ULONG*)Irp->AssociatedIrp.SystemBuffer = DOKAN_VERSION;
+			Irp->IoStatus.Information = sizeof(ULONG);
+			status = STATUS_SUCCESS;
+			break;
+		}
+	default:
+		PrintUnknownDeviceIoctlCode(irpSp->Parameters.DeviceIoControl.IoControlCode);
+		status = STATUS_INVALID_PARAMETER;
+		break;
+	}
+
+	DDbgPrint("   <= DokanGlobalDeviceControl\n");
+	return status;
+}
+
+
+NTSTATUS
+DiskDeviceControl(
+	__in PDEVICE_OBJECT DeviceObject,
+	__in PIRP Irp
+	)
+{
+	PIO_STACK_LOCATION	irpSp;
+	PDokanDCB			dcb;
+	NTSTATUS			status = STATUS_NOT_IMPLEMENTED;
+	
+	DDbgPrint("   DokanDiskDeviceControl\n");
+	irpSp = IoGetCurrentIrpStackLocation(Irp);
+	dcb = DeviceObject->DeviceExtension;
+
+	switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
+	default:
+		PrintUnknownDeviceIoctlCode(irpSp->Parameters.DeviceIoControl.IoControlCode);
+		status = STATUS_NOT_IMPLEMENTED;
+		break;
+	}
+	return status;
+}
+
 
 NTSTATUS
 DokanDispatchDeviceControl(
@@ -77,41 +174,18 @@ Return Value:
 
 		vcb = DeviceObject->DeviceExtension;
 		if (GetIdentifierType(vcb) == DGL) {
-			switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
-			case IOCTL_EVENT_START:
-				DDbgPrint("  IOCTL_EVENT_START\n");
-				status = DokanEventStart(DeviceObject, Irp);
-				break;
-			case IOCTL_SERVICE_WAIT:
-				status = DokanRegisterPendingIrpForService(DeviceObject, Irp);
-				break;
-			case IOCTL_TEST:
-				if (irpSp->Parameters.DeviceIoControl.OutputBufferLength >= sizeof(ULONG)) {
-					*(ULONG*)Irp->AssociatedIrp.SystemBuffer = DOKAN_VERSION;
-					Irp->IoStatus.Information = sizeof(ULONG);
-					status = STATUS_SUCCESS;
-					break;
-				}
-			default:
-				status = STATUS_INVALID_PARAMETER;
-				break;
-			}
+			status = GlobalDeviceControl(DeviceObject, Irp);
 			__leave;
-		}
-
-
-		if (GetIdentifierType(vcb) != VCB) {
+		} else if (GetIdentifierType(vcb) == DCB) {
+			status = DiskDeviceControl(DeviceObject, Irp);
+			__leave;
+		} else if (GetIdentifierType(vcb) != VCB) {
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
 		dcb = vcb->Dcb;
 
 		switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
-		//case IOCTL_QUERY_DEVICE_NAME:
-		//	DDbgPrint("  IOCTL_QUERY_DEVICE_NAME\n");
-			//status = STATUS_SUCCESS;
-		//	break;
-				
 		case IOCTL_EVENT_WAIT:
 			//DDbgPrint("  IOCTL_EVENT_WAIT\n");
 			status = DokanRegisterPendingIrpForEvent(DeviceObject, Irp);
@@ -248,13 +322,12 @@ Return Value:
 				PMOUNTDEV_NAME	mountdevName;
 				WCHAR			deviceName[MAXIMUM_FILENAME_LENGTH];
 				ULONG			bufferLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
-				WCHAR			deviceName1[] = UNIQUE_VOLUME_NAME;
 				
 				DDbgPrint("   IOCTL_MOUNTDEV_QUERY_DEVICE_NAME\n");
 
 				if (bufferLength < sizeof(MOUNTDEV_NAME)) {
 					status = STATUS_BUFFER_TOO_SMALL;
-					Irp->IoStatus.Information = 0;
+					Irp->IoStatus.Information = sizeof(MOUNTDEV_NAME);
 					break;
 				}
 
@@ -274,76 +347,110 @@ Return Value:
 
 				if (sizeof(USHORT) + mountdevName->NameLength < bufferLength) {
 					RtlCopyMemory((PCHAR)mountdevName->Name, deviceName, mountdevName->NameLength);
-					Irp->IoStatus.Information = FIELD_OFFSET(MOUNTDEV_NAME, Name[0]) + mountdevName->NameLength;
+					Irp->IoStatus.Information = FIELD_OFFSET(MOUNTDEV_NAME, Name[0]) +
+												mountdevName->NameLength;
 					status = STATUS_SUCCESS;
-					DDbgPrint("  NameLength %d\n", mountdevName->NameLength);
-					DDbgPrint("  info %d\n", Irp->IoStatus.Information);
 					DDbgPrint("  DeviceName %ws\n", mountdevName->Name);
 				} else {
 					Irp->IoStatus.Information = sizeof(MOUNTDEV_NAME);
 					status = STATUS_BUFFER_OVERFLOW;
 				}
-
-				/* NOTE: Creates symbolic link UNIQUE_VOLUME_NAME (this should be unique name per volume,
-				   now the same name is used for experiment) and return symbolic name here.
-				mountdevName->NameLength = sizeof(deviceName1);
-				if (FIELD_OFFSET(MOUNTDEV_NAME, Name[0]) + sizeof(deviceName1) < bufferLength) {
-					RtlCopyMemory((PCHAR)mountdevName->Name, deviceName1, sizeof(deviceName1));
-					Irp->IoStatus.Information = FIELD_OFFSET(MOUNTDEV_NAME, Name[0]) + mountdevName->NameLength;
-					DDbgPrint("  NameLength %d\n", mountdevName->NameLength);
-					DDbgPrint("  info %d\n", Irp->IoStatus.Information);
-					DDbgPrint("  DeviceName %ws\n", mountdevName->Name);
-					status = STATUS_SUCCESS;
-
-				} else {
-					Irp->IoStatus.Information = sizeof(MOUNTDEV_NAME);
-					status = STATUS_BUFFER_OVERFLOW;
-				}
-				*/
 			}
 			break;
-		case IOCTL_MOUNTDEV_QUERY_UNIQUE_ID:
+		case IOCTL_MOUNTDEV_QUERY_UNIQUE_ID:	
 			{
-				// This IO control code is not called?
 				PMOUNTDEV_UNIQUE_ID uniqueId;
-				WCHAR				uniqueName[] = L"\\??\\Volume{dca0e0a5-d2ca-4f0f-8416-a6414657a77a}\\";
+				WCHAR				deviceName[MAXIMUM_FILENAME_LENGTH];
 				ULONG				bufferLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
 
 				DDbgPrint("   IOCTL_MOUNTDEV_QUERY_UNIQUE_ID\n");
 				if (bufferLength < sizeof(MOUNTDEV_UNIQUE_ID)) {
 					status = STATUS_BUFFER_TOO_SMALL;
-					Irp->IoStatus.Information = 0;
+					Irp->IoStatus.Information = sizeof(MOUNTDEV_UNIQUE_ID);
 					break;
 				}
 
 				uniqueId = (PMOUNTDEV_UNIQUE_ID)Irp->AssociatedIrp.SystemBuffer;
 				ASSERT(uniqueId != NULL);
-				uniqueId->UniqueIdLength = sizeof(uniqueName);
-				if (FIELD_OFFSET(MOUNTDEV_UNIQUE_ID, UniqueId[0]) + sizeof(uniqueName) < bufferLength) {
-					RtlCopyMemory((PCHAR)uniqueId->UniqueId, uniqueName, sizeof(uniqueName));
-					Irp->IoStatus.Information = FIELD_OFFSET(MOUNTDEV_UNIQUE_ID, UniqueId[0]) + sizeof(uniqueName);
+
+				swprintf(deviceName, NTDEVICE_NAME_STRING L"%u", dcb->MountId);
+				uniqueId->UniqueIdLength = (wcslen(deviceName) + 1) * sizeof(WCHAR); // includes null char
+
+				if (sizeof(USHORT) + uniqueId->UniqueIdLength < bufferLength) {
+					RtlCopyMemory((PCHAR)uniqueId->UniqueId, deviceName, uniqueId->UniqueIdLength);
+					Irp->IoStatus.Information = FIELD_OFFSET(MOUNTDEV_UNIQUE_ID, UniqueId[0]) +
+												uniqueId->UniqueIdLength;
 					status = STATUS_SUCCESS;
+					DDbgPrint("  UniqueName %ws\n", uniqueId->UniqueId);
 					break;
 				} else {
 					Irp->IoStatus.Information = sizeof(MOUNTDEV_UNIQUE_ID);
 					status = STATUS_BUFFER_OVERFLOW;
 				}
 			}
+			break;
+		case IOCTL_MOUNTDEV_QUERY_SUGGESTED_LINK_NAME:
+			DDbgPrint("   IOCTL_MOUNTDEV_QUERY_SUGGESTED_LINK_NAME\n");
+			break;
+		case IOCTL_MOUNTDEV_LINK_CREATED:
+			DDbgPrint("   IOCTL_MOUNTDEV_LINK_CREATED\n");
+			status = STATUS_SUCCESS;
+			break;
+		case IOCTL_MOUNTDEV_LINK_DELETED:
+			DDbgPrint("   IOCTL_MOUNTDEV_LINK_DELETED\n");
+			status = STATUS_SUCCESS;
+			break;
+		//case IOCTL_MOUNTDEV_UNIQUE_ID_CHANGE_NOTIFY:
+		//	DDbgPrint("   IOCTL_MOUNTDEV_UNIQUE_ID_CHANGE_NOTIFY\n");
+		//	break;
+		case IOCTL_MOUNTDEV_QUERY_STABLE_GUID:
+			DDbgPrint("   IOCTL_MOUNTDEV_QUERY_STABLE_GUID\n");
+			break;
+		case IOCTL_VOLUME_ONLINE:
+			DDbgPrint("   IOCTL_VOLUME_ONLINE\n");
+			status = STATUS_SUCCESS;
+			break;
+		case IOCTL_VOLUME_OFFLINE:
+			DDbgPrint("   IOCTL_VOLUME_OFFLINE\n");
+			status = STATUS_SUCCESS;
+			break;
+		case IOCTL_VOLUME_READ_PLEX:
+			DDbgPrint("   IOCTL_VOLUME_READ_PLEX\n");
+			break;
+		case IOCTL_VOLUME_PHYSICAL_TO_LOGICAL:
+			DDbgPrint("   IOCTL_VOLUME_PHYSICAL_TO_LOGICAL\n");
+			break;
+		case IOCTL_VOLUME_IS_CLUSTERED:
+			DDbgPrint("   IOCTL_VOLUME_IS_CLUSTERED\n");
+			break;
+		case IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS:
+			{
+				DDbgPrint("   IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS\n");
+			}
+			break;
+		case IOCTL_VOLUME_GET_GPT_ATTRIBUTES:
+			{
+				DDbgPrint("   IOCTL_VOLUME_GET_GPT_ATTRIBUTES\n");
+				status = STATUS_SUCCESS;
+			}
+			break;
 		case IOCTL_STORAGE_EJECT_MEDIA:
 			{
 				DDbgPrint("   IOCTL_STORAGE_EJECT_MEDIA\n");
 				DokanUnmount(dcb);				
 				status = STATUS_SUCCESS;
-				break;
 			}
+			break;
 		case IOCTL_REDIR_QUERY_PATH:
 			{
 				DbgPrint("  IOCTL_REDIR_QUERY_PATH\n");
-				break;
 			}
+			break;
 		default:
-			DDbgPrint("   Unknown Code 0x%x\n", irpSp->Parameters.DeviceIoControl.IoControlCode);
-			status = STATUS_NOT_IMPLEMENTED;
+			{
+				PrintUnknownDeviceIoctlCode(irpSp->Parameters.DeviceIoControl.IoControlCode);
+				status = STATUS_NOT_IMPLEMENTED;
+			}
 			break;
 		} // switch IoControlCode
 	

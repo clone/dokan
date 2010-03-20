@@ -153,6 +153,7 @@ typedef struct _DokanDiskControlBlock {
 	DEVICE_TYPE				DeviceType;
 	ULONG					DeviceCharacteristics;
 	HANDLE					MupHandle;
+	UNICODE_STRING			MountedDeviceInterfaceName;
 
 	// When timeout is occuerd, KillEvent is triggered.
 	KEVENT					KillEvent;

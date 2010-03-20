@@ -434,7 +434,7 @@ DokanEventStart(
 		return STATUS_SUCCESS;
 	}
 
-	deviceCharacteristics = 0;
+	deviceCharacteristics = FILE_DEVICE_IS_MOUNTED;
 
 	switch (eventStart.DeviceType) {
 	case DOKAN_DISK_FILE_SYSTEM:

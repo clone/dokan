@@ -321,8 +321,6 @@ Routine Description:
 
 	DDbgPrint("==> DokanStartCheckThread\n");
 
-	KeInitializeEvent(&Dcb->KillEvent, NotificationEvent, FALSE);
-
 	status = PsCreateSystemThread(&thread, THREAD_ALL_ACCESS,
 		NULL, NULL, NULL, (PKSTART_ROUTINE)DokanTimeoutThread, Dcb);
 

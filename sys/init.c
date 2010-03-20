@@ -20,7 +20,136 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "dokan.h"
+#include <initguid.h>
 #include <wdmsec.h>
+#include <mountmgr.h>
+
+NTSTATUS
+DokanSendVolumeArrivalNotification(
+	PUNICODE_STRING		DeviceName
+			 )
+{
+	NTSTATUS		status;
+	UNICODE_STRING	mountManagerName;
+	PFILE_OBJECT    mountFileObject;
+	PDEVICE_OBJECT  mountDeviceObject;
+	PMOUNTMGR_TARGET_NAME targetName;
+	ULONG			length;
+	PIRP			irp;
+	KEVENT			driverEvent;
+	IO_STATUS_BLOCK	iosb;
+
+	DDbgPrint("=> DokanSendVolumeArrivalNotification\n");
+
+	RtlInitUnicodeString(&mountManagerName, MOUNTMGR_DEVICE_NAME);
+
+	length = sizeof(MOUNTMGR_TARGET_NAME) + DeviceName->Length - 1;
+	targetName = ExAllocatePool(length);
+
+	if (targetName == NULL) {
+		DDbgPrint("  can't allocate MOUNTMGR_TARGET_NAME\n");
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
+	RtlZeroMemory(targetName, length);
+
+	targetName->DeviceNameLength = DeviceName->Length;
+	RtlCopyMemory(targetName->DeviceName, DeviceName->Buffer, DeviceName->Length);
+	
+	status = IoGetDeviceObjectPointer(
+				&mountManagerName,
+				FILE_READ_ATTRIBUTES,
+				&mountFileObject,
+				&mountDeviceObject);
+
+	if (!NT_SUCCESS(status)) {
+		ExFreePool(targetName);
+		DDbgPrint("  IoGetDeviceObjectPointer failed: 0x%x\n", status);
+		return status;
+	}
+
+	KeInitializeEvent(&driverEvent, NotificationEvent, FALSE);
+
+	irp = IoBuildDeviceIoControlRequest(
+			IOCTL_MOUNTMGR_VOLUME_ARRIVAL_NOTIFICATION,
+			mountDeviceObject,
+			targetName,
+			length,
+			NULL,
+			0,
+			FALSE,
+			&driverEvent,
+			&iosb);
+
+	if (irp == NULL) {
+		DDbgPrint("  IoBuildDeviceIoControlRequest failed\n");
+		ExFreePool(targetName);
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
+	status = IoCallDriver(mountDeviceObject, irp);
+
+	if (status == STATUS_PENDING) {
+		KeWaitForSingleObject(
+			&driverEvent, Executive, KernelMode, FALSE, NULL);
+	}
+	status = iosb.Status;
+
+	ObDereferenceObject(mountFileObject);
+	ObDereferenceObject(mountDeviceObject);
+
+	if (NT_SUCCESS(status)) {
+		DDbgPrint("  IoCallDriver success\n");
+	} else {
+		DDbgPrint("  IoCallDriver faield: 0x%x\n", status);
+	}
+
+	ExFreePool(targetName);
+
+	DDbgPrint("<= DokanSendVolumeArrivalNotification\n");
+
+	return status;
+}
+
+
+NTSTATUS
+DokanRegisterMountedDeviceInterface(
+	__in PDEVICE_OBJECT	DeviceObject,
+	__in PDokanDCB		Dcb
+	)
+{
+	NTSTATUS		status;
+	UNICODE_STRING	interfaceName;
+	DDbgPrint("=> DokanRegisterMountedDeviceInterface\n");
+
+	status = IoRegisterDeviceInterface(
+                DeviceObject,
+                &MOUNTDEV_MOUNTED_DEVICE_GUID,
+                NULL,
+                &interfaceName
+                );
+
+    if(NT_SUCCESS(status)) {
+		DDbgPrint("  InterfaceName:%wZ\n", &interfaceName);
+
+        Dcb->MountedDeviceInterfaceName = interfaceName;
+        status = IoSetDeviceInterfaceState(&interfaceName, TRUE);
+
+        if(!NT_SUCCESS(status)) {
+			DDbgPrint("  IoSetDeviceInterfaceState failed: 0x%x\n", status);
+            RtlFreeUnicodeString(&interfaceName);
+        }
+	} else {
+		DDbgPrint("  IoRegisterDeviceInterface failed: 0x%x\n", status);
+	}
+
+    if(!NT_SUCCESS(status)) {
+        RtlInitUnicodeString(&(Dcb->MountedDeviceInterfaceName),
+                             NULL);
+    }
+	DDbgPrint("<= DokanRegisterMountedDeviceInterface\n");
+	return status;
+}
 
 
 VOID
@@ -98,12 +227,14 @@ DokanCreateDiskDevice(
 	)
 {
 	WCHAR				deviceNameBuf[MAXIMUM_FILENAME_LENGTH];
+	WCHAR				diskDeviceNameBuf[MAXIMUM_FILENAME_LENGTH];
 	WCHAR				symbolicLinkBuf[MAXIMUM_FILENAME_LENGTH];
 	PDEVICE_OBJECT		diskDeviceObject;
 	PDEVICE_OBJECT		fsDeviceObject;
 	PDokanDCB			dcb;
 	PDokanVCB			vcb;
 	UNICODE_STRING		deviceName;
+	UNICODE_STRING		diskDeviceName;
 	UNICODE_STRING		symbolicLinkName;
 	NTSTATUS			status;
 	WCHAR				uniqueVolumeNameBuf[] = UNIQUE_VOLUME_NAME;
@@ -112,9 +243,11 @@ DokanCreateDiskDevice(
 
 	// make DeviceName and SymboliLink
 	swprintf(deviceNameBuf, NTDEVICE_NAME_STRING L"%u", MountId);
+	swprintf(diskDeviceNameBuf, NTDEVICE_NAME_STRING L"d%u", MountId);
 	swprintf(symbolicLinkBuf, SYMBOLIC_NAME_STRING L"%u", MountId);
 
 	RtlInitUnicodeString(&deviceName, deviceNameBuf);
+	RtlInitUnicodeString(&diskDeviceName, diskDeviceNameBuf);
 	RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
 
 	//
@@ -154,9 +287,9 @@ DokanCreateDiskDevice(
 	dcb->Identifier.Size = sizeof(DokanDCB);
 
 	dcb->MountId = MountId;
-
 	dcb->DeviceType = FILE_DEVICE_VIRTUAL_DISK;
 	dcb->DeviceCharacteristics = DeviceCharacteristics;
+	KeInitializeEvent(&dcb->KillEvent, NotificationEvent, FALSE);
 
 	//
 	// Establish user-buffer access method.
@@ -167,9 +300,6 @@ DokanCreateDiskDevice(
 	DokanInitIrpList(&dcb->PendingIrp);
 	DokanInitIrpList(&dcb->PendingEvent);
 	DokanInitIrpList(&dcb->NotifyEvent);
-
-	DokanInitIrpList(&DokanGlobal->PendingService);
-	DokanInitIrpList(&DokanGlobal->NotifyService);
 
 	KeInitializeEvent(&dcb->ReleaseEvent, NotificationEvent, FALSE);
 
@@ -261,7 +391,7 @@ DokanCreateDiskDevice(
 		return status;
 	}
 	
-	IoRegisterFileSystem(fsDeviceObject);
+	//IoRegisterFileSystem(fsDeviceObject);
 
 	//RtlInitUnicodeString(&symbolicLinkName, uniqueVolumeNameBuf);
 	//IoCreateSymbolicLink(&symbolicLinkName, &deviceName);
@@ -272,7 +402,7 @@ DokanCreateDiskDevice(
 
 
 	if (DeviceType == FILE_DEVICE_NETWORK_FILE_SYSTEM) {
-		status = FsRtlRegisterUncProvider(&dcb->MupHandle, &deviceName, FALSE);
+		status = FsRtlRegisterUncProvider(&(dcb->MupHandle), &deviceName, FALSE);
 		if (NT_SUCCESS(status)) {
 			DbgPrint("  FsRtlRegisterUncProvider success\n");
 		} else {
@@ -280,6 +410,12 @@ DokanCreateDiskDevice(
 			dcb->MupHandle = 0;
 		}
 	}
+	//DokanRegisterMountedDeviceInterface(diskDeviceObject, dcb);
+	
+	dcb->Mounted = 1;
+
+	DokanSendVolumeArrivalNotification(&deviceName);
+
 
 	return STATUS_SUCCESS;
 }
@@ -310,7 +446,7 @@ DokanDeleteDeviceObject(
 	//DDbgPrint("  Delete Symbolic Name: %wZ\n", &symbolicLinkName);
 	//IoDeleteSymbolicLink(&symbolicLinkName);
 
-	IoUnregisterFileSystem(vcb->DeviceObject);
+	//IoUnregisterFileSystem(vcb->DeviceObject);
 	// delete diskDeviceObject
 	DDbgPrint("  Delete DeviceObject\n");
 	IoDeleteDevice(vcb->DeviceObject);
