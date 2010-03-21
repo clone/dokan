@@ -23,25 +23,89 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <initguid.h>
 #include <wdmsec.h>
 #include <mountmgr.h>
+#include <ntddstor.h>
+
 
 NTSTATUS
-DokanSendVolumeArrivalNotification(
-	PUNICODE_STRING		DeviceName
-			 )
+DokanSendIoContlToMountManager(
+	__in PVOID	InputBuffer,
+	__in ULONG	Length
+	)
 {
 	NTSTATUS		status;
 	UNICODE_STRING	mountManagerName;
 	PFILE_OBJECT    mountFileObject;
 	PDEVICE_OBJECT  mountDeviceObject;
-	PMOUNTMGR_TARGET_NAME targetName;
-	ULONG			length;
 	PIRP			irp;
 	KEVENT			driverEvent;
 	IO_STATUS_BLOCK	iosb;
 
-	DDbgPrint("=> DokanSendVolumeArrivalNotification\n");
+	DDbgPrint("=> DokanSnedIoContlToMountManager\n");
 
 	RtlInitUnicodeString(&mountManagerName, MOUNTMGR_DEVICE_NAME);
+
+
+	status = IoGetDeviceObjectPointer(
+				&mountManagerName,
+				FILE_READ_ATTRIBUTES,
+				&mountFileObject,
+				&mountDeviceObject);
+
+	if (!NT_SUCCESS(status)) {
+		DDbgPrint("  IoGetDeviceObjectPointer failed: 0x%x\n", status);
+		return status;
+	}
+
+	KeInitializeEvent(&driverEvent, NotificationEvent, FALSE);
+
+	irp = IoBuildDeviceIoControlRequest(
+			IOCTL_MOUNTMGR_VOLUME_ARRIVAL_NOTIFICATION,
+			mountDeviceObject,
+			InputBuffer,
+			Length,
+			NULL,
+			0,
+			FALSE,
+			&driverEvent,
+			&iosb);
+
+	if (irp == NULL) {
+		DDbgPrint("  IoBuildDeviceIoControlRequest failed\n");
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
+	status = IoCallDriver(mountDeviceObject, irp);
+
+	if (status == STATUS_PENDING) {
+		KeWaitForSingleObject(
+			&driverEvent, Executive, KernelMode, FALSE, NULL);
+	}
+	status = iosb.Status;
+
+	ObDereferenceObject(mountFileObject);
+	ObDereferenceObject(mountDeviceObject);
+
+	if (NT_SUCCESS(status)) {
+		DDbgPrint("  IoCallDriver success\n");
+	} else {
+		DDbgPrint("  IoCallDriver faield: 0x%x\n", status);
+	}
+
+	DDbgPrint("<= DokanSendIoContlToMountManager\n");
+
+	return status;
+}
+
+NTSTATUS
+DokanSendVolumeArrivalNotification(
+	PUNICODE_STRING		DeviceName
+	)
+{
+	NTSTATUS		status;
+	PMOUNTMGR_TARGET_NAME targetName;
+	ULONG			length;
+
+	DDbgPrint("=> DokanSendVolumeArrivalNotification\n");
 
 	length = sizeof(MOUNTMGR_TARGET_NAME) + DeviceName->Length - 1;
 	targetName = ExAllocatePool(length);
@@ -56,47 +120,7 @@ DokanSendVolumeArrivalNotification(
 	targetName->DeviceNameLength = DeviceName->Length;
 	RtlCopyMemory(targetName->DeviceName, DeviceName->Buffer, DeviceName->Length);
 	
-	status = IoGetDeviceObjectPointer(
-				&mountManagerName,
-				FILE_READ_ATTRIBUTES,
-				&mountFileObject,
-				&mountDeviceObject);
-
-	if (!NT_SUCCESS(status)) {
-		ExFreePool(targetName);
-		DDbgPrint("  IoGetDeviceObjectPointer failed: 0x%x\n", status);
-		return status;
-	}
-
-	KeInitializeEvent(&driverEvent, NotificationEvent, FALSE);
-
-	irp = IoBuildDeviceIoControlRequest(
-			IOCTL_MOUNTMGR_VOLUME_ARRIVAL_NOTIFICATION,
-			mountDeviceObject,
-			targetName,
-			length,
-			NULL,
-			0,
-			FALSE,
-			&driverEvent,
-			&iosb);
-
-	if (irp == NULL) {
-		DDbgPrint("  IoBuildDeviceIoControlRequest failed\n");
-		ExFreePool(targetName);
-		return STATUS_INSUFFICIENT_RESOURCES;
-	}
-
-	status = IoCallDriver(mountDeviceObject, irp);
-
-	if (status == STATUS_PENDING) {
-		KeWaitForSingleObject(
-			&driverEvent, Executive, KernelMode, FALSE, NULL);
-	}
-	status = iosb.Status;
-
-	ObDereferenceObject(mountFileObject);
-	ObDereferenceObject(mountDeviceObject);
+	status = DokanSendIoContlToMountManager(targetName, length);
 
 	if (NT_SUCCESS(status)) {
 		DDbgPrint("  IoCallDriver success\n");
@@ -148,6 +172,87 @@ DokanRegisterMountedDeviceInterface(
                              NULL);
     }
 	DDbgPrint("<= DokanRegisterMountedDeviceInterface\n");
+	return status;
+}
+
+
+NTSTATUS
+DokanRegisterDeviceInterface(
+	__in PDRIVER_OBJECT		DriverObject,
+	__in PDEVICE_OBJECT		DeviceObject,
+	__in PDokanDCB			Dcb
+	)
+{
+	PDEVICE_OBJECT	pnpDeviceObject = NULL;
+	NTSTATUS		status;
+
+	status = IoReportDetectedDevice(
+				DriverObject,
+				InterfaceTypeUndefined,
+				0,
+				0,
+				NULL,
+				NULL,
+				FALSE,
+				&pnpDeviceObject);
+
+	if (NT_SUCCESS(status)) {
+		DDbgPrint("  IoReportDetectedDevice success\n");
+	} else {
+		DDbgPrint("  IoReportDetectedDevice failed: 0x%x\n", status);
+		return status;
+	}
+
+	if (IoAttachDeviceToDeviceStack(pnpDeviceObject, DeviceObject) != NULL) {
+		DDbgPrint("  IoAttachDeviceToDeviceStack success\n");
+	} else {
+		DDbgPrint("  IoAttachDeviceToDeviceStack failed\n");
+	}
+
+	status = IoRegisterDeviceInterface(
+				pnpDeviceObject,
+				&GUID_DEVINTERFACE_DISK,
+				NULL,
+				&Dcb->DiskDeviceInterfaceName);
+
+	if (NT_SUCCESS(status)) {
+		DDbgPrint("  IoRegisterDeviceInterface success: %wZ\n", &Dcb->DiskDeviceInterfaceName);
+	} else {
+		DDbgPrint("  IoRegisterDeviceInterface failed: 0x%x\n", status);
+		return status;
+	}
+
+	status = IoSetDeviceInterfaceState(&Dcb->DiskDeviceInterfaceName, TRUE);
+
+	if (NT_SUCCESS(status)) {
+		DDbgPrint("  IoSetDeviceInterfaceState success\n");
+	} else {
+		DDbgPrint("  IoSetDeviceInterfaceState failed: 0x%x\n", status);
+		return status;
+	}
+
+	status = IoRegisterDeviceInterface(
+				pnpDeviceObject,
+				&MOUNTDEV_MOUNTED_DEVICE_GUID,
+				NULL,
+				&Dcb->MountedDeviceInterfaceName);
+
+	if (NT_SUCCESS(status)) {
+		DDbgPrint("  IoRegisterDeviceInterface success: %wZ\n", &Dcb->MountedDeviceInterfaceName);
+	} else {
+		DDbgPrint("  IoRegisterDeviceInterface failed: 0x%x\n", status);
+		return status;
+	}
+
+	status = IoSetDeviceInterfaceState(&Dcb->MountedDeviceInterfaceName, TRUE);
+
+	if (NT_SUCCESS(status)) {
+		DDbgPrint("  IoSetDeviceInterfaceState success\n");
+	} else {
+		DDbgPrint("  IoSetDeviceInterfaceState failed: 0x%x\n", status);
+		return status;
+	}
+
 	return status;
 }
 
@@ -227,7 +332,6 @@ DokanCreateDiskDevice(
 	)
 {
 	WCHAR				deviceNameBuf[MAXIMUM_FILENAME_LENGTH];
-	WCHAR				diskDeviceNameBuf[MAXIMUM_FILENAME_LENGTH];
 	WCHAR				symbolicLinkBuf[MAXIMUM_FILENAME_LENGTH];
 	PDEVICE_OBJECT		diskDeviceObject;
 	PDEVICE_OBJECT		fsDeviceObject;
@@ -243,11 +347,9 @@ DokanCreateDiskDevice(
 
 	// make DeviceName and SymboliLink
 	swprintf(deviceNameBuf, NTDEVICE_NAME_STRING L"%u", MountId);
-	swprintf(diskDeviceNameBuf, NTDEVICE_NAME_STRING L"d%u", MountId);
 	swprintf(symbolicLinkBuf, SYMBOLIC_NAME_STRING L"%u", MountId);
 
 	RtlInitUnicodeString(&deviceName, deviceNameBuf);
-	RtlInitUnicodeString(&diskDeviceName, diskDeviceNameBuf);
 	RtlInitUnicodeString(&symbolicLinkName, symbolicLinkBuf);
 
 	//
@@ -391,10 +493,7 @@ DokanCreateDiskDevice(
 		return status;
 	}
 	
-	//IoRegisterFileSystem(fsDeviceObject);
-
-	//RtlInitUnicodeString(&symbolicLinkName, uniqueVolumeNameBuf);
-	//IoCreateSymbolicLink(&symbolicLinkName, &deviceName);
+	IoRegisterFileSystem(fsDeviceObject);
 
 	// Mark devices as initialized
 	diskDeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
@@ -414,7 +513,11 @@ DokanCreateDiskDevice(
 	
 	dcb->Mounted = 1;
 
-	DokanSendVolumeArrivalNotification(&deviceName);
+	//DokanSendVolumeArrivalNotification(&deviceName);
+	//DokanRegisterDeviceInterface(DriverObject, diskDeviceObject, dcb);
+
+	//RtlInitUnicodeString(&symbolicLinkName, uniqueVolumeNameBuf);
+	//IoCreateSymbolicLink(&symbolicLinkName, &deviceName);
 
 
 	return STATUS_SUCCESS;
@@ -446,7 +549,8 @@ DokanDeleteDeviceObject(
 	//DDbgPrint("  Delete Symbolic Name: %wZ\n", &symbolicLinkName);
 	//IoDeleteSymbolicLink(&symbolicLinkName);
 
-	//IoUnregisterFileSystem(vcb->DeviceObject);
+	IoUnregisterFileSystem(vcb->DeviceObject);
+
 	// delete diskDeviceObject
 	DDbgPrint("  Delete DeviceObject\n");
 	IoDeleteDevice(vcb->DeviceObject);

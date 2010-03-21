@@ -393,8 +393,12 @@ Return Value:
 			DDbgPrint("   IOCTL_MOUNTDEV_QUERY_SUGGESTED_LINK_NAME\n");
 			break;
 		case IOCTL_MOUNTDEV_LINK_CREATED:
-			DDbgPrint("   IOCTL_MOUNTDEV_LINK_CREATED\n");
-			status = STATUS_SUCCESS;
+			{
+				PMOUNTDEV_NAME	mountdevName = Irp->AssociatedIrp.SystemBuffer;
+				DDbgPrint("   IOCTL_MOUNTDEV_LINK_CREATED\n");
+				DDbgPrint("     Name: %ws\n", mountdevName->Name); 
+				status = STATUS_SUCCESS;
+			}
 			break;
 		case IOCTL_MOUNTDEV_LINK_DELETED:
 			DDbgPrint("   IOCTL_MOUNTDEV_LINK_DELETED\n");
