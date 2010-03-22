@@ -29,6 +29,7 @@ extern "C" {
 #define DOKAN_GLOBAL_DEVICE_NAME	L"\\\\.\\dokan"
 #define DOKAN_DEVICE_NAME			L"\\\\.\\dokan%d"
 #define DOKAN_RAW_DEVICE_NAME		L"\\Device\\dokan%d"
+#define DOKAN_MOUNT_DEVICE_NAME		L"\\??\\dokan%d\\"
 #define DOKAN_CONTROL_PIPE			L"\\\\.\\pipe\\DokanMounter"
 
 #define DOKAN_MOUNTER_SERVICE L"DokanMounter"

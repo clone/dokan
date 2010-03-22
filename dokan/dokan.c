@@ -638,6 +638,22 @@ DokanStart(PDOKAN_INSTANCE Instance)
 
 
 BOOL
+DokanSetDebugMode(
+	ULONG	Mode)
+{
+	ULONG returnedLength;
+	return SendToDevice(
+		DOKAN_GLOBAL_DEVICE_NAME,
+		IOCTL_SET_DEBUG_MODE,
+		&Mode,
+		sizeof(ULONG),
+		NULL,
+		0,
+		&returnedLength);
+}
+
+
+BOOL
 DokanSendIoControl(
 	WCHAR	DriveLetter,
  	DWORD	IoControlCode)

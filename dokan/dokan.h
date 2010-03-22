@@ -315,6 +315,9 @@ DokanNetworkProviderInstall();
 BOOL DOKANAPI
 DokanNetworkProviderUninstall();
 
+BOOL DOKANAPI
+DokanSetDebugMode(ULONG Mode);
+
 #ifdef __cplusplus
 }
 #endif

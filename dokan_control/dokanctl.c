@@ -160,7 +160,16 @@ main(int argc, PCHAR argv[])
 				fprintf(stderr, "network provider remove failed\n");
 		}
 		break;
-	
+	case L'd':
+		if (L'0' <= type && type <= L'9') {
+			ULONG mode = type - L'0';
+			if (DokanSetDebugMode(mode)) {
+				fprintf(stderr, "set debug mode ok\n");
+			} else {
+				fprintf(stderr, "set debug mode failed\n");
+			}
+		}
+		break;
 	default:
 		fprintf(stderr, "unknown option\n");
 	}
