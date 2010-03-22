@@ -107,9 +107,11 @@ CreateMountPoint(
 	free(reparseData);
 
 	if (result) {
-		DbgPrintW(L"CreateMountPoint success\n");
+		DbgPrintW(L"CreateMountPoint %s -> %s success\n",
+			ReparsePointName, TargetDeviceName);
 	} else {
-		DbgPrintW(L"CreateMountPoint failed: %d\n", GetLastError());
+		DbgPrintW(L"CreateMountPoint %s -> %s failed: %d\n",
+			ReparsePointName, TargetDeviceName, GetLastError());
 	}
 	return result;
 }
@@ -154,12 +156,6 @@ DeleteMountPoint(
 	return result;
 }
 
-BOOL
-CreateMountPoint2(
-	PWCHAR	ReparsePointName,
-	PWCHAR	TargetName)
-{
-}
 
 BOOL
 DokanControlMount(
