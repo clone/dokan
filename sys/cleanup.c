@@ -96,9 +96,12 @@ Return Value:
 			__leave;
 		}
 
-		CcFlushCache(&fcb->SectionObjectPointers, NULL, 0, NULL);
-		CcPurgeCacheSection(&fcb->SectionObjectPointers, NULL, 0, FALSE);
-		CcUninitializeCacheMap(fileObject, NULL, NULL);
+		if (fileObject->SectionObjectPointer != NULL &&
+			fileObject->SectionObjectPointer->DataSectionObject != NULL) {
+			CcFlushCache(&fcb->SectionObjectPointers, NULL, 0, NULL);
+			CcPurgeCacheSection(&fcb->SectionObjectPointers, NULL, 0, FALSE);
+			CcUninitializeCacheMap(fileObject, NULL, NULL);
+		}
 		fileObject->Flags |= FO_CLEANUP_COMPLETE;
 
 		eventContext->Context = ccb->UserContext;
