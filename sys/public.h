@@ -24,14 +24,14 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000186
+#define DOKAN_VERSION	0x0000187
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 
 #define IOCTL_TEST \
 	CTL_CODE( FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS )
 
-#define IOCTL_UNREGFS \
+#define IOCTL_SET_DEBUG_MODE \
 	CTL_CODE( FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS )
 
 #define IOCTL_EVENT_WAIT \

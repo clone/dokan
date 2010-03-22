@@ -503,9 +503,9 @@ DokanCreateDiskDevice(
 	if (DeviceType == FILE_DEVICE_NETWORK_FILE_SYSTEM) {
 		status = FsRtlRegisterUncProvider(&(dcb->MupHandle), &deviceName, FALSE);
 		if (NT_SUCCESS(status)) {
-			DbgPrint("  FsRtlRegisterUncProvider success\n");
+			DDbgPrint("  FsRtlRegisterUncProvider success\n");
 		} else {
-			DbgPrint("  FsRtlRegisterUncProvider failed: 0x%x\n", status);
+			DDbgPrint("  FsRtlRegisterUncProvider failed: 0x%x\n", status);
 			dcb->MupHandle = 0;
 		}
 	}

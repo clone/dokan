@@ -107,7 +107,7 @@ DokanDispatchLock(
 		if (irpSp->Parameters.LockControl.Length != NULL) {
 			eventContext->Lock.Length.QuadPart = irpSp->Parameters.LockControl.Length->QuadPart;
 		} else {
-			DbgPrint("  LockControl.Length = NULL\n");
+			DDbgPrint("  LockControl.Length = NULL\n");
 		}
 		eventContext->Lock.Key = irpSp->Parameters.LockControl.Key;
 

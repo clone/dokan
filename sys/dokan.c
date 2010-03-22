@@ -44,6 +44,8 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 
+ULONG g_Debug = 1;
+
 #if _WIN32_WINNT < 0x0501
 	PFN_FSRTLTEARDOWNPERSTREAMCONTEXTS DokanFsRtlTeardownPerStreamContexts;
 #endif
@@ -452,12 +454,12 @@ PrintIdType(
 	__in VOID* Id)
 {
 	if (Id == NULL) {
-		DbgPrint("    IdType = NULL\n");
+		DDbgPrint("    IdType = NULL\n");
 		return;
 	}
 	switch (GetIdentifierType(Id)) {
 	case DGL:
-		DbgPrint("    IdType = DGL\n");
+		DDbgPrint("    IdType = DGL\n");
 		break;
 	case DCB:
 		DDbgPrint("   IdType = DCB\n");

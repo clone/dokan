@@ -79,6 +79,15 @@ GlobalDeviceControl(
 	case IOCTL_SERVICE_WAIT:
 		status = DokanRegisterPendingIrpForService(DeviceObject, Irp);
 		break;
+	case IOCTL_SET_DEBUG_MODE:
+		{
+			if (irpSp->Parameters.DeviceIoControl.InputBufferLength >= sizeof(ULONG)) {
+				g_Debug = *(ULONG*)Irp->AssociatedIrp.SystemBuffer;
+				status = STATUS_SUCCESS;
+			}
+			DDbgPrint("  IOCTL_SET_DEBUG_MODE: %d\n", g_Debug);
+		}
+		break;
 	case IOCTL_TEST:
 		if (irpSp->Parameters.DeviceIoControl.OutputBufferLength >= sizeof(ULONG)) {
 			*(ULONG*)Irp->AssociatedIrp.SystemBuffer = DOKAN_VERSION;
@@ -447,7 +456,7 @@ Return Value:
 			break;
 		case IOCTL_REDIR_QUERY_PATH:
 			{
-				DbgPrint("  IOCTL_REDIR_QUERY_PATH\n");
+				DDbgPrint("  IOCTL_REDIR_QUERY_PATH\n");
 			}
 			break;
 		default:

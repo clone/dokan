@@ -539,19 +539,19 @@ DokanCompleteSetInformation(
 					if (!MmFlushImageSection(
 						&fcb->SectionObjectPointers,
 						MmFlushForDelete)) {
-						DbgPrint("  Cannot delete user mapped image\n");
+						DDbgPrint("  Cannot delete user mapped image\n");
 						status = STATUS_CANNOT_DELETE;
 					} else {
 						ccb->Flags |= DOKAN_DELETE_ON_CLOSE;
 						fcb->Flags |= DOKAN_DELETE_ON_CLOSE;
-						DbgPrint("   FileObject->DeletePending = TRUE\n");
+						DDbgPrint("   FileObject->DeletePending = TRUE\n");
 						IrpEntry->FileObject->DeletePending = TRUE;
 					}
 
 				} else {
 					ccb->Flags &= ~DOKAN_DELETE_ON_CLOSE;
 					fcb->Flags &= ~DOKAN_DELETE_ON_CLOSE;
-					DbgPrint("   FileObject->DeletePending = FALSE\n");
+					DDbgPrint("   FileObject->DeletePending = FALSE\n");
 					IrpEntry->FileObject->DeletePending = FALSE;
 				}
 			}

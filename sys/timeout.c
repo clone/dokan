@@ -56,7 +56,7 @@ DokanUnmount(
 	// set drive letter
 	eventContext->Flags = Dcb->Mounted;
 
-	DbgPrint("  Send Unmount to Service : %wc\n", Dcb->Mounted);
+	DDbgPrint("  Send Unmount to Service : %wc\n", Dcb->Mounted);
 
 	DokanEventNotification(&Dcb->Global->NotifyService, eventContext);
 

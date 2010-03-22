@@ -37,6 +37,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
 int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
+extern ULONG g_Debug;
 
 #define NTDEVICE_NAME_STRING	L"\\Device\\dokan"
 #define SYMBOLIC_NAME_STRING    L"\\DosDevices\\Global\\dokan"
@@ -63,13 +64,15 @@ int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 #define USE_DBGPRINT 1
 
 #ifdef USE_DBGPRINT
-	#define DDbgPrint(...)		DbgPrint(__VA_ARGS__)
+	#define DDbgPrint(...) \
+	if (g_Debug) { DbgPrint("[DokanFS] " __VA_ARGS__); }
 #else
 	#if _WIN32_WINNT >= 0x0501
 		#define DDbgPrint(...)	\
-			KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_TRACE_LEVEL, __VA_ARGS__ ))
+		if (g_Debug) { KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_TRACE_LEVEL, "[DokanFS] " __VA_ARGS__ )); }
 	#else
-		#define DDbgPrint(...) KdPrint((__VA_ARGS__))
+        #define DDbgPrint(...) \
+		if (g_Debug) { KdPrint(("[DokanFS] " __VA_ARGS__)); }
 	#endif
 #endif
 

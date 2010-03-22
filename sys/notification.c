@@ -368,7 +368,7 @@ NotificationThread(
 
 	waitBlock = ExAllocatePool(sizeof(KWAIT_BLOCK) * 5);
 	if (waitBlock == NULL) {
-		DbgPrint("  Can't allocate WAIT_BLOCK\n");
+		DDbgPrint("  Can't allocate WAIT_BLOCK\n");
 		return;
 	}
 	events[0] = &Dcb->ReleaseEvent;
