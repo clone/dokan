@@ -44,7 +44,7 @@ DokanAllocateFCB(
 	fcb->Vcb = Vcb;
 
 	ExInitializeResourceLite(&fcb->MainResource);
-    ExInitializeResourceLite(&fcb->PagingIoResource);
+	ExInitializeResourceLite(&fcb->PagingIoResource);
 
 	ExInitializeFastMutex(&fcb->AdvancedFCBHeaderMutex);
 
@@ -468,6 +468,11 @@ Return Value:
 		if (fcb == NULL) {
 			status = STATUS_INSUFFICIENT_RESOURCES;
 			__leave;
+		}
+
+		if (irpSp->Flags & SL_OPEN_PAGING_FILE) {
+			fcb->AdvancedFCBHeader.Flags2 |= FSRTL_FLAG2_IS_PAGING_FILE;
+			fcb->AdvancedFCBHeader.Flags2 &= ~FSRTL_FLAG2_SUPPORTS_FILTER_CONTEXTS;
 		}
 
 		ccb = DokanAllocateCCB(dcb, fcb);

@@ -25,6 +25,29 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <mountmgr.h>
 #include <ntddstor.h>
 
+NTSTATUS
+DokanFilterCallbackAcquireForCreateSection(
+	__in PFS_FILTER_CALLBACK_DATA CallbackData,
+    __out PVOID *CompletionContext
+	)
+{
+	PFSRTL_ADVANCED_FCB_HEADER	header;
+	DDbgPrint("DokanFilterCallbackAcquireForCreateSection");
+
+	header = CallbackData->FileObject->FsContext;
+
+	if (header && header->Resource) {
+		ExAcquireResourceExclusiveLite(header->Resource, TRUE);
+	}
+
+	if (CallbackData->Parameters.AcquireForSectionSynchronization.SyncType
+		!= SyncTypeCreateSection) {
+		return STATUS_FSFILTER_OP_COMPLETED_SUCCESSFULLY;
+	} else {
+		return STATUS_FILE_LOCKED_WITH_WRITERS;
+	}
+}
+
 
 NTSTATUS
 DokanSendIoContlToMountManager(
@@ -343,7 +366,7 @@ DokanCreateDiskDevice(
 	NTSTATUS			status;
 	WCHAR				uniqueVolumeNameBuf[] = UNIQUE_VOLUME_NAME;
 
-	//FS_FILTER_CALLBACKS filterCallbacks;
+	FS_FILTER_CALLBACKS filterCallbacks;
 
 	// make DeviceName and SymboliLink
 	swprintf(deviceNameBuf, NTDEVICE_NAME_STRING L"%u", MountId);
@@ -458,14 +481,13 @@ DokanCreateDiskDevice(
 	}
 #endif
 
-    //RtlZeroMemory(&filterCallbacks, sizeof(FS_FILTER_CALLBACKS));
+    RtlZeroMemory(&filterCallbacks, sizeof(FS_FILTER_CALLBACKS));
 
 	// only be used by filter driver?
-	//filterCallbacks.SizeOfFsFilterCallbacks = sizeof(FS_FILTER_CALLBACKS);
-	//filterCallbacks.PreAcquireForSectionSynchronization = FatFilterCallbackAcquireForCreateSection;
+	filterCallbacks.SizeOfFsFilterCallbacks = sizeof(FS_FILTER_CALLBACKS);
+	filterCallbacks.PreAcquireForSectionSynchronization = DokanFilterCallbackAcquireForCreateSection;
 
-	//FsRtlRegisterFileSystemFilterCallbacks(DriverObject,
-	//										&filterCallbacks);
+	FsRtlRegisterFileSystemFilterCallbacks(DriverObject, &filterCallbacks);
 
 	//
 	// Establish user-buffer access method.
@@ -493,7 +515,7 @@ DokanCreateDiskDevice(
 		return status;
 	}
 	
-	IoRegisterFileSystem(fsDeviceObject);
+	//IoRegisterFileSystem(fsDeviceObject);
 
 	// Mark devices as initialized
 	diskDeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
@@ -549,7 +571,7 @@ DokanDeleteDeviceObject(
 	//DDbgPrint("  Delete Symbolic Name: %wZ\n", &symbolicLinkName);
 	//IoDeleteSymbolicLink(&symbolicLinkName);
 
-	IoUnregisterFileSystem(vcb->DeviceObject);
+	//IoUnregisterFileSystem(vcb->DeviceObject);
 
 	// delete diskDeviceObject
 	DDbgPrint("  Delete DeviceObject\n");

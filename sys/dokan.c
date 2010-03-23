@@ -91,17 +91,12 @@ DokanAcquireForCreateSection(
 	__in PFILE_OBJECT FileObject
 	)
 {
-	PDokanCCB ccb;
-	PDokanFCB fcb;
+	PFSRTL_ADVANCED_FCB_HEADER	header;
 
-	ccb = (PDokanCCB)FileObject->FsContext2;
-	ASSERT(ccb != NULL);
-	
-	fcb = ccb->Fcb;
-	ASSERT(fcb != NULL);
-
-	ExAcquireResourceExclusiveLite(&fcb->MainResource, TRUE);
-	ExAcquireResourceExclusiveLite(&fcb->PagingIoResource, TRUE);
+	header = FileObject->FsContext;
+	if (header && header->Resource) {
+		ExAcquireResourceExclusiveLite(header->Resource, TRUE);
+	}
 
 	DDbgPrint("DokanAcquireForCreateSection\n");
 }
@@ -112,17 +107,12 @@ DokanReleaseForCreateSection(
    __in PFILE_OBJECT FileObject
 	)
 {
-	PDokanCCB ccb;
-	PDokanFCB fcb;
+	PFSRTL_ADVANCED_FCB_HEADER	header;
 
-	ccb = (PDokanCCB)FileObject->FsContext2;
-	ASSERT(ccb != NULL);
-	
-	fcb = ccb->Fcb;
-	ASSERT(fcb != NULL);
-
-	ExReleaseResourceLite(&fcb->PagingIoResource);
-	ExReleaseResourceLite(&fcb->MainResource);
+	header = FileObject->FsContext;
+	if (header && header->Resource) {
+		ExReleaseResourceLite(header->Resource);
+	}
 
 	DDbgPrint("DokanReleaseForCreateSection\n");
 }
