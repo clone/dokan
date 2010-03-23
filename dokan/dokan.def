@@ -13,3 +13,4 @@ DokanDriverVersion
 DokanResetTimeout
 DokanNetworkProviderInstall
 DokanNetworkProviderUninstall
+DokanSetDebugMode
