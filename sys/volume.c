@@ -90,7 +90,7 @@ DokanDispatchQueryVolumeInformation(
 				device = (PFILE_FS_DEVICE_INFORMATION)Irp->AssociatedIrp.SystemBuffer;
 				if (irpSp->Parameters.QueryVolume.Length < sizeof(FILE_FS_DEVICE_INFORMATION)) {
 					status = STATUS_BUFFER_TOO_SMALL;
-					info = 0;
+					info = sizeof(FILE_FS_DEVICE_INFORMATION);
 					__leave;
 				}
 				device->DeviceType = dcb->DeviceType;

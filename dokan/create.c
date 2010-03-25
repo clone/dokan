@@ -168,7 +168,7 @@ DispatchCreate(
 		
 		DbgPrint("CreateFile status = %d\n", status);
 		if (EventContext->Flags & SL_OPEN_TARGET_DIRECTORY) {
-			DokanDbgPrint("SL_OPEN_TARGET_DIRECTORY spcefied\n");
+			DbgPrint("SL_OPEN_TARGET_DIRECTORY spcefied\n");
 		}
 		eventInfo->Create.Information = FILE_DOES_NOT_EXIST;
 

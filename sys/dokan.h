@@ -36,6 +36,9 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 // DEFINES
 //
 
+#define DOKAN_DEBUG_DEFAULT 0
+//#define USE_DBGPRINT 1
+
 int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 extern ULONG g_Debug;
 
@@ -60,8 +63,6 @@ extern ULONG g_Debug;
 #define DOKAN_CHECK_INTERVAL		(1000 * 5) // in millisecond
 
 #define DOKAN_KEEPALIVE_TIMEOUT		(1000 * 15) // in millisecond
-
-#define USE_DBGPRINT 1
 
 #ifdef USE_DBGPRINT
 	#define DDbgPrint(...) \

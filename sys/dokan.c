@@ -44,7 +44,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 
-ULONG g_Debug = 1;
+ULONG g_Debug = DOKAN_DEBUG_DEFAULT;
 
 #if _WIN32_WINNT < 0x0501
 	PFN_FSRTLTEARDOWNPERSTREAMCONTEXTS DokanFsRtlTeardownPerStreamContexts;

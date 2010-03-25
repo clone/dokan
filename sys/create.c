@@ -58,10 +58,10 @@ DokanAllocateFCB(
 
 
 	fcb->AdvancedFCBHeader.ValidDataLength.LowPart = 0xffffffff;
-    fcb->AdvancedFCBHeader.ValidDataLength.HighPart = 0x7fffffff;
+	fcb->AdvancedFCBHeader.ValidDataLength.HighPart = 0x7fffffff;
 
 	fcb->AdvancedFCBHeader.Resource = &fcb->MainResource;
-    fcb->AdvancedFCBHeader.PagingIoResource = &fcb->PagingIoResource;
+	fcb->AdvancedFCBHeader.PagingIoResource = &fcb->PagingIoResource;
 
 	fcb->AdvancedFCBHeader.AllocationSize.QuadPart = 4096;
 	fcb->AdvancedFCBHeader.FileSize.QuadPart = 4096;
