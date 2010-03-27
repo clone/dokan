@@ -18,13 +18,11 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "dokani.h"
 #include "fileinfo.h"
-
 
 
 ULONG
@@ -33,8 +31,9 @@ DokanFillFileBasicInfo(
 	PBY_HANDLE_FILE_INFORMATION FileInfo,
 	PULONG						RemainingLength)
 {
-	if (*RemainingLength < sizeof(FILE_BASIC_INFORMATION))
+	if (*RemainingLength < sizeof(FILE_BASIC_INFORMATION)) {
 		return STATUS_BUFFER_OVERFLOW;
+	}
 
 	BasicInfo->CreationTime.LowPart   = FileInfo->ftCreationTime.dwLowDateTime;
 	BasicInfo->CreationTime.HighPart  = FileInfo->ftCreationTime.dwHighDateTime;
@@ -87,8 +86,9 @@ DokanFillFilePositionInfo(
 	PULONG						RemainingLength)
 {
 
-	if (*RemainingLength < sizeof(FILE_POSITION_INFORMATION))
+	if (*RemainingLength < sizeof(FILE_POSITION_INFORMATION)) {
 		return STATUS_BUFFER_OVERFLOW;
+	}
 
 	// this field is filled by driver
 	PosInfo->CurrentByteOffset.QuadPart = 0;//fileObject->CurrentByteOffset;
@@ -108,8 +108,9 @@ DokanFillFileAllInfo(
 {
 	ULONG	allRemainingLength = *RemainingLength;
 
-	if (*RemainingLength < sizeof(FILE_ALL_INFORMATION))
+	if (*RemainingLength < sizeof(FILE_ALL_INFORMATION)) {
 		return STATUS_BUFFER_OVERFLOW;
+	}
 	
 	// FileBasicInformation
 	DokanFillFileBasicInfo(&AllInfo->BasicInformation, FileInfo, RemainingLength);
@@ -150,7 +151,6 @@ DokanFillFileAllInfo(
 }
 
 
-
 ULONG
 DokanFillFileNameInfo(
 	PFILE_NAME_INFORMATION		NameInfo,
@@ -159,8 +159,9 @@ DokanFillFileNameInfo(
 	PEVENT_CONTEXT				EventContext)
 {
 	if (*RemainingLength < sizeof(FILE_NAME_INFORMATION) 
-		+ EventContext->File.FileNameLength)
+		+ EventContext->File.FileNameLength) {
 		return STATUS_BUFFER_OVERFLOW;
+	}
 
 	NameInfo->FileNameLength = EventContext->File.FileNameLength;
 	RtlCopyMemory(&(NameInfo->FileName[0]),
@@ -173,20 +174,50 @@ DokanFillFileNameInfo(
 }
 
 
-
 ULONG
 DokanFillFileAttributeTagInfo(
 	PFILE_ATTRIBUTE_TAG_INFORMATION		AttrTagInfo,
 	PBY_HANDLE_FILE_INFORMATION			FileInfo,
 	PULONG								RemainingLength)
 {
-	if (*RemainingLength < sizeof(FILE_ATTRIBUTE_TAG_INFORMATION))
+	if (*RemainingLength < sizeof(FILE_ATTRIBUTE_TAG_INFORMATION)) {
 		return STATUS_BUFFER_OVERFLOW;
+	}
 
 	AttrTagInfo->FileAttributes = FileInfo->dwFileAttributes;
 	AttrTagInfo->ReparseTag = 0;
 
 	*RemainingLength -= sizeof(FILE_ATTRIBUTE_TAG_INFORMATION);
+
+	return STATUS_SUCCESS;
+}
+
+
+ULONG
+DokanFillNetworkOpenInfo(
+	PFILE_NETWORK_OPEN_INFORMATION	NetInfo,
+	PBY_HANDLE_FILE_INFORMATION		FileInfo,
+	PULONG							RemainingLength)
+{
+	if (*RemainingLength < sizeof(FILE_NETWORK_OPEN_INFORMATION)) {
+		return STATUS_BUFFER_OVERFLOW;
+	}
+
+	NetInfo->CreationTime.LowPart	= FileInfo->ftCreationTime.dwLowDateTime;
+	NetInfo->CreationTime.HighPart	= FileInfo->ftCreationTime.dwHighDateTime;
+	NetInfo->LastAccessTime.LowPart	= FileInfo->ftLastAccessTime.dwLowDateTime;
+	NetInfo->LastAccessTime.HighPart= FileInfo->ftLastAccessTime.dwHighDateTime;
+	NetInfo->LastWriteTime.LowPart	= FileInfo->ftLastWriteTime.dwLowDateTime;
+	NetInfo->LastWriteTime.HighPart	= FileInfo->ftLastWriteTime.dwHighDateTime;
+	NetInfo->ChangeTime.LowPart		= FileInfo->ftLastWriteTime.dwLowDateTime;
+	NetInfo->ChangeTime.HighPart	= FileInfo->ftLastWriteTime.dwHighDateTime;
+	NetInfo->AllocationSize.HighPart= FileInfo->nFileSizeHigh;
+	NetInfo->AllocationSize.LowPart	= FileInfo->nFileSizeLow;
+	NetInfo->EndOfFile.HighPart		= FileInfo->nFileSizeHigh;
+	NetInfo->EndOfFile.LowPart		= FileInfo->nFileSizeLow;
+	NetInfo->FileAttributes			= FileInfo->dwFileAttributes;
+
+	*RemainingLength -= sizeof(FILE_NETWORK_OPEN_INFORMATION);
 
 	return STATUS_SUCCESS;
 }
@@ -290,7 +321,8 @@ DispatchQueryInformation(
 
 		case FileNetworkOpenInformation:
 			//DbgPrint("FileNetworkOpenInformation\n");
-			status = STATUS_NOT_IMPLEMENTED;
+			status = DokanFillNetworkOpenInfo((PVOID)eventInfo->Buffer,
+								&byHandleFileInfo, &remainingLength);
 			break;
 
 		case FilePositionInformation:
