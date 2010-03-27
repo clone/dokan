@@ -32,7 +32,7 @@ DokanFilterCallbackAcquireForCreateSection(
 	)
 {
 	PFSRTL_ADVANCED_FCB_HEADER	header;
-	DDbgPrint("DokanFilterCallbackAcquireForCreateSection");
+	DDbgPrint("DokanFilterCallbackAcquireForCreateSection\n");
 
 	header = CallbackData->FileObject->FsContext;
 
