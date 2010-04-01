@@ -285,7 +285,7 @@ DokanDispatchFileSystemControl(
 {
 	NTSTATUS			status = STATUS_INVALID_PARAMETER;
 	PIO_STACK_LOCATION	irpSp;
-	PDokanDCB	dcb;
+	PDokanVCB			vcb;
 
 	PAGED_CODE();
 
@@ -293,8 +293,13 @@ DokanDispatchFileSystemControl(
 		FsRtlEnterFileSystem();
 
 		DDbgPrint("==> DokanFileSystemControl\n");
-
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
+
+		vcb = DeviceObject->DeviceExtension;
+		if (GetIdentifierType(vcb) != VCB) {
+			status = STATUS_INVALID_PARAMETER;
+			__leave;
+		}
 
 		irpSp = IoGetCurrentIrpStackLocation(Irp);
 
@@ -308,7 +313,21 @@ DokanDispatchFileSystemControl(
 			break;
 
 		case IRP_MN_MOUNT_VOLUME:
-			DDbgPrint("	 IRP_MN_MOUNT_VOLUME\n");
+			{
+				PVPB vpb;
+				DDbgPrint("	 IRP_MN_MOUNT_VOLUME\n");
+				if (irpSp->Parameters.MountVolume.DeviceObject != vcb->Dcb->DeviceObject) {
+					DDbgPrint("   Not DokanDiskDevice\n");
+					status = STATUS_INVALID_PARAMETER;
+				}
+				vpb = irpSp->Parameters.MountVolume.Vpb;
+				vpb->DeviceObject = vcb->DeviceObject;
+				vpb->Flags |= VPB_MOUNTED;
+				vpb->VolumeLabelLength = wcslen(VOLUME_LABEL) * sizeof(WCHAR);
+				swprintf(vpb->VolumeLabel, VOLUME_LABEL);
+				vpb->SerialNumber = 0x19831116;
+				status = STATUS_SUCCESS;
+			}
 			break;
 
 		case IRP_MN_USER_FS_REQUEST:

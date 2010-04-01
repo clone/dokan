@@ -49,7 +49,7 @@ extern "C" {
 #define DOKAN_OPTION_REMOVABLE	32 // use removable drive
 
 typedef struct _DOKAN_OPTIONS {
-	WCHAR	DriveLetter; // drive letter to be mounted
+	LPCWSTR	MountPoint; //  mount point "M:\" (drive letter) or "C:\mount\dokan" (path in NTFS)
 	USHORT	ThreadCount; // number of threads to be used
 	ULONG	Options;	 // combination of DOKAN_OPTIONS_*
 	ULONG64	GlobalContext; // FileSystem can use this variable
@@ -258,8 +258,8 @@ typedef struct _DOKAN_OPERATIONS {
 #define DOKAN_DRIVE_LETTER_ERROR	-2 /* Bad Drive letter */
 #define DOKAN_DRIVER_INSTALL_ERROR	-3 /* Can't install driver */
 #define DOKAN_START_ERROR			-4 /* Driver something wrong */
-#define DOKAN_MOUNT_ERROR			-5 /* Can't assign a drive letter */
-
+#define DOKAN_MOUNT_ERROR			-5 /* Can't assign a drive letter or mount point */
+#define DOKAN_MOUNT_POINT_ERROR		-6 /* Mount point is invalid */
 
 int DOKANAPI
 DokanMain(
@@ -269,7 +269,7 @@ DokanMain(
 
 BOOL DOKANAPI
 DokanUnmount(
-	WCHAR DriveLetter);
+	LPCWSTR MountPoint);
 
 
 // DokanIsNameInExpression

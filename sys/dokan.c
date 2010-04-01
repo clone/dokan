@@ -237,7 +237,7 @@ Return Value:
 {
 
 	PDEVICE_OBJECT	deviceObject = DriverObject->DeviceObject;
-	WCHAR			symbolicLinkBuf[] = SYMBOLIC_NAME_STRING;
+	WCHAR			symbolicLinkBuf[] = DOKAN_GLOBAL_SYMBOLIC_LINK_NAME;
 	UNICODE_STRING	symbolicLinkName;
 
 	DDbgPrint("==> DokanUnload\n");
@@ -264,6 +264,11 @@ DokanDispatchShutdown(
    )
 {
 	DDbgPrint("==> DokanShutdown\n");
+
+	Irp->IoStatus.Status = STATUS_SUCCESS;
+	Irp->IoStatus.Information = 0;
+	IoCompleteRequest(Irp, IO_NO_INCREMENT);
+
 	DDbgPrint("<== DokanShutdown\n");
 	return STATUS_SUCCESS;
 }

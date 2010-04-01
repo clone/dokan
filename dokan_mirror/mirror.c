@@ -47,6 +47,7 @@ static void DbgPrint(LPCWSTR format, ...)
 }
 
 static WCHAR RootDirectory[MAX_PATH] = L"C:";
+static WCHAR MountPoint[MAX_PATH] = L"M:";
 
 static void
 GetFilePath(
@@ -929,7 +930,8 @@ main(ULONG argc, PCHAR argv[])
 			break;
 		case 'l':
 			command++;
-			dokanOptions->DriveLetter = argv[command][0];
+			mbstowcs(MountPoint, argv[command], strlen(argv[command]));
+			dokanOptions->MountPoint = MountPoint;
 			break;
 		case 't':
 			command++;
@@ -1005,6 +1007,8 @@ main(ULONG argc, PCHAR argv[])
 		case DOKAN_MOUNT_ERROR:
 			fprintf(stderr, "Can't assign a drive letter\n");
 			break;
+		case DOKAN_MOUNT_POINT_ERROR:
+			fprintf(stderr, "Mount point error\n");
 		default:
 			fprintf(stderr, "Unknown error: %d\n", status);
 			break;

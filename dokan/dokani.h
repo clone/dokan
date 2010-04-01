@@ -44,11 +44,11 @@ typedef struct _DOKAN_INSTANCE {
 	// store CurrentDeviceName
 	// (when there are many mounts, each mount use 
 	// other DeviceName)
-	WCHAR	DeviceName[MAX_PATH];
+	WCHAR	DeviceName[64];
+	WCHAR	MountPoint[MAX_PATH];
+
 	ULONG	DeviceNumber;
 	ULONG	MountId;
-
-	WCHAR	DriveLetter;
 
 	PDOKAN_OPTIONS		DokanOptions;
 	PDOKAN_OPERATIONS	DokanOperations;
@@ -74,7 +74,7 @@ DokanStart(
 
 BOOL
 SendToDevice(
-	PWCHAR	DeviceName,
+	LPCWSTR	DeviceName,
 	DWORD	IoControlCode,
 	PVOID	InputBuffer,
 	ULONG	InputLength,
@@ -82,6 +82,8 @@ SendToDevice(
 	ULONG	OutputLength,
 	PULONG	ReturnedLength);
 
+LPCWSTR
+GetRawDeviceName(LPCWSTR	DeviceName);
 
 DWORD __stdcall
 DokanLoop(
@@ -90,14 +92,8 @@ DokanLoop(
 
 BOOL
 DokanMount(
-	ULONG	DeviceNumber,
-	WCHAR	DriveLetter);
-
-BOOL
-DokanSendIoControl(
-	WCHAR	DriveLetter,
-	DWORD	IoControlCode);
-
+	LPCWSTR	MountPoint,
+	LPCWSTR	DeviceName);
 
 VOID
 SendEventInformation(
@@ -234,13 +230,7 @@ ManageDriver(
 
 BOOL
 SendReleaseIRP(
-	WCHAR DriveLetter);
-
-
-BOOL
-SendReleaseIRP2(
-	ULONG DeviceNumber);
-
+	LPCWSTR DeviceName);
 
 VOID
 CheckFileName(

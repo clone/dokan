@@ -25,16 +25,29 @@ THE SOFTWARE.
 #ifndef _MOUNT_H_
 #define _MOUNT_H_
 
-#include "dokani.h"
+#include "dokanc.h"
+#include "list.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct _MOUNT_ENTRY {
+	LIST_ENTRY		ListEntry;
+	DOKAN_CONTROL	MountControl;
+} MOUNT_ENTRY, *PMOUNT_ENTRY;
 
 BOOL
 DokanControlMount(
-	ULONG	DeviceNumber,
-	WCHAR	DriveLetter);
+	LPCWSTR	MountPoint,
+	LPCWSTR	DeivceName);
 
 BOOL
 DokanControlUnmount(
-	WCHAR DriveLetter);
+	LPCWSTR MountPoint);
 
+#ifdef __cplusplus
+}
 #endif
 
+#endif

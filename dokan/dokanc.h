@@ -26,10 +26,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-#define DOKAN_GLOBAL_DEVICE_NAME	L"\\\\.\\dokan"
-#define DOKAN_DEVICE_NAME			L"\\\\.\\dokan%d"
-#define DOKAN_RAW_DEVICE_NAME		L"\\Device\\dokan%d"
-#define DOKAN_MOUNT_DEVICE_NAME		L"\\??\\dokan%d\\"
+#define DOKAN_GLOBAL_DEVICE_NAME	L"\\\\.\\Dokan"
 #define DOKAN_CONTROL_PIPE			L"\\\\.\\pipe\\DokanMounter"
 
 #define DOKAN_MOUNTER_SERVICE L"DokanMounter"
@@ -56,21 +53,10 @@ extern	BOOL	g_DebugMode;
 // DokanOptions->UseStdErr is ON?
 extern	BOOL	g_UseStdErr;
 
-typedef struct _DOKAN_CONTROL
-{
+typedef struct _DOKAN_CONTROL {
 	ULONG	Type;
-	union {
-		struct {
-			WCHAR	Drive;
-			ULONG	Device;
-		} Mount;
-		struct {
-			WCHAR	Drive;
-		} Unmount;
-		struct {
-			WCHAR	Drive;
-		} Check;
-	};
+	WCHAR	MountPoint[MAX_PATH];
+	WCHAR	DeviceName[64];
 	ULONG	Status;
 
 } DOKAN_CONTROL, *PDOKAN_CONTROL;

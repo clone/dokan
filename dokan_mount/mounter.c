@@ -23,8 +23,10 @@ THE SOFTWARE.
 
 #include <windows.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sddl.h>
 #include "mount.h"
+#include "public.h"
 
 static HANDLE                g_EventControl = NULL;
 static SERVICE_STATUS        g_ServiceStatus;
@@ -32,13 +34,85 @@ static SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
 
 static HANDLE	g_EventLog = NULL;
 
-static unsigned char g_MountTable[26];
+static CRITICAL_SECTION	g_CriticalSection;
+static LIST_ENTRY		g_MountList;
 
 BOOL g_DebugMode = TRUE;
 BOOL g_UseStdErr = FALSE;
 
+PMOUNT_ENTRY
+InsertMountEntry(PDOKAN_CONTROL DokanControl)
+{
+	PMOUNT_ENTRY	mountEntry;
+	mountEntry = malloc(sizeof(MOUNT_ENTRY));
+	if (mountEntry == NULL) {
+		DbgPrintW(L"InsertMountEntry malloc failed\n");
+		return NULL;
+	}
+	ZeroMemory(mountEntry, sizeof(MOUNT_ENTRY));
+	CopyMemory(&mountEntry->MountControl, DokanControl, sizeof(DOKAN_CONTROL));
+	InitializeListHead(&mountEntry->ListEntry);
+
+	EnterCriticalSection(&g_CriticalSection);
+	InsertTailList(&g_MountList, &mountEntry->ListEntry);
+	LeaveCriticalSection(&g_CriticalSection);
+
+	return mountEntry;
+}
+
+VOID
+RemoveMountEntry(PMOUNT_ENTRY MountEntry)
+{
+	EnterCriticalSection(&g_CriticalSection);
+	RemoveEntryList(&MountEntry->ListEntry);
+	LeaveCriticalSection(&g_CriticalSection);
+
+	free(MountEntry);
+}
+
+PMOUNT_ENTRY
+FindMountEntry(PDOKAN_CONTROL	DokanControl)
+{
+	PLIST_ENTRY		listEntry;
+	PMOUNT_ENTRY	mountEntry;
+	BOOL			useMountPoint = wcslen(DokanControl->MountPoint) > 0;
+	BOOL			found = FALSE;
+
+	if (!useMountPoint && wcslen(DokanControl->DeviceName) == 0) {
+		return NULL;
+	}
+
+	EnterCriticalSection(&g_CriticalSection);
+
+    for (listEntry = g_MountList.Flink; listEntry != &g_MountList; listEntry = listEntry->Flink) {
+		mountEntry = CONTAINING_RECORD(listEntry, MOUNT_ENTRY, ListEntry);
+		if (useMountPoint) {
+			if (wcscmp(DokanControl->MountPoint, mountEntry->MountControl.MountPoint) == 0) {
+				found = TRUE;
+				break;
+			}
+		} else {
+			if (wcscmp(DokanControl->DeviceName, mountEntry->MountControl.DeviceName) == 0) {
+				found = TRUE;
+				break;
+			}
+		}
+	}
+
+	LeaveCriticalSection(&g_CriticalSection);
+
+	if (found) {
+		DbgPrintW(L"FindMountEntry %s -> %s\n",
+			mountEntry->MountControl.MountPoint, mountEntry->MountControl.DeviceName);
+		return mountEntry;
+	} else {
+		return NULL;
+	}
+}
+
 static VOID DokanControl(PDOKAN_CONTROL Control)
 {
+	PMOUNT_ENTRY	mountEntry;
 	DWORD written = 0;
 
 	DbgPrint("DokanControl\n");
@@ -51,12 +125,9 @@ static VOID DokanControl(PDOKAN_CONTROL Control)
 
 		DbgPrintW(L"DokanControl Mount\n");
 
-		if (DokanControlMount(Control->Mount.Device, Control->Mount.Drive)) {
-			// DeviceNumber is zero origin
-			// add 1 to avoid to be the same number with DOKAN_CONTROL_FAIL
-			g_MountTable[towlower(Control->Mount.Drive) - L'a'] =
-				(unsigned char)Control->Mount.Device + 1;
+		if (DokanControlMount(Control->MountPoint, Control->DeviceName)) {
 			Control->Status = DOKAN_CONTROL_SUCCESS;
+			InsertMountEntry(Control);
 		} else {
 			Control->Status = DOKAN_CONTROL_FAIL;
 		}
@@ -66,21 +137,27 @@ static VOID DokanControl(PDOKAN_CONTROL Control)
 
 		DbgPrintW(L"DokanControl Unmount\n");
 
-		if (DokanControlUnmount(Control->Unmount.Drive)) {
-			g_MountTable[towlower(Control->Mount.Drive) - L'a'] = 0;
-			Control->Status = DOKAN_CONTROL_SUCCESS;
-		} else {
+		mountEntry = FindMountEntry(Control);
+		if (mountEntry == NULL) {
 			Control->Status = DOKAN_CONTROL_FAIL;
+		} else {
+			if (DokanControlUnmount(mountEntry->MountControl.MountPoint)) {
+				Control->Status = DOKAN_CONTROL_SUCCESS;
+				if (wcslen(Control->DeviceName) == 0) {
+					wcscpy(Control->DeviceName, mountEntry->MountControl.DeviceName);
+				}
+				RemoveMountEntry(mountEntry);
+			} else {
+				mountEntry->MountControl.Status = DOKAN_CONTROL_FAIL;
+				Control->Status = DOKAN_CONTROL_FAIL;
+			}
 		}
 
 		break;
 
 	case DOKAN_CONTROL_CHECK:
 		{
-			unsigned char device =
-				g_MountTable[towlower(Control->Check.Drive) - L'a'];
-			DbgPrintW(L"DokanControl Check : %d\n", device);
-			Control->Status = device;
+			Control->Status = 0;
 		}
 		break;
 
@@ -148,6 +225,13 @@ static VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 	EVENT_CONTEXT	eventContext;
 	SECURITY_ATTRIBUTES sa;
 
+#if _MSC_VER < 1300
+	InitializeCriticalSection(&g_CriticalSection);
+#else
+	InitializeCriticalSectionAndSpinCount(&g_CriticalSection, 0x80000400);
+#endif
+			
+	InitializeListHead(&g_MountList);
 
 	g_StatusHandle = RegisterServiceCtrlHandlerEx(L"DokanMounter", HandlerEx, NULL);
 
@@ -239,11 +323,11 @@ static VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 
 			if (GetOverlappedResult(device, &driver, &returnedBytes, FALSE)) {
 				if (returnedBytes == sizeof(EVENT_CONTEXT)) {
-					DbgPrintW(L"DokanMounter: Unmount\n", control.Type);
+					DbgPrintW(L"DokanMounter: Unmount\n");
 
 					ZeroMemory(&unmount, sizeof(DOKAN_CONTROL));
 					unmount.Type = DOKAN_CONTROL_UNMOUNT;
-					unmount.Unmount.Drive = (WCHAR)eventContext.Flags;
+					wcscpy(unmount.DeviceName, eventContext.Unmount.DeviceName);
 					DokanControl(&unmount);
 				} else {
 					DbgPrintW(L"DokanMounter: Unmount error\n", control.Type);
@@ -270,6 +354,8 @@ static VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 	CloseHandle(device);
 	CloseHandle(eventUnmount);
 
+	DeleteCriticalSection(&g_CriticalSection);
+
 	return;
 }
 
@@ -281,7 +367,6 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE hinstPrev, LPSTR lpszCmdLine, int 
 		{L"DokanMounter", ServiceMain}, {NULL, NULL}
 	};
 
-	ZeroMemory(g_MountTable, sizeof(g_MountTable));
 
 	StartServiceCtrlDispatcher(serviceTable);
 

@@ -115,17 +115,268 @@ DiskDeviceControl(
 	PIO_STACK_LOCATION	irpSp;
 	PDokanDCB			dcb;
 	NTSTATUS			status = STATUS_NOT_IMPLEMENTED;
+	ULONG				outputLength = 0;
 	
-	DDbgPrint("   DokanDiskDeviceControl\n");
+	DDbgPrint("   => DokanDiskDeviceControl\n");
 	irpSp = IoGetCurrentIrpStackLocation(Irp);
 	dcb = DeviceObject->DeviceExtension;
+	outputLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
 
 	switch (irpSp->Parameters.DeviceIoControl.IoControlCode) {
+	case IOCTL_DISK_GET_DRIVE_GEOMETRY:
+		{
+			PDISK_GEOMETRY	diskGeometry;
+			ULONG		    length;
+
+			DDbgPrint("  IOCTL_DISK_GET_DRIVE_GEOMETRY\n");
+			if (outputLength < sizeof(DISK_GEOMETRY)) {
+				status = STATUS_BUFFER_TOO_SMALL;
+				Irp->IoStatus.Information = 0;
+				break;
+			}
+
+			diskGeometry = (PDISK_GEOMETRY)Irp->AssociatedIrp.SystemBuffer;
+			ASSERT(diskGeometry != NULL);
+
+			length = 1024*1024*1024;
+			diskGeometry->Cylinders.QuadPart = length / DOKAN_SECTOR_SIZE / 32 / 2;
+			diskGeometry->MediaType = FixedMedia;
+			diskGeometry->TracksPerCylinder = 2;
+			diskGeometry->SectorsPerTrack = 32;
+			diskGeometry->BytesPerSector = DOKAN_SECTOR_SIZE;
+
+			status = STATUS_SUCCESS;
+			Irp->IoStatus.Information = sizeof(DISK_GEOMETRY);
+		}
+		break;
+
+	case IOCTL_DISK_GET_LENGTH_INFO:
+		{
+			PGET_LENGTH_INFORMATION getLengthInfo;
+
+			DDbgPrint("  IOCTL_DISK_GET_LENGTH_INFO\n");
+            
+			if (outputLength < sizeof(GET_LENGTH_INFORMATION)) {
+				status = STATUS_BUFFER_TOO_SMALL;
+				Irp->IoStatus.Information = 0;
+				break;
+			}
+
+			getLengthInfo = (PGET_LENGTH_INFORMATION) Irp->AssociatedIrp.SystemBuffer;
+			ASSERT(getLengthInfo != NULL);
+
+			getLengthInfo->Length.QuadPart = 1024*1024*500;
+			status = STATUS_SUCCESS;
+			Irp->IoStatus.Information = sizeof(GET_LENGTH_INFORMATION);
+		}
+		break;
+
+	case IOCTL_DISK_GET_PARTITION_INFO:
+		DDbgPrint("  IOCTL_DISK_GET_PARTITION_INFO\n");
+		break;
+
+	case IOCTL_DISK_GET_PARTITION_INFO_EX:
+		DDbgPrint("  IOCTL_DISK_GET_PARTITION_INFO_EX\n");
+		break;
+
+	case IOCTL_DISK_IS_WRITABLE:
+		DDbgPrint("  IOCTL_DISK_IS_WRITABLE\n");
+		status = STATUS_SUCCESS;
+		break;
+
+	case IOCTL_DISK_MEDIA_REMOVAL:
+		DDbgPrint("  IOCTL_DISK_MEDIA_REMOVAL\n");
+		status = STATUS_SUCCESS;
+		break;
+
+	case IOCTL_STORAGE_MEDIA_REMOVAL:
+		DDbgPrint("  IOCTL_STORAGE_MEDIA_REMOVAL\n");
+		status = STATUS_SUCCESS;
+		break;
+
+	case IOCTL_DISK_SET_PARTITION_INFO:
+		DDbgPrint("  IOCTL_DISK_SET_PARTITION_INFO\n");
+		break;
+
+	case IOCTL_DISK_VERIFY:
+		DDbgPrint("  IOCTL_DISK_VERIFY\n");
+		break;
+
+	case IOCTL_STORAGE_GET_HOTPLUG_INFO:
+		{
+			PSTORAGE_HOTPLUG_INFO hotplugInfo;
+			DDbgPrint("  IOCTL_STORAGE_GET_HOTPLUG_INFO\n");
+			if (outputLength < sizeof(STORAGE_HOTPLUG_INFO)) {
+				status = STATUS_BUFFER_TOO_SMALL;
+				Irp->IoStatus.Information = 0;
+				break;
+			}
+			hotplugInfo = Irp->AssociatedIrp.SystemBuffer;
+			hotplugInfo->Size =  sizeof(STORAGE_HOTPLUG_INFO);
+			hotplugInfo->MediaRemovable = 1;
+			hotplugInfo->MediaHotplug = 1;
+			hotplugInfo->DeviceHotplug = 1;
+			hotplugInfo->WriteCacheEnableOverride = 0;
+			status = STATUS_SUCCESS;
+			Irp->IoStatus.Information = sizeof(STORAGE_HOTPLUG_INFO);
+		}
+		break;
+	case IOCTL_VOLUME_GET_GPT_ATTRIBUTES:
+		{
+			DDbgPrint("   IOCTL_VOLUME_GET_GPT_ATTRIBUTES\n");
+			status = STATUS_SUCCESS;
+		}
+		break;
+	case IOCTL_DISK_CHECK_VERIFY:
+		DDbgPrint("  IOCTL_DISK_CHECK_VERIFY\n");
+		status = STATUS_SUCCESS;
+		break;
+
+	case IOCTL_STORAGE_CHECK_VERIFY:
+		DDbgPrint("  IOCTL_STORAGE_CHECK_VERIFY\n");
+		status = STATUS_SUCCESS;
+		break;
+
+	case IOCTL_STORAGE_CHECK_VERIFY2:
+		DDbgPrint("  IOCTL_STORAGE_CHECK_VERIFY2\n");
+		status = STATUS_SUCCESS;
+		break;
+
+	case IOCTL_MOUNTDEV_QUERY_DEVICE_NAME:
+		{
+			PMOUNTDEV_NAME	mountdevName;
+			ULONG			bufferLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
+			PUNICODE_STRING	deviceName =  dcb->DiskDeviceName;
+			
+			DDbgPrint("   IOCTL_MOUNTDEV_QUERY_DEVICE_NAME\n");
+
+			if (bufferLength < sizeof(MOUNTDEV_NAME)) {
+				status = STATUS_BUFFER_TOO_SMALL;
+				Irp->IoStatus.Information = sizeof(MOUNTDEV_NAME);
+				break;
+			}
+
+			if (!dcb->Mounted) {
+				status = STATUS_INVALID_PARAMETER;
+				break;
+			}
+
+			mountdevName = (PMOUNTDEV_NAME)Irp->AssociatedIrp.SystemBuffer;
+			ASSERT(mountdevName != NULL);
+			/* NOTE: When Windows API GetVolumeNameForVolumeMountPoint is called, this IO control is called.
+			   Even if status = STATUS_SUCCESS, GetVolumeNameForVolumeMountPoint returns error.
+			   Something is wrong..
+			*/
+			mountdevName->NameLength = deviceName->Length;
+
+			if (sizeof(USHORT) + mountdevName->NameLength < bufferLength) {
+				RtlCopyMemory((PCHAR)mountdevName->Name,
+								deviceName->Buffer,
+								mountdevName->NameLength);
+				Irp->IoStatus.Information = sizeof(USHORT) + mountdevName->NameLength;
+				status = STATUS_SUCCESS;
+				DDbgPrint("  DeviceName %wZ\n", deviceName);
+			} else {
+				Irp->IoStatus.Information = sizeof(MOUNTDEV_NAME);
+				status = STATUS_BUFFER_OVERFLOW;
+			}
+		}
+		break;
+	case IOCTL_MOUNTDEV_QUERY_UNIQUE_ID:	
+		{
+			PMOUNTDEV_UNIQUE_ID uniqueId;
+			ULONG				bufferLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
+
+			DDbgPrint("   IOCTL_MOUNTDEV_QUERY_UNIQUE_ID\n");
+			if (bufferLength < sizeof(MOUNTDEV_UNIQUE_ID)) {
+				status = STATUS_BUFFER_TOO_SMALL;
+				Irp->IoStatus.Information = sizeof(MOUNTDEV_UNIQUE_ID);
+				break;
+			}
+
+			uniqueId = (PMOUNTDEV_UNIQUE_ID)Irp->AssociatedIrp.SystemBuffer;
+			ASSERT(uniqueId != NULL);
+
+			uniqueId->UniqueIdLength = dcb->SymbolicLinkName->Length;
+
+			if (sizeof(USHORT) + uniqueId->UniqueIdLength < bufferLength) {
+				RtlCopyMemory((PCHAR)uniqueId->UniqueId,  
+								dcb->SymbolicLinkName->Buffer,
+								uniqueId->UniqueIdLength);
+				Irp->IoStatus.Information = FIELD_OFFSET(MOUNTDEV_UNIQUE_ID, UniqueId[0]) +
+											uniqueId->UniqueIdLength;
+				status = STATUS_SUCCESS;
+				DDbgPrint("  UniqueName %ws\n", uniqueId->UniqueId);
+				break;
+			} else {
+				Irp->IoStatus.Information = sizeof(MOUNTDEV_UNIQUE_ID);
+				status = STATUS_BUFFER_OVERFLOW;
+			}
+		}
+		break;
+	case IOCTL_MOUNTDEV_QUERY_SUGGESTED_LINK_NAME:
+		DDbgPrint("   IOCTL_MOUNTDEV_QUERY_SUGGESTED_LINK_NAME\n");
+		break;
+	case IOCTL_MOUNTDEV_LINK_CREATED:
+		{
+			PMOUNTDEV_NAME	mountdevName = Irp->AssociatedIrp.SystemBuffer;
+			DDbgPrint("   IOCTL_MOUNTDEV_LINK_CREATED\n");
+			DDbgPrint("     Name: %ws\n", mountdevName->Name); 
+			status = STATUS_SUCCESS;
+		}
+		break;
+	case IOCTL_MOUNTDEV_LINK_DELETED:
+		DDbgPrint("   IOCTL_MOUNTDEV_LINK_DELETED\n");
+		status = STATUS_SUCCESS;
+		break;
+	//case IOCTL_MOUNTDEV_UNIQUE_ID_CHANGE_NOTIFY:
+	//	DDbgPrint("   IOCTL_MOUNTDEV_UNIQUE_ID_CHANGE_NOTIFY\n");
+	//	break;
+	case IOCTL_MOUNTDEV_QUERY_STABLE_GUID:
+		DDbgPrint("   IOCTL_MOUNTDEV_QUERY_STABLE_GUID\n");
+		break;
+	case IOCTL_VOLUME_ONLINE:
+		DDbgPrint("   IOCTL_VOLUME_ONLINE\n");
+		status = STATUS_SUCCESS;
+		break;
+	case IOCTL_VOLUME_OFFLINE:
+		DDbgPrint("   IOCTL_VOLUME_OFFLINE\n");
+		status = STATUS_SUCCESS;
+		break;
+	case IOCTL_VOLUME_READ_PLEX:
+		DDbgPrint("   IOCTL_VOLUME_READ_PLEX\n");
+		break;
+	case IOCTL_VOLUME_PHYSICAL_TO_LOGICAL:
+		DDbgPrint("   IOCTL_VOLUME_PHYSICAL_TO_LOGICAL\n");
+		break;
+	case IOCTL_VOLUME_IS_CLUSTERED:
+		DDbgPrint("   IOCTL_VOLUME_IS_CLUSTERED\n");
+		break;
+	case IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS:
+		{
+			DDbgPrint("   IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS\n");
+		}
+		break;
+	case IOCTL_STORAGE_EJECT_MEDIA:
+		{
+			DDbgPrint("   IOCTL_STORAGE_EJECT_MEDIA\n");
+			DokanUnmount(dcb);				
+			status = STATUS_SUCCESS;
+		}
+		break;
+	case IOCTL_REDIR_QUERY_PATH:
+		{
+			DDbgPrint("  IOCTL_REDIR_QUERY_PATH\n");
+		}
+		break;
+
+
 	default:
 		PrintUnknownDeviceIoctlCode(irpSp->Parameters.DeviceIoControl.IoControlCode);
 		status = STATUS_NOT_IMPLEMENTED;
 		break;
 	}
+	DDbgPrint("   <= DokanDiskDeviceControl\n");
 	return status;
 }
 
@@ -233,232 +484,6 @@ Return Value:
 			status = DokanResetPendingIrpTimeout(DeviceObject, Irp);
 			break;
 
-		case IOCTL_DISK_CHECK_VERIFY:
-			DDbgPrint("  IOCTL_DISK_CHECK_VERIFY\n");
-			break;
-
-		case IOCTL_STORAGE_CHECK_VERIFY:
-			DDbgPrint("  IOCTL_STORAGE_CHECK_VERIFY\n");
-			break;
-
-		case IOCTL_STORAGE_CHECK_VERIFY2:
-			DDbgPrint("  IOCTL_STORAGE_CHECK_VERIFY2\n");
-			break;
-
-		case IOCTL_DISK_GET_DRIVE_GEOMETRY:
-			{
-				PDISK_GEOMETRY	diskGeometry;
-				ULONG		    length;
-
-				DDbgPrint("  IOCTL_DISK_GET_DRIVE_GEOMETRY\n");
-				if (irpSp->Parameters.DeviceIoControl.OutputBufferLength <
-					sizeof(DISK_GEOMETRY)) {
-					status = STATUS_BUFFER_TOO_SMALL;
-					Irp->IoStatus.Information = 0;
-					break;
-				}
-
-				diskGeometry = (PDISK_GEOMETRY)Irp->AssociatedIrp.SystemBuffer;
-				ASSERT(diskGeometry != NULL);
-
-				length = 1024*1024*1024;
-				diskGeometry->Cylinders.QuadPart = length / DOKAN_SECTOR_SIZE / 32 / 2;
-				diskGeometry->MediaType = FixedMedia;
-				diskGeometry->TracksPerCylinder = 2;
-				diskGeometry->SectorsPerTrack = 32;
-				diskGeometry->BytesPerSector = DOKAN_SECTOR_SIZE;
-
-				status = STATUS_SUCCESS;
-				Irp->IoStatus.Information = sizeof(DISK_GEOMETRY);
-			}
-			break;
-
-		case IOCTL_DISK_GET_LENGTH_INFO:
-			{
-				PGET_LENGTH_INFORMATION getLengthInfo;
-
-				DDbgPrint("  IOCTL_DISK_GET_LENGTH_INFO\n");
-	            
-				if (irpSp->Parameters.DeviceIoControl.OutputBufferLength <
-					sizeof(GET_LENGTH_INFORMATION)) {
-					status = STATUS_BUFFER_TOO_SMALL;
-					Irp->IoStatus.Information = 0;
-					break;
-				}
-
-				getLengthInfo = (PGET_LENGTH_INFORMATION) Irp->AssociatedIrp.SystemBuffer;
-				ASSERT(getLengthInfo != NULL);
-
-				getLengthInfo->Length.QuadPart = 1024*1024*500;
-				status = STATUS_SUCCESS;
-				Irp->IoStatus.Information = sizeof(GET_LENGTH_INFORMATION);
-			}
-			break;
-
-		case IOCTL_DISK_GET_PARTITION_INFO:
-			DDbgPrint("  IOCTL_DISK_GET_PARTITION_INFO\n");
-			break;
-
-		case IOCTL_DISK_GET_PARTITION_INFO_EX:
-			DDbgPrint("  IOCTL_DISK_GET_PARTITION_INFO_EX\n");
-			break;
-
-		case IOCTL_DISK_IS_WRITABLE:
-			DDbgPrint("  IOCTL_DISK_IS_WRITABLE\n");
-			status = STATUS_SUCCESS;
-			break;
-
-		case IOCTL_DISK_MEDIA_REMOVAL:
-			DDbgPrint("  IOCTL_DISK_MEDIA_REMOVAL\n");
-			status = STATUS_SUCCESS;
-			break;
-
-		case IOCTL_STORAGE_MEDIA_REMOVAL:
-			DDbgPrint("  IOCTL_STORAGE_MEDIA_REMOVAL\n");
-			status = STATUS_SUCCESS;
-			break;
-
-		case IOCTL_DISK_SET_PARTITION_INFO:
-			DDbgPrint("  IOCTL_DISK_SET_PARTITION_INFO\n");
-			break;
-
-		case IOCTL_DISK_VERIFY:
-			DDbgPrint("  IOCTL_DISK_VERIFY\n");
-			break;
-
-		case IOCTL_MOUNTDEV_QUERY_DEVICE_NAME:
-			{
-				PMOUNTDEV_NAME	mountdevName;
-				WCHAR			deviceName[MAXIMUM_FILENAME_LENGTH];
-				ULONG			bufferLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
-				
-				DDbgPrint("   IOCTL_MOUNTDEV_QUERY_DEVICE_NAME\n");
-
-				if (bufferLength < sizeof(MOUNTDEV_NAME)) {
-					status = STATUS_BUFFER_TOO_SMALL;
-					Irp->IoStatus.Information = sizeof(MOUNTDEV_NAME);
-					break;
-				}
-
-				if (!dcb->Mounted) {
-					status = STATUS_INVALID_PARAMETER;
-					break;
-				}
-
-				mountdevName = (PMOUNTDEV_NAME)Irp->AssociatedIrp.SystemBuffer;
-				ASSERT(mountdevName != NULL);
-				/* NOTE: When Windows API GetVolumeNameForVolumeMountPoint is called, this IO control is called.
-				   Even if status = STATUS_SUCCESS, GetVolumeNameForVolumeMountPoint returns error.
-				   Something is wrong..
-				*/
-				swprintf(deviceName, NTDEVICE_NAME_STRING L"%u", dcb->MountId);
-				mountdevName->NameLength = (wcslen(deviceName) + 1) * sizeof(WCHAR); // includes null char
-
-				if (sizeof(USHORT) + mountdevName->NameLength < bufferLength) {
-					RtlCopyMemory((PCHAR)mountdevName->Name, deviceName, mountdevName->NameLength);
-					Irp->IoStatus.Information = FIELD_OFFSET(MOUNTDEV_NAME, Name[0]) +
-												mountdevName->NameLength;
-					status = STATUS_SUCCESS;
-					DDbgPrint("  DeviceName %ws\n", mountdevName->Name);
-				} else {
-					Irp->IoStatus.Information = sizeof(MOUNTDEV_NAME);
-					status = STATUS_BUFFER_OVERFLOW;
-				}
-			}
-			break;
-		case IOCTL_MOUNTDEV_QUERY_UNIQUE_ID:	
-			{
-				PMOUNTDEV_UNIQUE_ID uniqueId;
-				WCHAR				deviceName[MAXIMUM_FILENAME_LENGTH];
-				ULONG				bufferLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
-
-				DDbgPrint("   IOCTL_MOUNTDEV_QUERY_UNIQUE_ID\n");
-				if (bufferLength < sizeof(MOUNTDEV_UNIQUE_ID)) {
-					status = STATUS_BUFFER_TOO_SMALL;
-					Irp->IoStatus.Information = sizeof(MOUNTDEV_UNIQUE_ID);
-					break;
-				}
-
-				uniqueId = (PMOUNTDEV_UNIQUE_ID)Irp->AssociatedIrp.SystemBuffer;
-				ASSERT(uniqueId != NULL);
-
-				swprintf(deviceName, NTDEVICE_NAME_STRING L"%u", dcb->MountId);
-				uniqueId->UniqueIdLength = (wcslen(deviceName) + 1) * sizeof(WCHAR); // includes null char
-
-				if (sizeof(USHORT) + uniqueId->UniqueIdLength < bufferLength) {
-					RtlCopyMemory((PCHAR)uniqueId->UniqueId, deviceName, uniqueId->UniqueIdLength);
-					Irp->IoStatus.Information = FIELD_OFFSET(MOUNTDEV_UNIQUE_ID, UniqueId[0]) +
-												uniqueId->UniqueIdLength;
-					status = STATUS_SUCCESS;
-					DDbgPrint("  UniqueName %ws\n", uniqueId->UniqueId);
-					break;
-				} else {
-					Irp->IoStatus.Information = sizeof(MOUNTDEV_UNIQUE_ID);
-					status = STATUS_BUFFER_OVERFLOW;
-				}
-			}
-			break;
-		case IOCTL_MOUNTDEV_QUERY_SUGGESTED_LINK_NAME:
-			DDbgPrint("   IOCTL_MOUNTDEV_QUERY_SUGGESTED_LINK_NAME\n");
-			break;
-		case IOCTL_MOUNTDEV_LINK_CREATED:
-			{
-				PMOUNTDEV_NAME	mountdevName = Irp->AssociatedIrp.SystemBuffer;
-				DDbgPrint("   IOCTL_MOUNTDEV_LINK_CREATED\n");
-				DDbgPrint("     Name: %ws\n", mountdevName->Name); 
-				status = STATUS_SUCCESS;
-			}
-			break;
-		case IOCTL_MOUNTDEV_LINK_DELETED:
-			DDbgPrint("   IOCTL_MOUNTDEV_LINK_DELETED\n");
-			status = STATUS_SUCCESS;
-			break;
-		//case IOCTL_MOUNTDEV_UNIQUE_ID_CHANGE_NOTIFY:
-		//	DDbgPrint("   IOCTL_MOUNTDEV_UNIQUE_ID_CHANGE_NOTIFY\n");
-		//	break;
-		case IOCTL_MOUNTDEV_QUERY_STABLE_GUID:
-			DDbgPrint("   IOCTL_MOUNTDEV_QUERY_STABLE_GUID\n");
-			break;
-		case IOCTL_VOLUME_ONLINE:
-			DDbgPrint("   IOCTL_VOLUME_ONLINE\n");
-			status = STATUS_SUCCESS;
-			break;
-		case IOCTL_VOLUME_OFFLINE:
-			DDbgPrint("   IOCTL_VOLUME_OFFLINE\n");
-			status = STATUS_SUCCESS;
-			break;
-		case IOCTL_VOLUME_READ_PLEX:
-			DDbgPrint("   IOCTL_VOLUME_READ_PLEX\n");
-			break;
-		case IOCTL_VOLUME_PHYSICAL_TO_LOGICAL:
-			DDbgPrint("   IOCTL_VOLUME_PHYSICAL_TO_LOGICAL\n");
-			break;
-		case IOCTL_VOLUME_IS_CLUSTERED:
-			DDbgPrint("   IOCTL_VOLUME_IS_CLUSTERED\n");
-			break;
-		case IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS:
-			{
-				DDbgPrint("   IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS\n");
-			}
-			break;
-		case IOCTL_VOLUME_GET_GPT_ATTRIBUTES:
-			{
-				DDbgPrint("   IOCTL_VOLUME_GET_GPT_ATTRIBUTES\n");
-				status = STATUS_SUCCESS;
-			}
-			break;
-		case IOCTL_STORAGE_EJECT_MEDIA:
-			{
-				DDbgPrint("   IOCTL_STORAGE_EJECT_MEDIA\n");
-				DokanUnmount(dcb);				
-				status = STATUS_SUCCESS;
-			}
-			break;
-		case IOCTL_REDIR_QUERY_PATH:
-			{
-				DDbgPrint("  IOCTL_REDIR_QUERY_PATH\n");
-			}
-			break;
 		default:
 			{
 				PrintUnknownDeviceIoctlCode(irpSp->Parameters.DeviceIoControl.IoControlCode);

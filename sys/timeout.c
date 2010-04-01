@@ -35,6 +35,7 @@ DokanUnmount(
 	PKEVENT					completedEvent;
 	LARGE_INTEGER			timeout;
 	PDokanVCB				vcb = Dcb->Vcb;
+	ULONG					deviceNamePos;
 
 	eventLength = sizeof(EVENT_CONTEXT);
 	eventContext = AllocateEventContextRaw(eventLength);
@@ -53,10 +54,14 @@ DokanUnmount(
 		driverEventContext->Completed = completedEvent;
 	}
 
-	// set drive letter
-	eventContext->Flags = Dcb->Mounted;
+	deviceNamePos = Dcb->SymbolicLinkName->Length / sizeof(WCHAR) - 1;
+	for (; Dcb->SymbolicLinkName->Buffer[deviceNamePos] != L'\\'; --deviceNamePos)
+		;
+	wcsncpy(eventContext->Unmount.DeviceName,
+			&(Dcb->SymbolicLinkName->Buffer[deviceNamePos]),
+			sizeof(eventContext->Unmount.DeviceName)/sizeof(WCHAR));
 
-	DDbgPrint("  Send Unmount to Service : %wc\n", Dcb->Mounted);
+	DDbgPrint("  Send Unmount to Service : %ws\n", eventContext->Unmount.DeviceName);
 
 	DokanEventNotification(&Dcb->Global->NotifyService, eventContext);
 
@@ -95,7 +100,7 @@ DokanCheckKeepAlive(
 
 		ExReleaseResourceLite(&Dcb->Resource);
 
-		DDbgPrint("  Force to umount\n");
+		DDbgPrint("  Timeout, force to umount\n");
 
 		if (!mounted) {
 			// not mounted

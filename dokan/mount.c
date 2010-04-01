@@ -227,36 +227,35 @@ DokanServiceDelete(
 
 BOOL DOKANAPI
 DokanUnmount(
-	WCHAR DriveLetter)
+	LPCWSTR MountPoint)
 {
 	DOKAN_CONTROL control;
-
-	SendReleaseIRP(DriveLetter);
+	BOOL result;
 
 	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
 	control.Type = DOKAN_CONTROL_UNMOUNT;
-	control.Unmount.Drive = DriveLetter;
+	wcscpy(control.MountPoint, MountPoint);
 
-	if (DokanControl(&control)) {
-		return TRUE;
-	} else {
-		return FALSE;
+	result = DokanControl(&control);
+	if (result) {
+		DbgPrint("DokanControl recieved DeviceName:%ws\n", control.DeviceName);
+		SendReleaseIRP(control.DeviceName);
 	}
+	return result;
 }
-
 
 BOOL
 DokanMount(
-	ULONG	DeviceNumber,
-	WCHAR	DriveLetter)
+	LPCWSTR	MountPoint,
+	LPCWSTR	DeviceName)
 {
 	DOKAN_CONTROL control;
 
 	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
 	control.Type = DOKAN_CONTROL_MOUNT;
 
-	control.Mount.Device = DeviceNumber;
-	control.Mount.Drive = DriveLetter;
+	wcscpy(control.MountPoint, MountPoint);
+	wcscpy(control.DeviceName, DeviceName);
 
 	return  DokanControl(&control);
 }

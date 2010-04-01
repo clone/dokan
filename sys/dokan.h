@@ -36,16 +36,22 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 // DEFINES
 //
 
-#define DOKAN_DEBUG_DEFAULT 0
-//#define USE_DBGPRINT 1
+#define DOKAN_DEBUG_DEFAULT 1
+#define USE_DBGPRINT 1
 
 int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 extern ULONG g_Debug;
 
-#define NTDEVICE_NAME_STRING	L"\\Device\\dokan"
-#define SYMBOLIC_NAME_STRING    L"\\DosDevices\\Global\\dokan"
+#define DOKAN_GLOBAL_DEVICE_NAME			L"\\Device\\Dokan"
+#define DOKAN_GLOBAL_SYMBOLIC_LINK_NAME		L"\\DosDevices\\Global\\Dokan"
+
+#define DOKAN_FS_DEVICE_NAME		L"\\Device\\Dokan"
+#define DOKAN_DISK_DEVICE_NAME		L"\\Device\\Volume"
+#define DOKAN_SYMBOLIC_LINK_NAME    L"\\DosDevices\\Global\\Volume"
+
 #define VOLUME_LABEL			L"DOKAN"
-#define UNIQUE_VOLUME_NAME		L"\\DosDevices\\Global\\Volume{dca0e0a5-d2ca-4f0f-8416-a6414657a77a}"
+								// {D6CC17C5-1734-4085-BCE7-964F1E9F5DE9}
+#define DOKAN_BASE_GUID			{0xd6cc17c5, 0x1734, 0x4085, {0xbc, 0xe7, 0x96, 0x4f, 0x1e, 0x9f, 0x5d, 0xe9}}
 
 #define TAG (ULONG)'AKOD'
 
@@ -149,10 +155,9 @@ typedef struct _DokanDiskControlBlock {
 	IRP_LIST				PendingEvent;
 	IRP_LIST				NotifyEvent;
 
-	// while mounted, Mounted is set to drive letter
-	ULONG					Mounted;
-
-	UNICODE_STRING			VolumeName;
+	PUNICODE_STRING			DiskDeviceName;
+	PUNICODE_STRING			FileSystemDeviceName;
+	PUNICODE_STRING			SymbolicLinkName;
 
 	DEVICE_TYPE				DeviceType;
 	ULONG					DeviceCharacteristics;
@@ -170,13 +175,10 @@ typedef struct _DokanDiskControlBlock {
 
 	PKTHREAD				EventNotificationThread;
 
-	// Device Number
-	ULONG					Number;
-
 	// When UseAltStream is 1, use Alternate stream
-	ULONG					UseAltStream;
-
-	ULONG					UseKeepAlive;
+	USHORT					UseAltStream;
+	USHORT					UseKeepAlive;
+	USHORT					Mounted;
 
 	// to make a unique id for pending IRP
 	ULONG					SerialNumber;
@@ -447,6 +449,7 @@ NTSTATUS
 DokanCreateDiskDevice(
 	__in PDRIVER_OBJECT DriverObject,
 	__in ULONG			MountId,
+	__in PWCHAR			BaseGuid,
 	__in PDOKAN_GLOBAL	DokanGlobal,
 	__in DEVICE_TYPE	DeviceType,
 	__in ULONG			DeviceCharacteristics,

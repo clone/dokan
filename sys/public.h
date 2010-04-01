@@ -24,7 +24,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000187
+#define DOKAN_VERSION	0x0000190
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 
@@ -182,6 +182,9 @@ typedef struct _FLUSH_CONTEXT {
 	WCHAR	FileName[1];
 } FLUSH_CONTEXT, *PFLUSH_CONTEXT;
 
+typedef struct _UNMOUNT_CONTEXT {
+	WCHAR	DeviceName[64];
+} UNMOUNT_CONTEXT, *PUNMOUNT_CONTEXT;
 
 typedef struct _EVENT_CONTEXT {
 	ULONG	Length;
@@ -205,6 +208,7 @@ typedef struct _EVENT_CONTEXT {
 		LOCK_CONTEXT		Lock;
 		VOLUME_CONTEXT		Volume;
 		FLUSH_CONTEXT		Flush;
+		UNMOUNT_CONTEXT		Unmount;
 	};
 } EVENT_CONTEXT, *PEVENT_CONTEXT;
 
@@ -253,7 +257,7 @@ typedef struct _EVENT_DRIVER_INFO {
 	ULONG	Status;
 	ULONG	DeviceNumber;
 	ULONG	MountId;
-
+	WCHAR	DeviceName[64];
 } EVENT_DRIVER_INFO, *PEVENT_DRIVER_INFO;
 
 typedef struct _EVENT_START {
