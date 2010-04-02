@@ -22,6 +22,8 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #ifndef _DOKANC_H_
 #define _DOKANC_H_
 
+#include "dokan.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,6 +37,8 @@ extern "C" {
 #define DOKAN_CONTROL_MOUNT		1
 #define DOKAN_CONTROL_UNMOUNT	2
 #define DOKAN_CONTROL_CHECK		3
+#define DOKAN_CONTROL_FIND		4
+#define DOKAN_CONTROL_LIST		5
 
 #define DOKAN_CONTROL_SUCCESS	1
 #define DOKAN_CONTROL_FAIL		0
@@ -57,6 +61,7 @@ typedef struct _DOKAN_CONTROL {
 	ULONG	Type;
 	WCHAR	MountPoint[MAX_PATH];
 	WCHAR	DeviceName[64];
+	ULONG	Index;
 	ULONG	Status;
 
 } DOKAN_CONTROL, *PDOKAN_CONTROL;
@@ -106,6 +111,30 @@ DokanDbgPrintW(LPCWSTR format, ...)
 			DokanDbgPrintW(format, __VA_ARGS__);\
 		}\
 	} while(0)
+
+
+BOOL DOKANAPI
+DokanServiceInstall(
+	LPCWSTR	ServiceName,
+	DWORD	ServiceType,
+	LPCWSTR ServiceFullPath);
+
+BOOL DOKANAPI
+DokanServiceDelete(
+	LPCWSTR	ServiceName);
+
+BOOL DOKANAPI
+DokanNetworkProviderInstall();
+
+BOOL DOKANAPI
+DokanNetworkProviderUninstall();
+
+BOOL DOKANAPI
+DokanSetDebugMode(ULONG Mode);
+
+BOOL DOKANAPI
+DokanMountControl(PDOKAN_CONTROL Control);
+
 
 #ifdef __cplusplus
 }

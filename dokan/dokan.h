@@ -296,28 +296,6 @@ DokanResetTimeout(
 	PDOKAN_FILE_INFO	DokanFileInfo);
 
 
-
-// for internal use
-// don't call
-BOOL DOKANAPI
-DokanServiceInstall(
-	LPCWSTR	ServiceName,
-	DWORD	ServiceType,
-	LPCWSTR ServiceFullPath);
-
-BOOL DOKANAPI
-DokanServiceDelete(
-	LPCWSTR	ServiceName);
-
-BOOL DOKANAPI
-DokanNetworkProviderInstall();
-
-BOOL DOKANAPI
-DokanNetworkProviderUninstall();
-
-BOOL DOKANAPI
-DokanSetDebugMode(ULONG Mode);
-
 #ifdef __cplusplus
 }
 #endif

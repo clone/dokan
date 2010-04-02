@@ -29,8 +29,57 @@ THE SOFTWARE.
 #include "dokan.h"
 #include "dokanc.h"
 
+int ShowMountList()
+{
+	DOKAN_CONTROL control;
+	ULONG index = 0;
+	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
+
+	control.Type = DOKAN_CONTROL_LIST;
+	control.Index = 0;
+	control.Status = DOKAN_CONTROL_SUCCESS;
+
+	while(DokanMountControl(&control)) {
+		if (control.Status == DOKAN_CONTROL_SUCCESS) {
+			fwprintf(stderr, L"[% 2d] MountPoint: %s\n     DeviceName: %s\n",
+				control.Index, control.MountPoint, control.DeviceName);
+			control.Index++;
+		} else {
+			return 0;
+		}
+	}
+	return 0;
+}
+
+int Unmount(LPCWSTR	DeviceName)
+{
+	DOKAN_CONTROL control;
+	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
+
+	if (wcslen(DeviceName) == 1 && L'0' <= DeviceName[0] && DeviceName[0] <= L'9') {
+		control.Type = DOKAN_CONTROL_LIST;
+		control.Index = DeviceName[0] - L'0';
+		DokanMountControl(&control);
+
+		if (control.Status == DOKAN_CONTROL_SUCCESS) {
+			return DokanUnmount(control.MountPoint);
+		} else {
+			fwprintf(stderr, L"Mount entry %d not found\n", control.Index);
+			return -1;
+		}
+	} else {
+		return DokanUnmount(DeviceName);
+	}
+}
+
+#define GetOption(argc, argv, index) \
+	(((argc) > (index) && \
+		wcslen((argv)[(index)]) == 2 && \
+		(argv)[(index)][0] == L'/')? \
+		towlower((argv)[(index)][1]) : L'\0')
+
 int __cdecl
-main(int argc, PCHAR argv[])
+wmain(int argc, PWCHAR argv[])
 {
 	ULONG	i;
 	WCHAR	fileName[MAX_PATH];
@@ -38,7 +87,7 @@ main(int argc, PCHAR argv[])
 	WCHAR	mounterFullPath[MAX_PATH];
 	WCHAR	type;
 
-	setlocale(LC_ALL, "");
+	//setlocale(LC_ALL, "");
 
 	GetModuleFileName(NULL, fileName, MAX_PATH);
 
@@ -60,14 +109,19 @@ main(int argc, PCHAR argv[])
 	fwprintf(stderr, L"mounter path %s\n", mounterFullPath);
 
 
-	if (argc == 2 && strlen(argv[1]) == 2 && argv[1][0] == '/' && argv[1][1] == 'v') {
+	if (GetOption(argc, argv, 1) == L'v') {
 		fprintf(stderr, "dokanctl : %s %s\n", __DATE__, __TIME__);
 		fprintf(stderr, "Dokan version : %X\n", DokanVersion());
 		fprintf(stderr, "Dokan driver version : %X\n", DokanDriverVersion());
 		return 0;
+	
+	} else if (GetOption(argc, argv, 1) == L'm') {
+		return ShowMountList();
 
+	} else if (GetOption(argc, argv, 1) == L'u' && argc == 3) {
+		return Unmount(argv[2]);
 
-	} else if (argc < 3 || strlen(argv[1]) != 2 || argv[1][0] != '/' ) {
+	} else if (argc < 3 || wcslen(argv[1]) != 2 || argv[1][0] != L'/' ) {
 		fprintf(stderr, "dokanctrl /u DriveLetter\n");
 
 		fprintf(stderr, "dokanctrl /i [d|s|a]\n");
@@ -87,10 +141,6 @@ main(int argc, PCHAR argv[])
 	type = towlower(argv[2][0]);
 
 	switch(towlower(argv[1][1])) {
-	case L'u':
-		DokanUnmount(type);
-		break;
-
 	case L'i':
 		if (type ==  L'd') {
 			if (DokanServiceInstall(DOKAN_DRIVER_SERVICE,

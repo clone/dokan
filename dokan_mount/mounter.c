@@ -110,13 +110,51 @@ FindMountEntry(PDOKAN_CONTROL	DokanControl)
 	}
 }
 
+VOID
+DokanControlFind(PDOKAN_CONTROL Control)
+{
+	PLIST_ENTRY		listEntry;
+	PMOUNT_ENTRY	mountEntry;
+
+	mountEntry = FindMountEntry(Control);
+	if (mountEntry == NULL) {
+		Control->Status = DOKAN_CONTROL_FAIL;
+	} else {
+		wcscpy(Control->DeviceName, mountEntry->MountControl.DeviceName);
+		wcscpy(Control->MountPoint, mountEntry->MountControl.MountPoint);
+		Control->Status = DOKAN_CONTROL_SUCCESS;
+	}
+}
+
+VOID
+DokanControlList(PDOKAN_CONTROL Control)
+{
+	PLIST_ENTRY		listEntry;
+	PMOUNT_ENTRY	mountEntry;
+	ULONG			index = 0;
+
+	EnterCriticalSection(&g_CriticalSection);
+	Control->Status = DOKAN_CONTROL_FAIL;
+
+	for (listEntry = g_MountList.Flink;
+		listEntry != &g_MountList;
+		listEntry = listEntry->Flink) {
+		mountEntry = CONTAINING_RECORD(listEntry, MOUNT_ENTRY, ListEntry);
+		if (Control->Index == index++) {
+			wcscpy(Control->DeviceName, mountEntry->MountControl.DeviceName);
+			wcscpy(Control->MountPoint, mountEntry->MountControl.MountPoint);
+			Control->Status = DOKAN_CONTROL_SUCCESS;
+			break;
+		}
+	}
+	LeaveCriticalSection(&g_CriticalSection);
+}
 static VOID DokanControl(PDOKAN_CONTROL Control)
 {
 	PMOUNT_ENTRY	mountEntry;
+	ULONG	index = 0;
 	DWORD written = 0;
 
-	DbgPrint("DokanControl\n");
-	
 	Control->Status = DOKAN_CONTROL_FAIL;
 
 	switch (Control->Type)
@@ -157,7 +195,22 @@ static VOID DokanControl(PDOKAN_CONTROL Control)
 
 	case DOKAN_CONTROL_CHECK:
 		{
+			DbgPrint("DokanControl Check\n");
 			Control->Status = 0;
+		}
+		break;
+
+	case DOKAN_CONTROL_FIND:
+		{
+			DbgPrintW(L"DokanControl Find\n");
+			DokanControlFind(Control);
+		}
+		break;
+
+	case DOKAN_CONTROL_LIST:
+		{
+			DbgPrintW(L"DokanControl List\n");
+			DokanControlList(Control);
 		}
 		break;
 
@@ -312,7 +365,6 @@ static VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 
 			ZeroMemory(&control, sizeof(control));
 			if (ReadFile(pipe, &control, sizeof(control), &result, NULL)) {
-				DbgPrintW(L"DokanMounter: Control->Type %d\n", control.Type);
 				DokanControl(&control);
 				WriteFile(pipe, &control, sizeof(control), &result, NULL);
 			}

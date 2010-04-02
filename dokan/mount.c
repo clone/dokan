@@ -119,25 +119,36 @@ DokanServiceControl(
 
 
 
-static BOOL
-DokanControl(PDOKAN_CONTROL Control)
+BOOL DOKANAPI
+DokanMountControl(PDOKAN_CONTROL Control)
 {
 	HANDLE pipe;
 	DWORD writtenBytes;
 	DWORD readBytes;
 	DWORD pipeMode;
+	DWORD error;
 
-	pipe = CreateFile(DOKAN_CONTROL_PIPE,
-		GENERIC_READ|GENERIC_WRITE,
-		0, NULL, OPEN_EXISTING, 0, NULL);
+	for (;;) {
+		pipe = CreateFile(DOKAN_CONTROL_PIPE,  GENERIC_READ|GENERIC_WRITE,
+						0, NULL, OPEN_EXISTING, 0, NULL);
+		if (pipe != INVALID_HANDLE_VALUE) {
+			break;
+		}
 
-	if (pipe == INVALID_HANDLE_VALUE) {
-		if (GetLastError() == ERROR_ACCESS_DENIED) {
+		error = GetLastError();
+		if (error == ERROR_PIPE_BUSY) {
+			if (!WaitNamedPipe(DOKAN_CONTROL_PIPE, NMPWAIT_USE_DEFAULT_WAIT)) {
+				DbgPrint("DokanMounter service : ERROR_PIPE_BUSY\n");
+				return FALSE;
+			}
+			continue;
+		} else if (error == ERROR_ACCESS_DENIED) {
 			DbgPrint("failed to connect DokanMounter service: access denied\n");
+			return FALSE;
 		} else {
 			DbgPrint("failed to connect DokanMounter service: %d\n", GetLastError());
+			return FALSE;
 		}
-		return FALSE;
 	}
 
 	pipeMode = PIPE_READMODE_MESSAGE|PIPE_WAIT;
@@ -236,7 +247,7 @@ DokanUnmount(
 	control.Type = DOKAN_CONTROL_UNMOUNT;
 	wcscpy(control.MountPoint, MountPoint);
 
-	result = DokanControl(&control);
+	result = DokanMountControl(&control);
 	if (result) {
 		DbgPrint("DokanControl recieved DeviceName:%ws\n", control.DeviceName);
 		SendReleaseIRP(control.DeviceName);
@@ -257,7 +268,7 @@ DokanMount(
 	wcscpy(control.MountPoint, MountPoint);
 	wcscpy(control.DeviceName, DeviceName);
 
-	return  DokanControl(&control);
+	return  DokanMountControl(&control);
 }
 
 
