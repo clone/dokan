@@ -36,14 +36,14 @@ int ShowMountList()
 	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
 
 	control.Type = DOKAN_CONTROL_LIST;
-	control.Index = 0;
+	control.Option = 0;
 	control.Status = DOKAN_CONTROL_SUCCESS;
 
 	while(DokanMountControl(&control)) {
 		if (control.Status == DOKAN_CONTROL_SUCCESS) {
 			fwprintf(stderr, L"[% 2d] MountPoint: %s\n     DeviceName: %s\n",
-				control.Index, control.MountPoint, control.DeviceName);
-			control.Index++;
+				control.Option, control.MountPoint, control.DeviceName);
+			control.Option++;
 		} else {
 			return 0;
 		}
@@ -51,24 +51,60 @@ int ShowMountList()
 	return 0;
 }
 
-int Unmount(LPCWSTR	DeviceName)
+int ShowUsage()
+{
+	fprintf(stderr,
+		"dokanctrl /u MountPoint (/f)\n" \
+		"dokanntl /m\n" \
+		"dokanctl /i [d|s|a]\n" \
+		"dokanctl /r [d|s|a]\n" \
+		"dokanctl /v\n" \
+		"\n" \
+		"Example:\n" \
+		"  /u M:               : Unmount M: drive\n" \
+		"  /u C:\\mount\\dokan   : Unmount mount point C:\\mount\\dokan\n" \
+		"  /u 1                : Unmount mount point 1\n" \
+		"  /u M: /f            : Force unmount M: drive\n" \
+		"  /m                  : Print mount points list\n" \
+		"  /i s                : Install mounter service\n" \
+		"  /r d                : Remove driver\n" \
+		"  /r a                : Remove driver and mounter service\n" \
+		"  /v                  : Print Dokan version\n");
+	return -1;
+}
+
+int Unmount(LPCWSTR	MountPoint, BOOL ForceUnmount)
 {
 	DOKAN_CONTROL control;
 	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
 
-	if (wcslen(DeviceName) == 1 && L'0' <= DeviceName[0] && DeviceName[0] <= L'9') {
+	if (wcslen(MountPoint) == 1 && L'0' <= MountPoint[0] && MountPoint[0] <= L'9') {
 		control.Type = DOKAN_CONTROL_LIST;
-		control.Index = DeviceName[0] - L'0';
+		control.Option = MountPoint[0] - L'0';
 		DokanMountControl(&control);
 
 		if (control.Status == DOKAN_CONTROL_SUCCESS) {
 			return DokanUnmount(control.MountPoint);
 		} else {
-			fwprintf(stderr, L"Mount entry %d not found\n", control.Index);
+			fwprintf(stderr, L"Mount entry %d not found\n", control.Option);
 			return -1;
 		}
+	} else if (ForceUnmount) {
+		control.Type = DOKAN_CONTROL_UNMOUNT;
+		control.Option = DOKAN_CONTROL_OPTION_FORCE_UNMOUNT;
+		wcscpy(control.MountPoint, MountPoint);
+		DokanMountControl(&control);
+
+		if (control.Status == DOKAN_CONTROL_SUCCESS) {
+			fwprintf(stderr, L"Unmount success: %s", MountPoint);
+			return 0;
+		} else {
+			fwprintf(stderr, L"Unmount failed: %s", MountPoint);
+			return -1;
+		}
+
 	} else {
-		return DokanUnmount(DeviceName);
+		return DokanUnmount(MountPoint);
 	}
 }
 
@@ -119,23 +155,14 @@ wmain(int argc, PWCHAR argv[])
 		return ShowMountList();
 
 	} else if (GetOption(argc, argv, 1) == L'u' && argc == 3) {
-		return Unmount(argv[2]);
+		return Unmount(argv[2], FALSE);
+
+	} else if (GetOption(argc, argv, 1) == L'u' &&
+				GetOption(argc, argv, 3) == L'f' && argc == 4) {
+		return Unmount(argv[2], TRUE);
 
 	} else if (argc < 3 || wcslen(argv[1]) != 2 || argv[1][0] != L'/' ) {
-		fprintf(stderr, "dokanctrl /u DriveLetter\n");
-
-		fprintf(stderr, "dokanctrl /i [d|s|a]\n");
-		fprintf(stderr, "dokanctrl /r [d|s|a}\n");
-		
-		fprintf(stderr, "dokanctrl /v\n");
-
-		fprintf(stderr, "\n");
-		fprintf(stderr, "  /u\tUnmount drive\n");
-		fprintf(stderr, "  /i s\tInstall mounter service\n");
-		fprintf(stderr, "  /r d\tRemove driver\n");
-		fprintf(stderr, "  /r a\tRemove driver and mounter service\n");
-		fprintf(stderr, "  /v Print Dokan version\n");
-		return -1;
+		return ShowUsage();
 	}
 
 	type = towlower(argv[2][0]);

@@ -140,7 +140,7 @@ DokanControlList(PDOKAN_CONTROL Control)
 		listEntry != &g_MountList;
 		listEntry = listEntry->Flink) {
 		mountEntry = CONTAINING_RECORD(listEntry, MOUNT_ENTRY, ListEntry);
-		if (Control->Index == index++) {
+		if (Control->Option == index++) {
 			wcscpy(Control->DeviceName, mountEntry->MountControl.DeviceName);
 			wcscpy(Control->MountPoint, mountEntry->MountControl.MountPoint);
 			Control->Status = DOKAN_CONTROL_SUCCESS;
@@ -177,18 +177,24 @@ static VOID DokanControl(PDOKAN_CONTROL Control)
 
 		mountEntry = FindMountEntry(Control);
 		if (mountEntry == NULL) {
-			Control->Status = DOKAN_CONTROL_FAIL;
-		} else {
-			if (DokanControlUnmount(mountEntry->MountControl.MountPoint)) {
+			if (Control->Option == DOKAN_CONTROL_OPTION_FORCE_UNMOUNT &&
+				DokanControlUnmount(Control->MountPoint)) {
 				Control->Status = DOKAN_CONTROL_SUCCESS;
-				if (wcslen(Control->DeviceName) == 0) {
-					wcscpy(Control->DeviceName, mountEntry->MountControl.DeviceName);
-				}
-				RemoveMountEntry(mountEntry);
-			} else {
-				mountEntry->MountControl.Status = DOKAN_CONTROL_FAIL;
-				Control->Status = DOKAN_CONTROL_FAIL;
+				break;
 			}
+			Control->Status = DOKAN_CONTROL_FAIL;
+			break;	
+		}
+
+		if (DokanControlUnmount(mountEntry->MountControl.MountPoint)) {
+			Control->Status = DOKAN_CONTROL_SUCCESS;
+			if (wcslen(Control->DeviceName) == 0) {
+				wcscpy(Control->DeviceName, mountEntry->MountControl.DeviceName);
+			}
+			RemoveMountEntry(mountEntry);
+		} else {
+			mountEntry->MountControl.Status = DOKAN_CONTROL_FAIL;
+			Control->Status = DOKAN_CONTROL_FAIL;
 		}
 
 		break;

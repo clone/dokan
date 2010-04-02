@@ -40,6 +40,8 @@ extern "C" {
 #define DOKAN_CONTROL_FIND		4
 #define DOKAN_CONTROL_LIST		5
 
+#define DOKAN_CONTROL_OPTION_FORCE_UNMOUNT 1
+
 #define DOKAN_CONTROL_SUCCESS	1
 #define DOKAN_CONTROL_FAIL		0
 
@@ -61,7 +63,7 @@ typedef struct _DOKAN_CONTROL {
 	ULONG	Type;
 	WCHAR	MountPoint[MAX_PATH];
 	WCHAR	DeviceName[64];
-	ULONG	Index;
+	ULONG	Option;
 	ULONG	Status;
 
 } DOKAN_CONTROL, *PDOKAN_CONTROL;
