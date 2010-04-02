@@ -894,7 +894,7 @@ MirrorUnmount(
 
 
 int __cdecl
-main(ULONG argc, PCHAR argv[])
+wmain(ULONG argc, PWCHAR argv[])
 {
 	int status;
 	ULONG command;
@@ -922,35 +922,35 @@ main(ULONG argc, PCHAR argv[])
 	dokanOptions->ThreadCount = 0; // use default
 
 	for (command = 1; command < argc; command++) {
-		switch (tolower(argv[command][1])) {
-		case 'r':
+		switch (towlower(argv[command][1])) {
+		case L'r':
 			command++;
-			mbstowcs(RootDirectory, argv[command], strlen(argv[command]));
+			wcscpy(RootDirectory, argv[command]);
 			DbgPrint(L"RootDirectory: %ls\n", RootDirectory);
 			break;
-		case 'l':
+		case L'l':
 			command++;
-			mbstowcs(MountPoint, argv[command], strlen(argv[command]));
+			wcscpy(MountPoint, argv[command]);
 			dokanOptions->MountPoint = MountPoint;
 			break;
-		case 't':
+		case L't':
 			command++;
-			dokanOptions->ThreadCount = (USHORT)atoi(argv[command]);
+			dokanOptions->ThreadCount = (USHORT)_wtoi(argv[command]);
 			break;
-		case 'd':
+		case L'd':
 			g_DebugMode = TRUE;
 			break;
-		case 's':
+		case L's':
 			g_UseStdErr = TRUE;
 			break;
-		case 'n':
+		case L'n':
 			dokanOptions->Options |= DOKAN_OPTION_NETWORK;
 			break;
-		case 'm':
+		case L'm':
 			dokanOptions->Options |= DOKAN_OPTION_REMOVABLE;
 			break;
 		default:
-			fprintf(stderr, "unknown command: %s\n", argv[command]);
+			fwprintf(stderr, L"unknown command: %s\n", argv[command]);
 			return -1;
 		}
 	}
@@ -1009,6 +1009,7 @@ main(ULONG argc, PCHAR argv[])
 			break;
 		case DOKAN_MOUNT_POINT_ERROR:
 			fprintf(stderr, "Mount point error\n");
+			break;
 		default:
 			fprintf(stderr, "Unknown error: %d\n", status);
 			break;
