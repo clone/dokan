@@ -165,11 +165,13 @@ CreateDriveLetter(
 	WCHAR		DriveLetter,
 	LPCWSTR	DeviceName)
 {
-	WCHAR   dosDevice[] = L"\\\\.\\ :";
+	WCHAR   dosDevice[] = L"\\\\.\\C:";
+	WCHAR   driveName[] = L"C:";
 	WCHAR	rawDeviceName[MAX_PATH];
 	HANDLE  device;
 
 	dosDevice[4] = DriveLetter;
+	driveName[0] = DriveLetter;
 	swprintf(rawDeviceName, L"\\Device%s", DeviceName);
 
 	DbgPrintW(L"DriveLetter: %c, DeviceName %s\n", DriveLetter, rawDeviceName);
@@ -190,7 +192,7 @@ CreateDriveLetter(
         return FALSE;
     }
 
-    if (!DefineDosDevice(DDD_RAW_TARGET_PATH, &dosDevice[4], rawDeviceName)) {
+    if (!DefineDosDevice(DDD_RAW_TARGET_PATH, driveName, rawDeviceName)) {
 		DbgPrintW(L"DokanControl DefineDosDevice failed: %d\n", GetLastError());
         return FALSE;
     }
@@ -207,7 +209,7 @@ CreateDriveLetter(
 
     if (device == INVALID_HANDLE_VALUE) {
 		DbgPrintW(L"DokanControl Mount %c failed:%d\n", DriveLetter, GetLastError());
-        DefineDosDevice(DDD_REMOVE_DEFINITION, &dosDevice[4], NULL);
+        DefineDosDevice(DDD_REMOVE_DEFINITION, dosDevice, NULL);
         return FALSE;
     }
 
