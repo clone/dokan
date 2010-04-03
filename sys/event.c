@@ -465,7 +465,7 @@ DokanEventStart(
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
-	wcsncpy(baseGuidString, unicodeGuid.Buffer, sizeof(baseGuidString)/sizeof(WCHAR));
+	wcscpy_s(baseGuidString, sizeof(baseGuidString) / sizeof(WCHAR), unicodeGuid.Buffer);
 	RtlFreeUnicodeString(&unicodeGuid);
 
 	InterlockedIncrement(&dokanGlobal->MountId);
@@ -500,9 +500,9 @@ DokanEventStart(
 	deviceNamePos = dcb->SymbolicLinkName->Length / sizeof(WCHAR) - 1;
 	for (; dcb->SymbolicLinkName->Buffer[deviceNamePos] != L'\\'; --deviceNamePos)
 		;
-	wcsncpy(driverInfo->DeviceName,
-			&(dcb->SymbolicLinkName->Buffer[deviceNamePos]),
-			sizeof(driverInfo->DeviceName)/sizeof(WCHAR));
+	wcscpy_s(driverInfo->DeviceName,
+			sizeof(driverInfo->DeviceName) / sizeof(WCHAR),
+			&(dcb->SymbolicLinkName->Buffer[deviceNamePos]));
 
 	DDbgPrint("  DeviceName:%ws\n", driverInfo->DeviceName);
 	DokanUpdateTimeout(&dcb->TickCount, DOKAN_KEEPALIVE_TIMEOUT);
@@ -649,6 +649,4 @@ DokanEventWrite(
 
    return STATUS_SUCCESS;
 }
-
-
 

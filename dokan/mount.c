@@ -245,7 +245,7 @@ DokanUnmount(
 
 	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
 	control.Type = DOKAN_CONTROL_UNMOUNT;
-	wcscpy(control.MountPoint, MountPoint);
+	wcscpy_s(control.MountPoint, sizeof(control.MountPoint) / sizeof(WCHAR), MountPoint);
 
 	result = DokanMountControl(&control);
 	if (result) {
@@ -265,8 +265,8 @@ DokanMount(
 	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
 	control.Type = DOKAN_CONTROL_MOUNT;
 
-	wcscpy(control.MountPoint, MountPoint);
-	wcscpy(control.DeviceName, DeviceName);
+	wcscpy_s(control.MountPoint, sizeof(control.MountPoint) / sizeof(WCHAR), MountPoint);
+	wcscpy_s(control.DeviceName, sizeof(control.DeviceName) / sizeof(WCHAR), DeviceName);
 
 	return  DokanMountControl(&control);
 }
@@ -307,7 +307,7 @@ DokanNetworkProviderInstall()
 	RegQueryValueEx(key, L"ProviderOrder", 0, &type, (BYTE*)&buffer, &buffer_size);
 
 	if (wcsstr(buffer, L",Dokan") == NULL) {
-		wcscat(buffer, L",Dokan");
+		wcscat_s(buffer, sizeof(buffer) / sizeof(WCHAR), L",Dokan");
 		RegSetValueEx(key, L"ProviderOrder", 0, REG_SZ,
 			(BYTE*)&buffer, (wcslen(buffer) + 1) * sizeof(WCHAR));
 	}
@@ -340,8 +340,8 @@ DokanNetworkProviderUninstall()
 
 	if (wcsstr(buffer, L",Dokan") != NULL) {
 		WCHAR* dokan_pos = wcsstr(buffer, L",Dokan");
-		wcsncpy(buffer2, buffer, dokan_pos - buffer);
-		wcscat(buffer2, dokan_pos + wcslen(L",Dokan"));
+		wcsncpy_s(buffer2, sizeof(buffer2) / sizeof(WCHAR), buffer, dokan_pos - buffer);
+		wcscat_s(buffer2, sizeof(buffer2) / sizeof(WCHAR), dokan_pos + wcslen(L",Dokan"));
 		RegSetValueEx(key, L"ProviderOrder", 0, REG_SZ,
 			(BYTE*)&buffer2, (wcslen(buffer2) + 1) * sizeof(WCHAR));
 	}

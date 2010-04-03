@@ -52,11 +52,12 @@ static WCHAR MountPoint[MAX_PATH] = L"M:";
 static void
 GetFilePath(
 	PWCHAR	filePath,
+	ULONG	numberOfElements,
 	LPCWSTR FileName)
 {
-	RtlZeroMemory(filePath, MAX_PATH);
-	wcsncpy(filePath, RootDirectory, wcslen(RootDirectory));
-	wcsncat(filePath, FileName, wcslen(FileName));
+	RtlZeroMemory(filePath, numberOfElements * sizeof(WCHAR));
+	wcsncpy_s(filePath, numberOfElements, RootDirectory, wcslen(RootDirectory));
+	wcsncat_s(filePath, numberOfElements, FileName, wcslen(FileName));
 }
 
 
@@ -75,7 +76,7 @@ MirrorCreateFile(
 	HANDLE handle;
 	DWORD fileAttr;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"CreateFile : %s\n", filePath);
 	
@@ -190,7 +191,7 @@ MirrorCreateDirectory(
 	PDOKAN_FILE_INFO		DokanFileInfo)
 {
 	WCHAR filePath[MAX_PATH];
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"CreateDirectory : %s\n", filePath);
 	if (!CreateDirectory(filePath, NULL)) {
@@ -211,7 +212,7 @@ MirrorOpenDirectory(
 	HANDLE handle;
 	DWORD attr;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"OpenDirectory : %s\n", filePath);
 
@@ -254,7 +255,7 @@ MirrorCloseFile(
 	PDOKAN_FILE_INFO		DokanFileInfo)
 {
 	WCHAR filePath[MAX_PATH];
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	if (DokanFileInfo->Context) {
 		DbgPrint(L"CloseFile: %s\n", filePath);
@@ -278,7 +279,7 @@ MirrorCleanup(
 	PDOKAN_FILE_INFO		DokanFileInfo)
 {
 	WCHAR filePath[MAX_PATH];
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	if (DokanFileInfo->Context) {
 		DbgPrint(L"Cleanup: %s\n\n", filePath);
@@ -327,7 +328,7 @@ MirrorReadFile(
 	ULONG	offset = (ULONG)Offset;
 	BOOL	opened = FALSE;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"ReadFile : %s\n", filePath);
 
@@ -388,7 +389,7 @@ MirrorWriteFile(
 	ULONG	offset = (ULONG)Offset;
 	BOOL	opened = FALSE;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"WriteFile : %s, offset %I64d, length %d\n", filePath, Offset, NumberOfBytesToWrite);
 
@@ -446,7 +447,7 @@ MirrorFlushFileBuffers(
 	WCHAR	filePath[MAX_PATH];
 	HANDLE	handle = (HANDLE)DokanFileInfo->Context;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"FlushFileBuffers : %s\n", filePath);
 
@@ -475,7 +476,7 @@ MirrorGetFileInformation(
 	HANDLE	handle = (HANDLE)DokanFileInfo->Context;
 	BOOL	opened = FALSE;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"GetFileInfo : %s\n", filePath);
 
@@ -545,9 +546,9 @@ MirrorFindFiles(
 	PWCHAR				yenStar = L"\\*";
 	int count = 0;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
-	wcscat(filePath, yenStar);
+	wcscat_s(filePath, MAX_PATH, yenStar);
 	DbgPrint(L"FindFiles :%s\n", filePath);
 
 	hFind = FindFirstFile(filePath, &findData);
@@ -587,7 +588,7 @@ MirrorDeleteFile(
 	WCHAR	filePath[MAX_PATH];
 	HANDLE	handle = (HANDLE)DokanFileInfo->Context;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"DeleteFile %s\n", filePath);
 
@@ -607,7 +608,7 @@ MirrorDeleteDirectory(
 	ULONG	fileLen;
 
 	ZeroMemory(filePath, sizeof(filePath));
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"DeleteDirectory %s\n", filePath);
 
@@ -650,8 +651,8 @@ MirrorMoveFile(
 	WCHAR			newFilePath[MAX_PATH];
 	BOOL			status;
 
-	GetFilePath(filePath, FileName);
-	GetFilePath(newFilePath, NewFileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
+	GetFilePath(newFilePath, MAX_PATH, NewFileName);
 
 	DbgPrint(L"MoveFile %s -> %s\n\n", filePath, newFilePath);
 
@@ -688,7 +689,7 @@ MirrorLockFile(
 	LARGE_INTEGER offset;
 	LARGE_INTEGER length;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"LockFile %s\n", filePath);
 
@@ -721,7 +722,7 @@ MirrorSetEndOfFile(
 	HANDLE			handle;
 	LARGE_INTEGER	offset;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"SetEndOfFile %s, %I64d\n", filePath, ByteOffset);
 
@@ -758,7 +759,7 @@ MirrorSetAllocationSize(
 	HANDLE			handle;
 	LARGE_INTEGER	fileSize;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"SetAllocationSize %s, %I64d\n", filePath, AllocSize);
 
@@ -799,7 +800,7 @@ MirrorSetFileAttributes(
 {
 	WCHAR	filePath[MAX_PATH];
 	
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"SetFileAttributes %s\n", filePath);
 
@@ -825,7 +826,7 @@ MirrorSetFileTime(
 	WCHAR	filePath[MAX_PATH];
 	HANDLE	handle;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"SetFileTime %s\n", filePath);
 
@@ -860,7 +861,7 @@ MirrorUnlockFile(
 	LARGE_INTEGER	length;
 	LARGE_INTEGER	offset;
 
-	GetFilePath(filePath, FileName);
+	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"UnlockFile %s\n", filePath);
 
@@ -925,12 +926,12 @@ wmain(ULONG argc, PWCHAR argv[])
 		switch (towlower(argv[command][1])) {
 		case L'r':
 			command++;
-			wcscpy(RootDirectory, argv[command]);
+			wcscpy_s(RootDirectory, sizeof(RootDirectory)/sizeof(WCHAR), argv[command]);
 			DbgPrint(L"RootDirectory: %ls\n", RootDirectory);
 			break;
 		case L'l':
 			command++;
-			wcscpy(MountPoint, argv[command]);
+			wcscpy_s(MountPoint, sizeof(MountPoint)/sizeof(WCHAR), argv[command]);
 			dokanOptions->MountPoint = MountPoint;
 			break;
 		case L't':
@@ -955,10 +956,12 @@ wmain(ULONG argc, PWCHAR argv[])
 		}
 	}
 
-	if (g_DebugMode)
+	if (g_DebugMode) {
 		dokanOptions->Options |= DOKAN_OPTION_DEBUG;
-	if (g_UseStdErr)
+	}
+	if (g_UseStdErr) {
 		dokanOptions->Options |= DOKAN_OPTION_STDERR;
+	}
 
 	dokanOptions->Options |= DOKAN_OPTION_KEEP_ALIVE;
 
@@ -989,30 +992,30 @@ wmain(ULONG argc, PWCHAR argv[])
 
 	status = DokanMain(dokanOptions, dokanOperations);
 	switch (status) {
-		case DOKAN_SUCCESS:
-			fprintf(stderr, "Success\n");
-			break;
-		case DOKAN_ERROR:
-			fprintf(stderr, "Error\n");
-			break;
-		case DOKAN_DRIVE_LETTER_ERROR:
-			fprintf(stderr, "Bad Drive letter\n");
-			break;
-		case DOKAN_DRIVER_INSTALL_ERROR:
-			fprintf(stderr, "Can't install driver\n");
-			break;
-		case DOKAN_START_ERROR:
-			fprintf(stderr, "Driver something wrong\n");
-			break;
-		case DOKAN_MOUNT_ERROR:
-			fprintf(stderr, "Can't assign a drive letter\n");
-			break;
-		case DOKAN_MOUNT_POINT_ERROR:
-			fprintf(stderr, "Mount point error\n");
-			break;
-		default:
-			fprintf(stderr, "Unknown error: %d\n", status);
-			break;
+	case DOKAN_SUCCESS:
+		fprintf(stderr, "Success\n");
+		break;
+	case DOKAN_ERROR:
+		fprintf(stderr, "Error\n");
+		break;
+	case DOKAN_DRIVE_LETTER_ERROR:
+		fprintf(stderr, "Bad Drive letter\n");
+		break;
+	case DOKAN_DRIVER_INSTALL_ERROR:
+		fprintf(stderr, "Can't install driver\n");
+		break;
+	case DOKAN_START_ERROR:
+		fprintf(stderr, "Driver something wrong\n");
+		break;
+	case DOKAN_MOUNT_ERROR:
+		fprintf(stderr, "Can't assign a drive letter\n");
+		break;
+	case DOKAN_MOUNT_POINT_ERROR:
+		fprintf(stderr, "Mount point error\n");
+		break;
+	default:
+		fprintf(stderr, "Unknown error: %d\n", status);
+		break;
 	}
 
 	free(dokanOptions);

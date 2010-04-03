@@ -155,7 +155,7 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 					GENERIC_READ|GENERIC_WRITE,			// dwDesiredAccess
 					FILE_SHARE_READ|FILE_SHARE_WRITE,	// dwShareMode
 					NULL,								// lpSecurityAttributes
-					OPEN_EXISTING,					// dwCreationDistribution
+					OPEN_EXISTING,						// dwCreationDistribution
 					0,									// dwFlagsAndAttributes
 					NULL								// hTemplateFile
                     );
@@ -171,7 +171,8 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	instance = NewDokanInstance();
 	instance->DokanOptions = DokanOptions;
 	instance->DokanOperations = DokanOperations;
-	wcscpy(instance->MountPoint, DokanOptions->MountPoint);
+	wcscpy_s(instance->MountPoint, sizeof(instance->MountPoint) / sizeof(WCHAR),
+			DokanOptions->MountPoint);
 
 	if (!DokanStart(instance)) {
 		return DOKAN_START_ERROR;
@@ -224,8 +225,8 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 LPCWSTR
 GetRawDeviceName(LPCWSTR	DeviceName)
 {
-	static WCHAR rawDeviceName[MAX_PATH];
-	swprintf(rawDeviceName, L"\\\\.%s", DeviceName);
+	static WCHAR rawDeviceName[MAX_PATH] = L"\\\\.";
+	wcscat_s(rawDeviceName, MAX_PATH, DeviceName);
 	return rawDeviceName;
 }
 
@@ -592,7 +593,9 @@ DokanStart(PDOKAN_INSTANCE Instance)
 	} else if (driverInfo.Status == DOKAN_MOUNTED) {
 		Instance->MountId = driverInfo.MountId;
 		Instance->DeviceNumber = driverInfo.DeviceNumber;
-		wcscpy(Instance->DeviceName, driverInfo.DeviceName);
+		wcscpy_s(Instance->DeviceName,
+				sizeof(Instance->DeviceName) / sizeof(WCHAR),
+				driverInfo.DeviceName);
 		return TRUE;
 	}
 	return FALSE;

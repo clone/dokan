@@ -253,7 +253,7 @@ typedef struct _DokanContextControlBlock
 	ULONG64				Context;
 	ULONG64				UserContext;
 	
-	PVOID				SearchPattern;
+	PWCHAR				SearchPattern;
 	ULONG				SearchPatternLength;
 
 	ULONG				Flags;

@@ -120,8 +120,10 @@ DokanControlFind(PDOKAN_CONTROL Control)
 	if (mountEntry == NULL) {
 		Control->Status = DOKAN_CONTROL_FAIL;
 	} else {
-		wcscpy(Control->DeviceName, mountEntry->MountControl.DeviceName);
-		wcscpy(Control->MountPoint, mountEntry->MountControl.MountPoint);
+		wcscpy_s(Control->DeviceName, sizeof(Control->DeviceName) / sizeof(WCHAR),
+				mountEntry->MountControl.DeviceName);
+		wcscpy_s(Control->MountPoint, sizeof(Control->MountPoint) / sizeof(WCHAR),
+				mountEntry->MountControl.MountPoint);
 		Control->Status = DOKAN_CONTROL_SUCCESS;
 	}
 }
@@ -141,8 +143,10 @@ DokanControlList(PDOKAN_CONTROL Control)
 		listEntry = listEntry->Flink) {
 		mountEntry = CONTAINING_RECORD(listEntry, MOUNT_ENTRY, ListEntry);
 		if (Control->Option == index++) {
-			wcscpy(Control->DeviceName, mountEntry->MountControl.DeviceName);
-			wcscpy(Control->MountPoint, mountEntry->MountControl.MountPoint);
+			wcscpy_s(Control->DeviceName, sizeof(Control->DeviceName) / sizeof(WCHAR),
+					mountEntry->MountControl.DeviceName);
+			wcscpy_s(Control->MountPoint, sizeof(Control->MountPoint) / sizeof(WCHAR),
+					mountEntry->MountControl.MountPoint);
 			Control->Status = DOKAN_CONTROL_SUCCESS;
 			break;
 		}
@@ -189,7 +193,8 @@ static VOID DokanControl(PDOKAN_CONTROL Control)
 		if (DokanControlUnmount(mountEntry->MountControl.MountPoint)) {
 			Control->Status = DOKAN_CONTROL_SUCCESS;
 			if (wcslen(Control->DeviceName) == 0) {
-				wcscpy(Control->DeviceName, mountEntry->MountControl.DeviceName);
+				wcscpy_s(Control->DeviceName, sizeof(Control->DeviceName) / sizeof(WCHAR),
+						mountEntry->MountControl.DeviceName);
 			}
 			RemoveMountEntry(mountEntry);
 		} else {
@@ -385,7 +390,8 @@ static VOID WINAPI ServiceMain(DWORD dwArgc, LPTSTR *lpszArgv)
 
 					ZeroMemory(&unmount, sizeof(DOKAN_CONTROL));
 					unmount.Type = DOKAN_CONTROL_UNMOUNT;
-					wcscpy(unmount.DeviceName, eventContext.Unmount.DeviceName);
+					wcscpy_s(unmount.DeviceName, sizeof(unmount.DeviceName) / sizeof(WCHAR),
+							eventContext.Unmount.DeviceName);
 					DokanControl(&unmount);
 				} else {
 					DbgPrintW(L"DokanMounter: Unmount error\n", control.Type);

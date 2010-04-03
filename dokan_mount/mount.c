@@ -66,9 +66,10 @@ CreateMountPoint(
 	USHORT	targetLength;
 	BOOL	result;
 	ULONG	resultLength;
-	WCHAR	targetDeviceName[MAX_PATH];
+	WCHAR	targetDeviceName[MAX_PATH] =  L"\\??";
 
-	swprintf(targetDeviceName, L"\\??%s\\", DeviceName);
+	wcscat_s(targetDeviceName, MAX_PATH, DeviceName);
+	wcscat_s(targetDeviceName, MAX_PATH, L"\\");
 
 	handle = CreateFile(
 		MountPoint, GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
@@ -167,12 +168,12 @@ CreateDriveLetter(
 {
 	WCHAR   dosDevice[] = L"\\\\.\\C:";
 	WCHAR   driveName[] = L"C:";
-	WCHAR	rawDeviceName[MAX_PATH];
+	WCHAR	rawDeviceName[MAX_PATH] = L"\\Device";
 	HANDLE  device;
 
 	dosDevice[4] = DriveLetter;
 	driveName[0] = DriveLetter;
-	swprintf(rawDeviceName, L"\\Device%s", DeviceName);
+	wcscpy_s(rawDeviceName, MAX_PATH, DeviceName);
 
 	DbgPrintW(L"DriveLetter: %c, DeviceName %s\n", DriveLetter, rawDeviceName);
 

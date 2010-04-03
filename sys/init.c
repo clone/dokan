@@ -424,19 +424,25 @@ DokanCreateDiskDevice(
 	// make DeviceName and SymboliLink
 	if (isNetworkFileSystem) {
 #ifdef DOKAN_NET_PROVIDER
-		swprintf(diskDeviceNameBuf, DOKAN_NET_DEVICE_NAME);
-		swprintf(fsDeviceNameBuf, DOKAN_NET_DEVICE_NAME);
-		swprintf(symbolicLinkNameBuf, DOKAN_NET_SYMBOLIC_LINK_NAME);
+		wcscpy_s(diskDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, DOKAN_NET_DEVICE_NAME);
+		wcscpy_s(fsDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, DOKAN_NET_DEVICE_NAME);
+		wcscpy_s(symbolicLinkNameBuf, MAXIMUM_FILENAME_LENGTH, DOKAN_NET_SYMBOLIC_LINK_NAME);
 #else
-		swprintf(diskDeviceNameBuf, DOKAN_NET_DEVICE_NAME L"%s", BaseGuid);
-		swprintf(fsDeviceNameBuf, DOKAN_NET_DEVICE_NAME L"%s", BaseGuid);
-		swprintf(symbolicLinkNameBuf, DOKAN_NET_SYMBOLIC_LINK_NAME L"%s", BaseGuid);
+		wcscpy_s(diskDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, DOKAN_NET_DEVICE_NAME);
+		wcscat_s(diskDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, BaseGuid);
+		wcscpy_s(fsDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, DOKAN_NET_DEVICE_NAME);
+		wcscat_s(fsDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, BaseGuid);
+		wcscpy_s(symbolicLinkNameBuf, MAXIMUM_FILENAME_LENGTH, DOKAN_NET_SYMBOLIC_LINK_NAME);
+		wcscat_s(symbolicLinkNameBuf, MAXIMUM_FILENAME_LENGTH, BaseGuid);
 #endif
 
 	} else {
-		swprintf(diskDeviceNameBuf, DOKAN_DISK_DEVICE_NAME L"%s", BaseGuid);
-		swprintf(fsDeviceNameBuf, DOKAN_FS_DEVICE_NAME L"%s", BaseGuid);
-		swprintf(symbolicLinkNameBuf, DOKAN_SYMBOLIC_LINK_NAME L"%s", BaseGuid);
+		wcscpy_s(diskDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, DOKAN_DISK_DEVICE_NAME);
+		wcscat_s(diskDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, BaseGuid);
+		wcscpy_s(fsDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, DOKAN_FS_DEVICE_NAME);
+		wcscat_s(fsDeviceNameBuf, MAXIMUM_FILENAME_LENGTH, BaseGuid);
+		wcscpy_s(symbolicLinkNameBuf, MAXIMUM_FILENAME_LENGTH, DOKAN_SYMBOLIC_LINK_NAME);
+		wcscat_s(symbolicLinkNameBuf, MAXIMUM_FILENAME_LENGTH, BaseGuid);
 	}
 	
 	RtlInitUnicodeString(&diskDeviceName, diskDeviceNameBuf);

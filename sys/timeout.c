@@ -57,9 +57,9 @@ DokanUnmount(
 	deviceNamePos = Dcb->SymbolicLinkName->Length / sizeof(WCHAR) - 1;
 	for (; Dcb->SymbolicLinkName->Buffer[deviceNamePos] != L'\\'; --deviceNamePos)
 		;
-	wcsncpy(eventContext->Unmount.DeviceName,
-			&(Dcb->SymbolicLinkName->Buffer[deviceNamePos]),
-			sizeof(eventContext->Unmount.DeviceName)/sizeof(WCHAR));
+	wcscpy_s(eventContext->Unmount.DeviceName,
+			sizeof(eventContext->Unmount.DeviceName) / sizeof(WCHAR),
+			&(Dcb->SymbolicLinkName->Buffer[deviceNamePos]));
 
 	DDbgPrint("  Send Unmount to Service : %ws\n", eventContext->Unmount.DeviceName);
 

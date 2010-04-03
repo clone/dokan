@@ -92,7 +92,7 @@ int Unmount(LPCWSTR	MountPoint, BOOL ForceUnmount)
 	} else if (ForceUnmount) {
 		control.Type = DOKAN_CONTROL_UNMOUNT;
 		control.Option = DOKAN_CONTROL_OPTION_FORCE_UNMOUNT;
-		wcscpy(control.MountPoint, MountPoint);
+		wcscpy_s(control.MountPoint, sizeof(control.MountPoint) / sizeof(WCHAR), MountPoint);
 		DokanMountControl(&control);
 
 		if (control.Status == DOKAN_CONTROL_SUCCESS) {
@@ -136,10 +136,10 @@ wmain(int argc, PWCHAR argv[])
 	ZeroMemory(driverFullPath, sizeof(driverFullPath));
 	wcscpy_s(mounterFullPath, MAX_PATH, fileName);
 	mounterFullPath[i] = L'\\';
-	wcscat_s(mounterFullPath, MAX_PATH, L"mounter.exe");
+	wcscpy_s(mounterFullPath, MAX_PATH, L"mounter.exe");
 
 	GetSystemDirectory(driverFullPath, MAX_PATH);
-	wcscat_s(driverFullPath, MAX_PATH, L"\\drivers\\dokan.sys");
+	wcscpy_s(driverFullPath, MAX_PATH, L"\\drivers\\dokan.sys");
 
 	fwprintf(stderr, L"driver path %s\n", driverFullPath);
 	fwprintf(stderr, L"mounter path %s\n", mounterFullPath);
