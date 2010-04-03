@@ -29,6 +29,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include <ntifs.h>
 #include <ntdddisk.h>
+#include <ntstrsafe.h>
 
 #include "public.h"
 
@@ -39,7 +40,6 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #define DOKAN_DEBUG_DEFAULT 1
 #define USE_DBGPRINT 1
 
-int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
 extern ULONG g_Debug;
 
 #define DOKAN_GLOBAL_DEVICE_NAME			L"\\Device\\Dokan"

@@ -465,7 +465,7 @@ DokanEventStart(
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
-	wcscpy_s(baseGuidString, sizeof(baseGuidString) / sizeof(WCHAR), unicodeGuid.Buffer);
+	RtlStringCchCopyW(baseGuidString, sizeof(baseGuidString) / sizeof(WCHAR), unicodeGuid.Buffer);
 	RtlFreeUnicodeString(&unicodeGuid);
 
 	InterlockedIncrement(&dokanGlobal->MountId);
@@ -500,7 +500,7 @@ DokanEventStart(
 	deviceNamePos = dcb->SymbolicLinkName->Length / sizeof(WCHAR) - 1;
 	for (; dcb->SymbolicLinkName->Buffer[deviceNamePos] != L'\\'; --deviceNamePos)
 		;
-	wcscpy_s(driverInfo->DeviceName,
+	RtlStringCchCopyW(driverInfo->DeviceName,
 			sizeof(driverInfo->DeviceName) / sizeof(WCHAR),
 			&(dcb->SymbolicLinkName->Buffer[deviceNamePos]));
 

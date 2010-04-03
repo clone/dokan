@@ -22,8 +22,6 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "dokan.h"
 
-int __cdecl swprintf(wchar_t *, const wchar_t *, ...);
-
 VOID
 DokanUnmount(
 	__in PDokanDCB Dcb
@@ -57,7 +55,7 @@ DokanUnmount(
 	deviceNamePos = Dcb->SymbolicLinkName->Length / sizeof(WCHAR) - 1;
 	for (; Dcb->SymbolicLinkName->Buffer[deviceNamePos] != L'\\'; --deviceNamePos)
 		;
-	wcscpy_s(eventContext->Unmount.DeviceName,
+	RtlStringCchCopyW(eventContext->Unmount.DeviceName,
 			sizeof(eventContext->Unmount.DeviceName) / sizeof(WCHAR),
 			&(Dcb->SymbolicLinkName->Buffer[deviceNamePos]));
 
