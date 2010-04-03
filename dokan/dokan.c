@@ -225,7 +225,8 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 LPCWSTR
 GetRawDeviceName(LPCWSTR	DeviceName)
 {
-	static WCHAR rawDeviceName[MAX_PATH] = L"\\\\.";
+	static WCHAR rawDeviceName[MAX_PATH];
+	wcscpy_s(rawDeviceName, MAX_PATH, L"\\\\.");
 	wcscat_s(rawDeviceName, MAX_PATH, DeviceName);
 	return rawDeviceName;
 }

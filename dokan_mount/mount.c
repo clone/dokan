@@ -173,7 +173,7 @@ CreateDriveLetter(
 
 	dosDevice[4] = DriveLetter;
 	driveName[0] = DriveLetter;
-	wcscpy_s(rawDeviceName, MAX_PATH, DeviceName);
+	wcscat_s(rawDeviceName, MAX_PATH, DeviceName);
 
 	DbgPrintW(L"DriveLetter: %c, DeviceName %s\n", DriveLetter, rawDeviceName);
 

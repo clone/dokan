@@ -396,6 +396,8 @@ FreeUnicodeString(
 }
 
 
+//#define DOKAN_NET_PROVIDER
+
 NTSTATUS
 DokanCreateDiskDevice(
 	__in PDRIVER_OBJECT DriverObject,
@@ -477,7 +479,7 @@ DokanCreateDiskDevice(
 		DDbgPrint("  IoCreateDevice (DISK_DEVICE) failed: 0x%x\n", status);
 		return status;
 	}
-	DDbgPrint("DokanDiksDevice: %wZ created\n", &diskDeviceName);
+	DDbgPrint("DokanDiskDevice: %wZ created\n", &diskDeviceName);
 
 	//
 	// Initialize the device extension.
@@ -607,8 +609,6 @@ DokanCreateDiskDevice(
 	diskDeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
 	fsDeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
 
-	IoRegisterFileSystem(fsDeviceObject);
-
 	if (isNetworkFileSystem) {
 		// Run FsRtlRegisterUncProvider in System thread.
 		HANDLE handle;
@@ -629,6 +629,9 @@ DokanCreateDiskDevice(
 			ObDereferenceObject(thread);
 		}
 	}
+
+	IoRegisterFileSystem(fsDeviceObject);
+
 	//DokanRegisterMountedDeviceInterface(diskDeviceObject, dcb);
 	
 	dcb->Mounted = 1;
