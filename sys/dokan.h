@@ -49,6 +49,9 @@ extern ULONG g_Debug;
 #define DOKAN_DISK_DEVICE_NAME		L"\\Device\\Volume"
 #define DOKAN_SYMBOLIC_LINK_NAME    L"\\DosDevices\\Global\\Volume"
 
+#define DOKAN_NET_DEVICE_NAME			L"\\Device\\DokanRedirector"
+#define DOKAN_NET_SYMBOLIC_LINK_NAME    L"\\DosDevices\\Global\\DokanRedirector"
+
 #define VOLUME_LABEL			L"DOKAN"
 								// {D6CC17C5-1734-4085-BCE7-964F1E9F5DE9}
 #define DOKAN_BASE_GUID			{0xd6cc17c5, 0x1734, 0x4085, {0xbc, 0xe7, 0x96, 0x4f, 0x1e, 0x9f, 0x5d, 0xe9}}

@@ -417,20 +417,34 @@ DokanCreateDiskDevice(
 	UNICODE_STRING		diskDeviceName;
 	NTSTATUS			status;
 	PUNICODE_STRING		symbolicLinkTarget;
+	BOOLEAN				isNetworkFileSystem = (DeviceType == FILE_DEVICE_NETWORK_FILE_SYSTEM);
 
 	FS_FILTER_CALLBACKS filterCallbacks;
 
 	// make DeviceName and SymboliLink
-	swprintf(diskDeviceNameBuf, DOKAN_DISK_DEVICE_NAME L"%s", BaseGuid);
-	swprintf(fsDeviceNameBuf, DOKAN_FS_DEVICE_NAME L"%s", BaseGuid);
-	swprintf(symbolicLinkNameBuf, DOKAN_SYMBOLIC_LINK_NAME L"%s", BaseGuid);
+	if (isNetworkFileSystem) {
+#ifdef DOKAN_NET_PROVIDER
+		swprintf(diskDeviceNameBuf, DOKAN_NET_DEVICE_NAME);
+		swprintf(fsDeviceNameBuf, DOKAN_NET_DEVICE_NAME);
+		swprintf(symbolicLinkNameBuf, DOKAN_NET_SYMBOLIC_LINK_NAME);
+#else
+		swprintf(diskDeviceNameBuf, DOKAN_NET_DEVICE_NAME L"%s", BaseGuid);
+		swprintf(fsDeviceNameBuf, DOKAN_NET_DEVICE_NAME L"%s", BaseGuid);
+		swprintf(symbolicLinkNameBuf, DOKAN_NET_SYMBOLIC_LINK_NAME L"%s", BaseGuid);
+#endif
 
+	} else {
+		swprintf(diskDeviceNameBuf, DOKAN_DISK_DEVICE_NAME L"%s", BaseGuid);
+		swprintf(fsDeviceNameBuf, DOKAN_FS_DEVICE_NAME L"%s", BaseGuid);
+		swprintf(symbolicLinkNameBuf, DOKAN_SYMBOLIC_LINK_NAME L"%s", BaseGuid);
+	}
+	
 	RtlInitUnicodeString(&diskDeviceName, diskDeviceNameBuf);
 
 	//
 	// make a DeviceObject for Disk Device
 	//
-	if (DeviceType != FILE_DEVICE_NETWORK_FILE_SYSTEM) {
+	if (!isNetworkFileSystem) {
 		status = IoCreateDeviceSecure(
 					DriverObject,		// DriverObject
 					sizeof(DokanDCB),	// DeviceExtensionSize
@@ -498,14 +512,8 @@ DokanCreateDiskDevice(
 	dcb->CacheManagerNoOpCallbacks.ReleaseFromReadAhead = &DokanNoOpRelease;
 
 	dcb->SymbolicLinkName = AllocateUnicodeString(symbolicLinkNameBuf);
-	if (DeviceType == FILE_DEVICE_NETWORK_FILE_SYSTEM) {
-		// use same name since there is no disk device for network file system.
-		dcb->DiskDeviceName = AllocateUnicodeString(diskDeviceNameBuf);
-		dcb->FileSystemDeviceName = AllocateUnicodeString(diskDeviceNameBuf);
-	} else {
-		dcb->DiskDeviceName =  AllocateUnicodeString(diskDeviceNameBuf);
-		dcb->FileSystemDeviceName = AllocateUnicodeString(fsDeviceNameBuf);
-	}
+	dcb->DiskDeviceName =  AllocateUnicodeString(diskDeviceNameBuf);
+	dcb->FileSystemDeviceName = AllocateUnicodeString(fsDeviceNameBuf);
 
 	status = IoCreateDeviceSecure(
 				DriverObject,		// DriverObject
@@ -587,7 +595,7 @@ DokanCreateDiskDevice(
 		DDbgPrint("  IoCreateSymbolicLink returned 0x%x\n", status);
 		return status;
 	}
-	DDbgPrint("SymbolicLink: %wZ -> %w Zcreated\n", dcb->SymbolicLinkName, dcb->DiskDeviceName);
+	DDbgPrint("SymbolicLink: %wZ -> %wZ created\n", dcb->SymbolicLinkName, dcb->DiskDeviceName);
 
 	// Mark devices as initialized
 	diskDeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
@@ -595,7 +603,7 @@ DokanCreateDiskDevice(
 
 	IoRegisterFileSystem(fsDeviceObject);
 
-	if (DeviceType == FILE_DEVICE_NETWORK_FILE_SYSTEM) {
+	if (isNetworkFileSystem) {
 		// Run FsRtlRegisterUncProvider in System thread.
 		HANDLE handle;
 		PKTHREAD thread;
