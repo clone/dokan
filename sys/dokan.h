@@ -287,37 +287,22 @@ typedef struct _DRIVER_EVENT_CONTEXT {
 
 DRIVER_INITIALIZE DriverEntry;
 
-DRIVER_DISPATCH DokanDispatchCreate;
-
-DRIVER_DISPATCH DokanDispatchClose;
-
-DRIVER_DISPATCH DokanDispatchRead;
-
-DRIVER_DISPATCH DokanDispatchWrite;
-
-DRIVER_DISPATCH DokanDispatchFlush;
-
-DRIVER_DISPATCH DokanDispatchCleanup;
-
-DRIVER_DISPATCH DokanDispatchDeviceControl;
-
-DRIVER_DISPATCH DokanDispatchFileSystemControl;
-
-DRIVER_DISPATCH DokanDispatchDirectoryControl;
-
-DRIVER_DISPATCH DokanDispatchQueryInformation;
-
-DRIVER_DISPATCH DokanDispatchSetInformation;
-
-DRIVER_DISPATCH DokanDispatchQueryVolumeInformation;
-
-DRIVER_DISPATCH DokanDispatchSetVolumeInformation;
-
-DRIVER_DISPATCH DokanDispatchShutdown;
-
-DRIVER_DISPATCH DokanDispatchPnp;
-
-DRIVER_DISPATCH DokanDispatchLock;
+__drv_dispatchType(IRP_MJ_CREATE)	DRIVER_DISPATCH DokanDispatchCreate;
+__drv_dispatchType(IRP_MJ_CLOSE)	DRIVER_DISPATCH DokanDispatchClose;
+__drv_dispatchType(IRP_MJ_READ)		DRIVER_DISPATCH DokanDispatchRead;
+__drv_dispatchType(IRP_MJ_WRITE)	DRIVER_DISPATCH DokanDispatchWrite;
+__drv_dispatchType(IRP_MJ_FLUSH_BUFFERS)	DRIVER_DISPATCH DokanDispatchFlush;
+__drv_dispatchType(IRP_MJ_CLEANUP)			DRIVER_DISPATCH DokanDispatchCleanup;
+__drv_dispatchType(IRP_MJ_DEVICE_CONTROL)		DRIVER_DISPATCH DokanDispatchDeviceControl;
+__drv_dispatchType(IRP_MJ_FILE_SYSTEM_CONTROL)	DRIVER_DISPATCH DokanDispatchFileSystemControl;
+__drv_dispatchType(IRP_MJ_DIRECTORY_CONTROL)	DRIVER_DISPATCH DokanDispatchDirectoryControl;
+__drv_dispatchType(IRP_MJ_QUERY_INFORMATION)	DRIVER_DISPATCH DokanDispatchQueryInformation;
+__drv_dispatchType(IRP_MJ_SET_INFORMATION)		DRIVER_DISPATCH DokanDispatchSetInformation;
+__drv_dispatchType(IRP_MJ_QUERY_VOLUME_INFORMATION)	DRIVER_DISPATCH DokanDispatchQueryVolumeInformation;
+__drv_dispatchType(IRP_MJ_SET_VOLUME_INFORMATION)	DRIVER_DISPATCH DokanDispatchSetVolumeInformation;
+__drv_dispatchType(IRP_MJ_SHUTDOWN)		DRIVER_DISPATCH DokanDispatchShutdown;
+__drv_dispatchType(IRP_MJ_PNP)			DRIVER_DISPATCH DokanDispatchPnp;
+__drv_dispatchType(IRP_MJ_LOCK_CONTROL)	DRIVER_DISPATCH DokanDispatchLock;
 
 DRIVER_UNLOAD DokanUnload;
 

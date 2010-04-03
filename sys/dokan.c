@@ -29,18 +29,8 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text (INIT, DriverEntry)
 #pragma alloc_text (PAGE, DokanUnload)
-#pragma alloc_text (PAGE, DokanDispatchCreate)
-#pragma alloc_text (PAGE, DokanDispatchClose)
 #pragma alloc_text (PAGE, DokanDispatchShutdown)
-#pragma alloc_text (PAGE, DokanDispatchFileSystemControl)
-#pragma alloc_text (PAGE, DokanDispatchDeviceControl)
-#pragma alloc_text (PAGE, DokanDispatchDirectoryControl)
-#pragma alloc_text (PAGE, DokanDispatchQueryInformation)
-#pragma alloc_text (PAGE, DokanDispatchSetInformation)
-#pragma alloc_text (PAGE, DokanDispatchQueryVolumeInformation)
-#pragma alloc_text (PAGE, DokanDispatchSetVolumeInformation)
 #pragma alloc_text (PAGE, DokanDispatchPnp)
-#pragma alloc_text (PAGE, DokanDispatchLock)
 #endif
 
 
@@ -50,6 +40,7 @@ ULONG g_Debug = DOKAN_DEBUG_DEFAULT;
 	PFN_FSRTLTEARDOWNPERSTREAMCONTEXTS DokanFsRtlTeardownPerStreamContexts;
 #endif
 
+FAST_IO_CHECK_IF_POSSIBLE DokanFastIoCheckIfPossible;
 
 BOOLEAN
 DokanFastIoCheckIfPossible (
@@ -84,8 +75,7 @@ DokanFastIoRead (
 	return FALSE;
 }
 
-
-
+FAST_IO_ACQUIRE_FILE DokanAcquireForCreateSection;
 VOID
 DokanAcquireForCreateSection(
 	__in PFILE_OBJECT FileObject
@@ -101,7 +91,7 @@ DokanAcquireForCreateSection(
 	DDbgPrint("DokanAcquireForCreateSection\n");
 }
 
-
+FAST_IO_RELEASE_FILE DokanReleaseForCreateSection;
 VOID
 DokanReleaseForCreateSection(
    __in PFILE_OBJECT FileObject
@@ -240,9 +230,8 @@ Return Value:
 	WCHAR			symbolicLinkBuf[] = DOKAN_GLOBAL_SYMBOLIC_LINK_NAME;
 	UNICODE_STRING	symbolicLinkName;
 
-	DDbgPrint("==> DokanUnload\n");
-
 	PAGED_CODE();
+	DDbgPrint("==> DokanUnload\n");
 
 	if (GetIdentifierType(deviceObject->DeviceExtension) == DGL) {
 		DDbgPrint("  Delete Global DeviceObject\n");
@@ -263,6 +252,7 @@ DokanDispatchShutdown(
 	__in PIRP Irp
    )
 {
+	PAGED_CODE();
 	DDbgPrint("==> DokanShutdown\n");
 
 	Irp->IoStatus.Status = STATUS_SUCCESS;

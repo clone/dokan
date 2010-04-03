@@ -468,11 +468,9 @@ Return Value:
 
 		case IOCTL_KEEPALIVE:
 			if (dcb->Mounted) {
-				KeEnterCriticalRegion();
 				ExAcquireResourceExclusiveLite(&dcb->Resource, TRUE);
 				DokanUpdateTimeout(&dcb->TickCount, DOKAN_KEEPALIVE_TIMEOUT);
 				ExReleaseResourceLite(&dcb->Resource);
-				KeLeaveCriticalRegion();
 				status = STATUS_SUCCESS;
 			} else {
 				DDbgPrint(" device is not mounted\n");

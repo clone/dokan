@@ -355,6 +355,7 @@ NotificationLoop(
 }
 
 
+KSTART_ROUTINE NotificationThread;
 VOID
 NotificationThread(
 	__in PDokanDCB	Dcb

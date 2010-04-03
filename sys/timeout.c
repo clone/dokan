@@ -91,6 +91,7 @@ DokanCheckKeepAlive(
 
 	//DDbgPrint("==> DokanCheckKeepAlive\n");
 
+	KeEnterCriticalRegion();
 	KeQueryTickCount(&tickCount);
 	ExAcquireResourceSharedLite(&Dcb->Resource, TRUE);
 
@@ -112,6 +113,7 @@ DokanCheckKeepAlive(
 		ExReleaseResourceLite(&Dcb->Resource);
 	}
 
+	KeLeaveCriticalRegion();
 	//DDbgPrint("<== DokanCheckKeepAlive\n");
 }
 
@@ -262,6 +264,7 @@ DokanResetPendingIrpTimeout(
 }
 
 
+KSTART_ROUTINE DokanTimeoutThread;
 VOID
 DokanTimeoutThread(
 	PDokanDCB	Dcb)

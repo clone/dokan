@@ -344,7 +344,7 @@ DokanCreateGlobalDiskDevice(
 	return STATUS_SUCCESS;
 }
 
-
+KSTART_ROUTINE DokanRegisterUncProvider;
 VOID
 DokanRegisterUncProvider(
 	__in PDokanDCB	Dcb)
