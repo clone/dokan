@@ -345,6 +345,22 @@ DokanCreateGlobalDiskDevice(
 }
 
 
+VOID
+DokanRegisterUncProvider(
+	__in PDokanDCB	Dcb)
+{
+	NTSTATUS status;
+	status = FsRtlRegisterUncProvider(&(Dcb->MupHandle), Dcb->FileSystemDeviceName, FALSE);
+	if (NT_SUCCESS(status)) {
+		DDbgPrint("  FsRtlRegisterUncProvider success\n");
+	} else {
+		DDbgPrint("  FsRtlRegisterUncProvider failed: 0x%x\n", status);
+		Dcb->MupHandle = 0;
+	}
+	PsTerminateSystemThread(STATUS_SUCCESS);
+}
+
+
 PUNICODE_STRING
 AllocateUnicodeString(
 	__in PCWSTR String)
@@ -580,12 +596,23 @@ DokanCreateDiskDevice(
 	IoRegisterFileSystem(fsDeviceObject);
 
 	if (DeviceType == FILE_DEVICE_NETWORK_FILE_SYSTEM) {
-		status = FsRtlRegisterUncProvider(&(dcb->MupHandle), dcb->FileSystemDeviceName, FALSE);
-		if (NT_SUCCESS(status)) {
-			DDbgPrint("  FsRtlRegisterUncProvider success\n");
+		// Run FsRtlRegisterUncProvider in System thread.
+		HANDLE handle;
+		PKTHREAD thread;
+		OBJECT_ATTRIBUTES objectAttribs;
+
+		InitializeObjectAttributes(
+			&objectAttribs, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
+		status = PsCreateSystemThread(&handle, THREAD_ALL_ACCESS,
+			&objectAttribs, NULL, NULL, (PKSTART_ROUTINE)DokanRegisterUncProvider, dcb);
+		if (!NT_SUCCESS(status)) {
+			DDbgPrint("PsCreateSystemThread failed: 0x%X\n", status);
 		} else {
-			DDbgPrint("  FsRtlRegisterUncProvider failed: 0x%x\n", status);
-			dcb->MupHandle = 0;
+			ObReferenceObjectByHandle(handle, THREAD_ALL_ACCESS, NULL,
+					KernelMode, &thread, NULL);
+			ZwClose(handle);
+			KeWaitForSingleObject(thread, Executive, KernelMode, FALSE, NULL);
+			ObDereferenceObject(thread);
 		}
 	}
 	//DokanRegisterMountedDeviceInterface(diskDeviceObject, dcb);
