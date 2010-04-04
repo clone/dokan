@@ -21,6 +21,7 @@ SOURCES=dokan.c \
 	device.c \
 	fscontrol.c \
 	notification.c \
+	security.c \
 	dokan.rc
 
 

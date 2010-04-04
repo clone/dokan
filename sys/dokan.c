@@ -107,6 +107,28 @@ DokanReleaseForCreateSection(
 	DDbgPrint("DokanReleaseForCreateSection\n");
 }
 
+NTSTATUS
+DokanFilterCallbackAcquireForCreateSection(
+	__in PFS_FILTER_CALLBACK_DATA CallbackData,
+    __out PVOID *CompletionContext
+	)
+{
+	PFSRTL_ADVANCED_FCB_HEADER	header;
+	DDbgPrint("DokanFilterCallbackAcquireForCreateSection\n");
+
+	header = CallbackData->FileObject->FsContext;
+
+	if (header && header->Resource) {
+		ExAcquireResourceExclusiveLite(header->Resource, TRUE);
+	}
+
+	if (CallbackData->Parameters.AcquireForSectionSynchronization.SyncType
+		!= SyncTypeCreateSection) {
+		return STATUS_FSFILTER_OP_COMPLETED_SUCCESSFULLY;
+	} else {
+		return STATUS_FILE_LOCKED_WITH_WRITERS;
+	}
+}
 
 NTSTATUS
 DriverEntry(
@@ -136,10 +158,12 @@ Return Value:
 	NTSTATUS			status;
 	PFAST_IO_DISPATCH	fastIoDispatch;
 	UNICODE_STRING		functionName;
+	FS_FILTER_CALLBACKS filterCallbacks;
+	PDOKAN_GLOBAL		dokanGlobal = NULL;
 
 	DDbgPrint("==> DriverEntry ver.%x, %s %s\n", DOKAN_VERSION, __DATE__, __TIME__);
 
-	status = DokanCreateGlobalDiskDevice(DriverObject);
+	status = DokanCreateGlobalDiskDevice(DriverObject, &dokanGlobal);
 
 	if (status != STATUS_SUCCESS) {
 		return status;
@@ -172,6 +196,9 @@ Return Value:
 
 	DriverObject->MajorFunction[IRP_MJ_LOCK_CONTROL]		= DokanDispatchLock;
 
+	DriverObject->MajorFunction[IRP_MJ_QUERY_SECURITY]		= DokanDispatchQuerySecurity;
+	DriverObject->MajorFunction[IRP_MJ_SET_SECURITY]		= DokanDispatchSetSecurity;
+
 	fastIoDispatch = ExAllocatePool(sizeof(FAST_IO_DISPATCH));
 	// TODO: check fastIoDispatch
 
@@ -196,6 +223,21 @@ Return Value:
     RtlInitUnicodeString(&functionName, L"FsRtlTeardownPerStreamContexts");
     DokanFsRtlTeardownPerStreamContexts = MmGetSystemRoutineAddress(&functionName);
 #endif
+
+    RtlZeroMemory(&filterCallbacks, sizeof(FS_FILTER_CALLBACKS));
+
+	// only be used by filter driver?
+	filterCallbacks.SizeOfFsFilterCallbacks = sizeof(FS_FILTER_CALLBACKS);
+	filterCallbacks.PreAcquireForSectionSynchronization = DokanFilterCallbackAcquireForCreateSection;
+
+	status = FsRtlRegisterFileSystemFilterCallbacks(DriverObject, &filterCallbacks);
+
+	if (!NT_SUCCESS(status)) {
+		IoDeleteDevice(dokanGlobal->DeviceObject);
+		DDbgPrint("  FsRtlRegisterFileSystemFilterCallbacks returned 0x%x\n", status);
+		return status;
+	}
+
 
 	DDbgPrint("<== DriverEntry\n");
 

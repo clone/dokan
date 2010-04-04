@@ -354,7 +354,20 @@ DiskDeviceControl(
 		break;
 	case IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS:
 		{
+			PVOLUME_DISK_EXTENTS	volume;
+			ULONG	bufferLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
+
 			DDbgPrint("   IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS\n");
+			if (bufferLength < sizeof(VOLUME_DISK_EXTENTS)) {
+				status =  STATUS_INVALID_PARAMETER;
+				Irp->IoStatus.Information = 0;
+				break;
+			}
+			volume = Irp->AssociatedIrp.SystemBuffer;
+			RtlZeroMemory(volume, sizeof(VOLUME_DISK_EXTENTS));
+			volume->NumberOfDiskExtents = 1;
+			Irp->IoStatus.Information = sizeof(VOLUME_DISK_EXTENTS);
+			status = STATUS_SUCCESS;
 		}
 		break;
 	case IOCTL_STORAGE_EJECT_MEDIA:

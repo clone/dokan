@@ -136,10 +136,10 @@ wmain(int argc, PWCHAR argv[])
 	ZeroMemory(driverFullPath, sizeof(driverFullPath));
 	wcscpy_s(mounterFullPath, MAX_PATH, fileName);
 	mounterFullPath[i] = L'\\';
-	wcscpy_s(mounterFullPath, MAX_PATH, L"mounter.exe");
+	wcscat_s(mounterFullPath, MAX_PATH, L"mounter.exe");
 
 	GetSystemDirectory(driverFullPath, MAX_PATH);
-	wcscpy_s(driverFullPath, MAX_PATH, L"\\drivers\\dokan.sys");
+	wcscat_s(driverFullPath, MAX_PATH, L"\\drivers\\dokan.sys");
 
 	fwprintf(stderr, L"driver path %s\n", driverFullPath);
 	fwprintf(stderr, L"mounter path %s\n", mounterFullPath);

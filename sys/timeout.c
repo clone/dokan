@@ -103,6 +103,7 @@ DokanCheckKeepAlive(
 
 		if (!mounted) {
 			// not mounted
+			KeLeaveCriticalRegion();
 			return;
 		}
 		DokanUnmount(Dcb);

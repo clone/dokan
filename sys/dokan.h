@@ -132,6 +132,7 @@ typedef struct _IRP_LIST {
 typedef struct _DOKAN_GLOBAL {
 	FSD_IDENTIFIER	Identifier;
 	ERESOURCE		Resource;
+	PDEVICE_OBJECT	DeviceObject;
 	ULONG			MountId;
 	// the list of waiting IRP for mount service
 	IRP_LIST		PendingService;
@@ -303,6 +304,8 @@ __drv_dispatchType(IRP_MJ_SET_VOLUME_INFORMATION)	DRIVER_DISPATCH DokanDispatchS
 __drv_dispatchType(IRP_MJ_SHUTDOWN)		DRIVER_DISPATCH DokanDispatchShutdown;
 __drv_dispatchType(IRP_MJ_PNP)			DRIVER_DISPATCH DokanDispatchPnp;
 __drv_dispatchType(IRP_MJ_LOCK_CONTROL)	DRIVER_DISPATCH DokanDispatchLock;
+__drv_dispatchType(IRP_MJ_QUERY_SECURITY)	DRIVER_DISPATCH DokanDispatchQuerySecurity;
+__drv_dispatchType(IRP_MJ_SET_SECURITY)		DRIVER_DISPATCH DokanDispatchSetSecurity;
 
 DRIVER_UNLOAD DokanUnload;
 
@@ -431,7 +434,8 @@ DokanNoOpAcquire(
 
 NTSTATUS
 DokanCreateGlobalDiskDevice(
-	__in PDRIVER_OBJECT DriverObject);
+	__in PDRIVER_OBJECT DriverObject,
+	__out PDOKAN_GLOBAL* DokanGlobal);
 
 NTSTATUS
 DokanCreateDiskDevice(

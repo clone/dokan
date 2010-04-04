@@ -275,7 +275,7 @@ DokanMount(
 #define DOKAN_NP_SERVICE_KEY	L"System\\CurrentControlSet\\Services\\Dokan"
 #define DOKAN_NP_DEVICE_NAME	L"\\Device\\DokanRedirector"
 #define DOKAN_NP_NAME			L"DokanNP"
-#define DOKAN_NP_PATH			L"%SystemRoot%\\System32\\dokannp.dll"
+#define DOKAN_NP_PATH			L"System32\\dokannp.dll"
 #define DOKAN_NP_ORDER_KEY		L"System\\CurrentControlSet\\Control\\NetworkProvider\\Order"
 
 BOOL DOKANAPI

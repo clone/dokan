@@ -25,29 +25,6 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <mountmgr.h>
 #include <ntddstor.h>
 
-NTSTATUS
-DokanFilterCallbackAcquireForCreateSection(
-	__in PFS_FILTER_CALLBACK_DATA CallbackData,
-    __out PVOID *CompletionContext
-	)
-{
-	PFSRTL_ADVANCED_FCB_HEADER	header;
-	DDbgPrint("DokanFilterCallbackAcquireForCreateSection\n");
-
-	header = CallbackData->FileObject->FsContext;
-
-	if (header && header->Resource) {
-		ExAcquireResourceExclusiveLite(header->Resource, TRUE);
-	}
-
-	if (CallbackData->Parameters.AcquireForSectionSynchronization.SyncType
-		!= SyncTypeCreateSection) {
-		return STATUS_FSFILTER_OP_COMPLETED_SUCCESSFULLY;
-	} else {
-		return STATUS_FILE_LOCKED_WITH_WRITERS;
-	}
-}
-
 
 NTSTATUS
 DokanSendIoContlToMountManager(
@@ -293,7 +270,8 @@ DokanInitIrpList(
 
 NTSTATUS
 DokanCreateGlobalDiskDevice(
-	__in PDRIVER_OBJECT DriverObject
+	__in PDRIVER_OBJECT DriverObject,
+	__out PDOKAN_GLOBAL* DokanGlobal
 	)
 {
 	WCHAR	deviceNameBuf[] = DOKAN_GLOBAL_DEVICE_NAME; 
@@ -333,6 +311,7 @@ DokanCreateGlobalDiskDevice(
 	}
 	DDbgPrint("SymbolicLink: %wZ -> %wZ created\n", &deviceName, &symbolicLinkName);
 	dokanGlobal = deviceObject->DeviceExtension;
+	dokanGlobal->DeviceObject = deviceObject;
 
 	RtlZeroMemory(dokanGlobal, sizeof(DOKAN_GLOBAL));
 	DokanInitIrpList(&dokanGlobal->PendingService);
@@ -341,6 +320,7 @@ DokanCreateGlobalDiskDevice(
 	dokanGlobal->Identifier.Type = DGL;
 	dokanGlobal->Identifier.Size = sizeof(DOKAN_GLOBAL);
 
+	*DokanGlobal = dokanGlobal;
 	return STATUS_SUCCESS;
 }
 
@@ -420,8 +400,6 @@ DokanCreateDiskDevice(
 	NTSTATUS			status;
 	PUNICODE_STRING		symbolicLinkTarget;
 	BOOLEAN				isNetworkFileSystem = (DeviceType == FILE_DEVICE_NETWORK_FILE_SYSTEM);
-
-	FS_FILTER_CALLBACKS filterCallbacks;
 
 	// make DeviceName and SymboliLink
 	if (isNetworkFileSystem) {
@@ -565,29 +543,27 @@ DokanCreateDiskDevice(
 	}
 #endif
 
-    RtlZeroMemory(&filterCallbacks, sizeof(FS_FILTER_CALLBACKS));
-
-	// only be used by filter driver?
-	filterCallbacks.SizeOfFsFilterCallbacks = sizeof(FS_FILTER_CALLBACKS);
-	filterCallbacks.PreAcquireForSectionSynchronization = DokanFilterCallbackAcquireForCreateSection;
-
-	FsRtlRegisterFileSystemFilterCallbacks(DriverObject, &filterCallbacks);
 
 	//
 	// Establish user-buffer access method.
 	//
 	fsDeviceObject->Flags |= DO_DIRECT_IO;
 
-	/*
 	if (diskDeviceObject->Vpb) {
+		// NOTE: This can be done by IoRegisterFileSystem + IRP_MN_MOUNT_VOLUME,
+		// however that causes BSOD inside filter manager on Vista x86 after mount
+		// (mouse hover on file).
+		// Probably FS_FILTER_CALLBACKS.PreAcquireForSectionSynchronization is
+		// not correctly called in that case.
 		diskDeviceObject->Vpb->DeviceObject = fsDeviceObject;
 		diskDeviceObject->Vpb->RealDevice = fsDeviceObject;
-		diskDeviceObject->Vpb->Flags = VPB_MOUNTED;
+		diskDeviceObject->Vpb->Flags |= VPB_MOUNTED;
 		diskDeviceObject->Vpb->VolumeLabelLength = wcslen(VOLUME_LABEL) * sizeof(WCHAR);
-		swprintf(diskDeviceObject->Vpb->VolumeLabel, VOLUME_LABEL);
+		RtlStringCchCopyW(diskDeviceObject->Vpb->VolumeLabel,
+						sizeof(diskDeviceObject->Vpb->VolumeLabel) / sizeof(WCHAR),
+						VOLUME_LABEL);
 		diskDeviceObject->Vpb->SerialNumber = 0x19831116;
 	}
-	*/
 
 	ObReferenceObject(fsDeviceObject);
 	ObReferenceObject(diskDeviceObject);
@@ -598,6 +574,11 @@ DokanCreateDiskDevice(
 	status = IoCreateSymbolicLink(dcb->SymbolicLinkName, dcb->DiskDeviceName);
 
 	if (!NT_SUCCESS(status)) {
+		if (diskDeviceObject->Vpb) {
+			diskDeviceObject->Vpb->DeviceObject = NULL;
+			diskDeviceObject->Vpb->RealDevice = NULL;
+			diskDeviceObject->Vpb->Flags = 0;
+		}
 		IoDeleteDevice(diskDeviceObject);
 		IoDeleteDevice(fsDeviceObject);
 		DDbgPrint("  IoCreateSymbolicLink returned 0x%x\n", status);
@@ -608,6 +589,8 @@ DokanCreateDiskDevice(
 	// Mark devices as initialized
 	diskDeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
 	fsDeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
+
+	//IoRegisterFileSystem(fsDeviceObject);
 
 	if (isNetworkFileSystem) {
 		// Run FsRtlRegisterUncProvider in System thread.
@@ -629,8 +612,6 @@ DokanCreateDiskDevice(
 			ObDereferenceObject(thread);
 		}
 	}
-
-	IoRegisterFileSystem(fsDeviceObject);
 
 	//DokanRegisterMountedDeviceInterface(diskDeviceObject, dcb);
 	
@@ -669,13 +650,13 @@ DokanDeleteDeviceObject(
 	Dcb->DiskDeviceName = NULL;
 	Dcb->FileSystemDeviceName = NULL;
 
-	IoUnregisterFileSystem(vcb->DeviceObject);
-
 	if (Dcb->DeviceObject->Vpb) {
 		Dcb->DeviceObject->Vpb->DeviceObject = NULL;
 		Dcb->DeviceObject->Vpb->RealDevice = NULL;
 		Dcb->DeviceObject->Vpb->Flags = 0;
 	}
+
+	//IoUnregisterFileSystem(vcb->DeviceObject);
 
 	// delete diskDeviceObject
 	DDbgPrint("  Delete DeviceObject\n");

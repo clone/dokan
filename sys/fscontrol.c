@@ -322,6 +322,7 @@ DokanDispatchFileSystemControl(
 				}
 				vpb = irpSp->Parameters.MountVolume.Vpb;
 				vpb->DeviceObject = vcb->DeviceObject;
+				vpb->RealDevice = vcb->DeviceObject;
 				vpb->Flags |= VPB_MOUNTED;
 				vpb->VolumeLabelLength = wcslen(VOLUME_LABEL) * sizeof(WCHAR);
 				RtlStringCchCopyW(vpb->VolumeLabel, sizeof(vpb->VolumeLabel) / sizeof(WCHAR), VOLUME_LABEL);

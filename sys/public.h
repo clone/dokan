@@ -58,6 +58,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 #define IOCTL_RESET_TIMEOUT \
 	CTL_CODE( FILE_DEVICE_UNKNOWN, 0x80B, METHOD_BUFFERED, FILE_ANY_ACCESS )
 
+
 #define DRIVER_FUNC_INSTALL     0x01
 #define DRIVER_FUNC_REMOVE      0x02
 
