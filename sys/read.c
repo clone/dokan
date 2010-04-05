@@ -108,22 +108,8 @@ Return Value:
 
 		// make a MDL for UserBuffer that can be used later on another thread context
 		if (Irp->MdlAddress == NULL) {
-			PMDL mdl = IoAllocateMdl(Irp->UserBuffer, irpSp->Parameters.Read.Length, FALSE, FALSE, Irp);
-
-			if (mdl == NULL) {
-				status = STATUS_INSUFFICIENT_RESOURCES;
-			} else {
-				__try {
-					MmProbeAndLockPages(Irp->MdlAddress, Irp->RequestorMode, IoWriteAccess);
-	
-				} __except (EXCEPTION_EXECUTE_HANDLER) {
-					DDbgPrint("    MmProveAndLockPages error\n");
-					IoFreeMdl(Irp->MdlAddress);
-					Irp->MdlAddress = NULL;
-					status =  STATUS_INSUFFICIENT_RESOURCES;
-				}
-			}
-			if (status == STATUS_INSUFFICIENT_RESOURCES) {
+			status = DokanAllocateMdl(Irp,  irpSp->Parameters.Read.Length);
+			if (!NT_SUCCESS(status)) {
 				__leave;
 			}
 		}

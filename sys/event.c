@@ -407,7 +407,7 @@ DokanEventStart(
 	NTSTATUS			status;
 	DEVICE_TYPE			deviceType;
 	ULONG				deviceCharacteristics;
-	WCHAR				baseGuidString[] = L"{D6CC17C5-1734-4085-BCE7-964F1E9F5DE9}";
+	WCHAR				baseGuidString[64];
 	GUID				baseGuid = DOKAN_BASE_GUID;
 	UNICODE_STRING		unicodeGuid;
 	ULONG				deviceNamePos;
@@ -468,6 +468,7 @@ DokanEventStart(
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
+	RtlZeroMemory(baseGuidString, sizeof(baseGuidString));
 	RtlStringCchCopyW(baseGuidString, sizeof(baseGuidString) / sizeof(WCHAR), unicodeGuid.Buffer);
 	RtlFreeUnicodeString(&unicodeGuid);
 
