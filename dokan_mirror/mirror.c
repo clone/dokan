@@ -848,7 +848,6 @@ MirrorSetFileTime(
 }
 
 
-
 static int
 MirrorUnlockFile(
 	LPCWSTR				FileName,
@@ -885,13 +884,75 @@ MirrorUnlockFile(
 
 
 static int
+MirrorGetFileSecurity(
+	LPCWSTR					FileName,
+	PSECURITY_INFORMATION	SecurityInformation,
+	PSECURITY_DESCRIPTOR	SecurityDescriptor,
+	ULONG				BufferLength,
+	PULONG				LengthNeeded,
+	PDOKAN_FILE_INFO	DokanFileInfo)
+{
+	HANDLE	handle;
+	WCHAR	filePath[MAX_PATH];
+
+	GetFilePath(filePath, MAX_PATH, FileName);
+
+	DbgPrint(L"GetFileSecurity %s\n", filePath);
+
+	handle = (HANDLE)DokanFileInfo->Context;
+	if (!handle || handle == INVALID_HANDLE_VALUE) {
+		DbgPrint(L"\tinvalid handle\n\n");
+		return -1;
+	}
+
+	if (!GetUserObjectSecurity(handle, SecurityInformation, SecurityDescriptor,
+			BufferLength, LengthNeeded)) {
+		int error = GetLastError();
+		if (error == ERROR_INSUFFICIENT_BUFFER) {
+			DbgPrint(L"  GetUserObjectSecurity failed: ERROR_INSUFFICIENT_BUFFER\n");
+			return error * -1;
+		} else {
+			DbgPrint(L"  GetUserObjectSecurity failed: %d\n", error);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+
+static int
+MirrorGetVolumeInformation(
+	LPWSTR		VolumeNameBuffer,
+	DWORD		VolumeNameSize,
+	LPDWORD		VolumeSerialNumber,
+	LPDWORD		MaximumComponentLength,
+	LPDWORD		FileSystemFlags,
+	LPWSTR		FileSystemNameBuffer,
+	DWORD		FileSystemNameSize,
+	PDOKAN_FILE_INFO	DokanFileInfo)
+{
+	wcscpy_s(VolumeNameBuffer, VolumeNameSize / sizeof(WCHAR), L"DOKAN");
+	*VolumeSerialNumber = 0x19831116;
+	*MaximumComponentLength = 256;
+	*FileSystemFlags = FILE_CASE_SENSITIVE_SEARCH | 
+						FILE_CASE_PRESERVED_NAMES | 
+						FILE_SUPPORTS_REMOTE_STORAGE |
+						FILE_UNICODE_ON_DISK |
+						FILE_PERSISTENT_ACLS;
+
+	wcscpy_s(FileSystemNameBuffer, FileSystemNameSize / sizeof(WCHAR), L"Dokan");
+
+	return 0;
+}
+
+
+static int
 MirrorUnmount(
 	PDOKAN_FILE_INFO	DokanFileInfo)
 {
 	DbgPrint(L"Unmount\n");
 	return 0;
 }
-
 
 
 int __cdecl
@@ -986,8 +1047,10 @@ wmain(ULONG argc, PWCHAR argv[])
 	dokanOperations->SetAllocationSize = MirrorSetAllocationSize;
 	dokanOperations->LockFile = MirrorLockFile;
 	dokanOperations->UnlockFile = MirrorUnlockFile;
+	dokanOperations->GetFileSecurity = MirrorGetFileSecurity;
+	dokanOperations->SetFileSecurity = NULL;
 	dokanOperations->GetDiskFreeSpace = NULL;
-	dokanOperations->GetVolumeInformation = NULL;
+	dokanOperations->GetVolumeInformation = MirrorGetVolumeInformation;
 	dokanOperations->Unmount = MirrorUnmount;
 
 	status = DokanMain(dokanOptions, dokanOperations);

@@ -365,6 +365,9 @@ DokanCompleteIrp(
 		case IRP_MJ_FLUSH_BUFFERS:
 			DokanCompleteFlush(irpEntry, eventInfo);
 			break;
+		case IRP_MJ_QUERY_SECURITY:
+			DokanCompleteQuerySecurity(irpEntry, eventInfo);
+			break;
 		default:
 			DDbgPrint("Unknown IRP %d\n", irpSp->MajorFunction);
 			// TODO: in this case, should complete this IRP

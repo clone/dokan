@@ -324,6 +324,9 @@ DokanLoop(
 			case IRP_MJ_FLUSH_BUFFERS:
 				DispatchFlush(device, context, DokanInstance);
 				break;
+			case IRP_MJ_QUERY_SECURITY:
+				DispatchQuerySecurity(device, context, DokanInstance);
+				break;
 			case IRP_MJ_SHUTDOWN:
 				// this cass is used before unmount not shutdown
 				DispatchUnmount(device, context, DokanInstance);

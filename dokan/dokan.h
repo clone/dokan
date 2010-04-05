@@ -220,6 +220,22 @@ typedef struct _DOKAN_OPERATIONS {
 		PDOKAN_FILE_INFO);
 
 
+	int (DOKAN_CALLBACK *GetFileSecurity) (
+		LPCWSTR, // FileName
+		PSECURITY_INFORMATION, // A pointer to SECURITY_INFORMATION value being requested
+		PSECURITY_DESCRIPTOR, // A pointer to SECURITY_DESCRIPTOR buffer to be filled
+		ULONG, // length of Security descriptor buffer
+		PULONG, // LengthNeeded
+		PDOKAN_FILE_INFO);
+
+	int (DOKAN_CALLBACK *SetFileSecurity) (
+		LPCWSTR, // FileName
+		PSECURITY_INFORMATION,
+		PSECURITY_DESCRIPTOR, // SecurityDescriptor
+		ULONG, // SecurityDescriptor length
+		PDOKAN_FILE_INFO);
+
+
 	// Neither GetDiskFreeSpace nor GetVolumeInformation
 	// save the DokanFileContext->Context.
 	// Before these methods are called, CreateFile may not be called.

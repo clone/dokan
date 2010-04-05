@@ -53,9 +53,9 @@ int DokanGetVolumeInformation(
 	*FileSystemFlags = FILE_CASE_SENSITIVE_SEARCH | 
 						FILE_CASE_PRESERVED_NAMES | 
 						FILE_SUPPORTS_REMOTE_STORAGE |
-						FILE_UNICODE_ON_DISK;
+						FILE_UNICODE_ON_DISK |
 
-	wcscpy_s(FileSystemNameBuffer, FileSystemNameSize / sizeof(WCHAR), L"dokan");
+	wcscpy_s(FileSystemNameBuffer, FileSystemNameSize / sizeof(WCHAR), L"Dokan");
 
 	return 0;
 }

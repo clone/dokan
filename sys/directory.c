@@ -126,6 +126,9 @@ DokanQueryDirectory(
 	}
 
 	ccb = fileObject->FsContext2;
+	if (ccb == NULL) {
+		return STATUS_INVALID_PARAMETER;
+	}
 	ASSERT(ccb != NULL);
 
 	fcb = ccb->Fcb;
@@ -168,19 +171,9 @@ DokanQueryDirectory(
 
 	// make a MDL for UserBuffer that can be used later on another thread context
 	if (Irp->MdlAddress == NULL) {
-		PMDL mdl = IoAllocateMdl(Irp->UserBuffer, irpSp->Parameters.QueryDirectory.Length, FALSE, FALSE, Irp);
-
-		if (mdl == NULL) {
-			return STATUS_INSUFFICIENT_RESOURCES;
-		}
-		__try {
-			MmProbeAndLockPages(Irp->MdlAddress, Irp->RequestorMode, IoWriteAccess);
-	
-		} __except (EXCEPTION_EXECUTE_HANDLER) {
-			DDbgPrint("    MmProveAndLockPages error\n");
-			IoFreeMdl(Irp->MdlAddress);
-			Irp->MdlAddress = NULL;
-			return STATUS_INSUFFICIENT_RESOURCES;
+		status = DokanAllocateMdl(Irp, irpSp->Parameters.QueryDirectory.Length);
+		if (!NT_SUCCESS(status)) {
+			return status;
 		}
 	}
 

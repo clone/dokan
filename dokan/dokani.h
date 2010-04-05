@@ -196,6 +196,13 @@ DispatchLock(
 	PDOKAN_INSTANCE		DokanInstance);
 
 
+VOID
+DispatchQuerySecurity(
+	HANDLE				Handle,
+	PEVENT_CONTEXT		EventContext,
+	PDOKAN_INSTANCE		DokanInstance);
+
+
 BOOLEAN
 InstallDriver(
 	SC_HANDLE  SchSCManager,

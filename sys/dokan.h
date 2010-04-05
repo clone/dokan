@@ -424,6 +424,11 @@ DokanCompleteFlush(
 	__in PEVENT_INFORMATION	EventInfo);
 
 VOID
+DokanCompleteQuerySecurity(
+	__in PIRP_ENTRY		IrpEntry,
+	__in PEVENT_INFORMATION EventInfo);
+
+VOID
 DokanNoOpRelease (
     IN PVOID Fcb);
 
@@ -530,6 +535,11 @@ DokanUnmount(
 VOID
 PrintIdType(
 	__in VOID* Id);
+
+NTSTATUS
+DokanAllocateMdl(
+	__in PIRP	Irp,
+	__in ULONG	Length);
 
 #endif // _DOKAN_H_
 

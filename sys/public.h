@@ -183,9 +183,25 @@ typedef struct _FLUSH_CONTEXT {
 	WCHAR	FileName[1];
 } FLUSH_CONTEXT, *PFLUSH_CONTEXT;
 
+
 typedef struct _UNMOUNT_CONTEXT {
 	WCHAR	DeviceName[64];
 } UNMOUNT_CONTEXT, *PUNMOUNT_CONTEXT;
+
+
+typedef struct _SECURITY_CONTEXT {
+	SECURITY_INFORMATION	SecurityInformation;
+	ULONG	BufferLength;
+	ULONG	FileNameLength;
+	WCHAR	FileName[1];
+} SECURITY_CONTEXT, *PSECURITY_CONTEXT;
+
+
+typedef struct _SET_SECURITY_CONTEXT {
+	SECURITY_INFORMATION	SecurityInformation;
+	SECURITY_DESCRIPTOR		SecurityDescriptor;
+} SET_SECURITY_CONTEXT, *PSET_SECURITY_CONTEXT;
+
 
 typedef struct _EVENT_CONTEXT {
 	ULONG	Length;
@@ -210,6 +226,8 @@ typedef struct _EVENT_CONTEXT {
 		VOLUME_CONTEXT		Volume;
 		FLUSH_CONTEXT		Flush;
 		UNMOUNT_CONTEXT		Unmount;
+		SECURITY_CONTEXT		Security;
+		SET_SECURITY_CONTEXT	SetSecurity;
 	};
 } EVENT_CONTEXT, *PEVENT_CONTEXT;
 
