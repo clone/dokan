@@ -39,7 +39,6 @@ DokanDispatchQuerySecurity(
 	PDokanDCB			dcb;
 	PDokanVCB			vcb;
 	PDokanCCB			ccb;
-	BOOLEAN				dummy = FALSE;
 	ULONG				eventLength;
 	PEVENT_CONTEXT		eventContext;
 
@@ -100,35 +99,6 @@ DokanDispatchQuerySecurity(
 			break;
 		}
 
-		if (dummy) {
-			RtlZeroMemory(&dummySecurityDesc, sizeof(SECURITY_DESCRIPTOR));
-			status = RtlCreateSecurityDescriptor(&dummySecurityDesc, SECURITY_DESCRIPTOR_REVISION);
-			if (!NT_SUCCESS(status)) {
-				DDbgPrint("  RtlCreateSecurityDescriptor failed: 0x%x\n", status);
-				__leave;
-			}
-			descLength = RtlLengthSecurityDescriptor(&dummySecurityDesc);
-
-			if (bufferLength < descLength || Irp->UserBuffer == NULL) {
-				status = STATUS_BUFFER_OVERFLOW;
-				info = descLength;
-				__leave;
-			}
-			securityDesc = &dummySecurityDesc;
-			status = SeQuerySecurityDescriptorInfo(
-						securityInfo,
-						Irp->UserBuffer,
-						&bufferLength,
-						&securityDesc);
-			if (!NT_SUCCESS(status)) {
-				DDbgPrint("  SeQuerySecurityDescriptorInfo failed: 0x%x\n", status);
-				__leave;
-			}
-			info = bufferLength;
-			status = STATUS_SUCCESS;
-			__leave;
-		}
-
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
 		eventContext = AllocateEventContext(dcb, Irp, eventLength, ccb);
 
@@ -187,6 +157,8 @@ DokanCompleteQuerySecurity(
 	PVOID		buffer = NULL;
 	ULONG		bufferLength;
 	ULONG		info = 0;
+	PFILE_OBJECT	fileObject;
+	PDokanCCB		ccb;
 
 	DDbgPrint("==> DokanCompleteQuerySecurity\n");
 
@@ -222,6 +194,16 @@ DokanCompleteQuerySecurity(
 		irp->MdlAddress = NULL;
 	}
 
+	fileObject = IrpEntry->FileObject;
+	ASSERT(fileObject != NULL);
+
+	ccb = fileObject->FsContext2;
+	if (ccb != NULL) {
+		ccb->UserContext = EventInfo->Context;
+	} else {
+		DDbgPrint("  ccb == NULL\n");
+	}
+
 	irp->IoStatus.Status = status;
 	irp->IoStatus.Information = info;
 	IoCompleteRequest(irp, IO_NO_INCREMENT);
@@ -238,12 +220,20 @@ DokanDispatchSetSecurity(
 	__in PIRP Irp
 	)
 {
+	PIO_STACK_LOCATION	irpSp;
 	PDokanVCB			vcb;
 	PDokanDCB			dcb;
-	PIO_STACK_LOCATION	irpSp;
+	PDokanCCB			ccb;
+	PDokanFCB			fcb;
 	NTSTATUS			status = STATUS_NOT_IMPLEMENTED;
 	PFILE_OBJECT		fileObject;
 	ULONG				info = 0;
+	PSECURITY_INFORMATION	securityInfo;
+	PSECURITY_DESCRIPTOR	securityDescriptor;
+	PSECURITY_DESCRIPTOR	selfRelativesScurityDescriptor = NULL;
+	ULONG				securityDescLength;
+	ULONG				eventLength;
+	PEVENT_CONTEXT		eventContext;
 
 	__try {
 		FsRtlEnterFileSystem();
@@ -252,7 +242,7 @@ DokanDispatchSetSecurity(
 
 		irpSp = IoGetCurrentIrpStackLocation(Irp);
 		fileObject = irpSp->FileObject;
-		
+
 		if (fileObject == NULL) {
 			DDbgPrint("  fileObject == NULL\n");
 			status = STATUS_INVALID_PARAMETER;
@@ -261,6 +251,7 @@ DokanDispatchSetSecurity(
 
 		vcb = DeviceObject->DeviceExtension;
 		if (GetIdentifierType(vcb) != VCB) {
+			DbgPrint("    DeviceExtension != VCB\n");
 			status = STATUS_INVALID_PARAMETER;
 			__leave;
 		}
@@ -269,7 +260,71 @@ DokanDispatchSetSecurity(
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
 
-		status = STATUS_SUCCESS;
+		ccb = fileObject->FsContext2;
+		if (ccb == NULL) {
+			DDbgPrint("    ccb == NULL\n");
+			status = STATUS_INVALID_PARAMETER;
+			__leave;
+		}
+		fcb = ccb->Fcb;
+
+		securityInfo = &irpSp->Parameters.SetSecurity.SecurityInformation;
+
+		switch (*securityInfo) {
+		case DACL_SECURITY_INFORMATION:
+			DDbgPrint("    DACL_SECURITY_INFORMATION\n");
+			break;
+		case GROUP_SECURITY_INFORMATION:
+			DDbgPrint("    GROUP_SECURITY_INFORMATION\n");
+			break;
+		case OWNER_SECURITY_INFORMATION:
+			DDbgPrint("    OWNER_SECURITY_INFORMATION\n");
+			break;
+		case SACL_SECURITY_INFORMATION:
+			DDbgPrint("    SACL_SECURITY_INFORMATION\n");
+			break;
+		case LABEL_SECURITY_INFORMATION:
+			DDbgPrint("    LABEL_SECURITY_INFORMATION\n");
+			break;
+		default:
+			DDbgPrint("    Unknown Security information\n");
+			break;
+		}
+
+		securityDescriptor = irpSp->Parameters.SetSecurity.SecurityDescriptor;
+
+		// Assumes the parameter is self relative SD.
+		securityDescLength = RtlLengthSecurityDescriptor(securityDescriptor);
+
+		eventLength = sizeof(EVENT_CONTEXT) + securityDescLength + fcb->FileName.Length;
+
+		if (EVENT_CONTEXT_MAX_SIZE < eventLength) {
+			// TODO: Handle this case like DispatchWrite.
+			DDbgPrint("    SecurityDescriptor is too big: %d (limit %d)\n",
+					eventLength, EVENT_CONTEXT_MAX_SIZE);
+			status = STATUS_INSUFFICIENT_RESOURCES;
+			__leave;
+		}
+
+		eventContext = AllocateEventContext(vcb->Dcb, Irp, eventLength, ccb);
+
+		if (eventContext == NULL) {
+			status = STATUS_INSUFFICIENT_RESOURCES;
+			__leave;
+		}
+		eventContext->Context = ccb->UserContext;
+		eventContext->SetSecurity.SecurityInformation = *securityInfo;
+		eventContext->SetSecurity.BufferLength = securityDescLength;
+		eventContext->SetSecurity.BufferOffset = FIELD_OFFSET(EVENT_CONTEXT, SetSecurity.FileName[0]) +
+													fcb->FileName.Length + sizeof(WCHAR);
+		RtlCopyMemory((PCHAR)eventContext + eventContext->SetSecurity.BufferOffset,
+				securityDescriptor, securityDescLength);
+
+
+		eventContext->SetSecurity.FileNameLength = fcb->FileName.Length;
+		RtlCopyMemory(eventContext->SetSecurity.FileName, fcb->FileName.Buffer, fcb->FileName.Length);
+
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
 
 	} __finally {
 
@@ -285,4 +340,43 @@ DokanDispatchSetSecurity(
 	}
 
 	return status;
+}
+
+
+VOID
+DokanCompleteSetSecurity(
+	__in PIRP_ENTRY		IrpEntry,
+	__in PEVENT_INFORMATION EventInfo
+	)
+{
+	PIRP				irp;
+	PIO_STACK_LOCATION	irpSp;
+	PFILE_OBJECT		fileObject;
+	PDokanCCB			ccb;
+	NTSTATUS			status;
+
+	DDbgPrint("==> DokanCompleteSetSecurity\n");
+
+	irp   = IrpEntry->Irp;
+	irpSp = IrpEntry->IrpSp;	
+
+	fileObject = IrpEntry->FileObject;
+	ASSERT(fileObject != NULL);
+
+	ccb = fileObject->FsContext2;
+	if (ccb != NULL) {
+		ccb->UserContext = EventInfo->Context;
+	} else {
+		DDbgPrint("  ccb == NULL\n");
+	}
+
+	status = EventInfo->Status;
+
+	irp->IoStatus.Status = status;
+	irp->IoStatus.Information = 0;
+	IoCompleteRequest(irp, IO_NO_INCREMENT);
+
+	DokanPrintNTStatus(status);
+
+	DDbgPrint("<== DokanCompleteSetSecurity\n");
 }

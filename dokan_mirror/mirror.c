@@ -921,6 +921,35 @@ MirrorGetFileSecurity(
 
 
 static int
+MirrorSetFileSecurity(
+	LPCWSTR					FileName,
+	PSECURITY_INFORMATION	SecurityInformation,
+	PSECURITY_DESCRIPTOR	SecurityDescriptor,
+	ULONG				SecurityDescriptorLength,
+	PDOKAN_FILE_INFO	DokanFileInfo)
+{
+	HANDLE	handle;
+	WCHAR	filePath[MAX_PATH];
+
+	GetFilePath(filePath, MAX_PATH, FileName);
+
+	DbgPrint(L"SetFileSecurity %s\n", filePath);
+
+	handle = (HANDLE)DokanFileInfo->Context;
+	if (!handle || handle == INVALID_HANDLE_VALUE) {
+		DbgPrint(L"\tinvalid handle\n\n");
+		return -1;
+	}
+
+	if (!SetUserObjectSecurity(handle, SecurityInformation, SecurityDescriptor)) {
+		int error = GetLastError();
+		DbgPrint(L"  SetUserObjectSecurity failed: %d\n", error);
+		return -1;
+	}
+	return 0;
+}
+
+static int
 MirrorGetVolumeInformation(
 	LPWSTR		VolumeNameBuffer,
 	DWORD		VolumeNameSize,
@@ -1048,7 +1077,7 @@ wmain(ULONG argc, PWCHAR argv[])
 	dokanOperations->LockFile = MirrorLockFile;
 	dokanOperations->UnlockFile = MirrorUnlockFile;
 	dokanOperations->GetFileSecurity = MirrorGetFileSecurity;
-	dokanOperations->SetFileSecurity = NULL;
+	dokanOperations->SetFileSecurity = MirrorSetFileSecurity;
 	dokanOperations->GetDiskFreeSpace = NULL;
 	dokanOperations->GetVolumeInformation = MirrorGetVolumeInformation;
 	dokanOperations->Unmount = MirrorUnmount;

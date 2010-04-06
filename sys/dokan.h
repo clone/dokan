@@ -429,6 +429,11 @@ DokanCompleteQuerySecurity(
 	__in PEVENT_INFORMATION EventInfo);
 
 VOID
+DokanCompleteSetSecurity(
+	__in PIRP_ENTRY		IrpEntry,
+	__in PEVENT_INFORMATION EventInfo);
+
+VOID
 DokanNoOpRelease (
     IN PVOID Fcb);
 

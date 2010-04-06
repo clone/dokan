@@ -74,3 +74,47 @@ DispatchQuerySecurity(
 	SendEventInformation(Handle, eventInfo, eventInfoLength, DokanInstance);
 	free(eventInfo);
 }
+
+
+VOID
+DispatchSetSecurity(
+	HANDLE			Handle,
+	PEVENT_CONTEXT	EventContext,
+	PDOKAN_INSTANCE	DokanInstance)
+{
+	PEVENT_INFORMATION	eventInfo;
+	DOKAN_FILE_INFO		fileInfo;
+	PDOKAN_OPEN_INFO	openInfo;
+	ULONG	eventInfoLength;
+	int		status = -1;
+	PSECURITY_DESCRIPTOR	securityDescriptor;
+	
+	eventInfoLength = sizeof(EVENT_INFORMATION);
+	CheckFileName(EventContext->SetSecurity.FileName);
+
+	eventInfo = DispatchCommon(EventContext, eventInfoLength, DokanInstance, &fileInfo, &openInfo);
+	
+	securityDescriptor = (PCHAR)EventContext + EventContext->SetSecurity.BufferOffset;
+
+	if (DokanInstance->DokanOperations->SetFileSecurity) {
+		status = DokanInstance->DokanOperations->SetFileSecurity(
+					EventContext->SetSecurity.FileName,
+					&EventContext->SetSecurity.SecurityInformation,
+					securityDescriptor,
+					EventContext->SetSecurity.BufferLength,
+					&fileInfo);
+	}
+
+	if (status < 0) {
+		eventInfo->Status = STATUS_INVALID_PARAMETER;
+		eventInfo->BufferLength = 0;
+	} else {
+		eventInfo->Status = STATUS_SUCCESS;
+		eventInfo->BufferLength = 0;
+	}
+
+	SendEventInformation(Handle, eventInfo, eventInfoLength, DokanInstance);
+	free(eventInfo);
+}
+
+

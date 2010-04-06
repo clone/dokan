@@ -199,7 +199,10 @@ typedef struct _SECURITY_CONTEXT {
 
 typedef struct _SET_SECURITY_CONTEXT {
 	SECURITY_INFORMATION	SecurityInformation;
-	SECURITY_DESCRIPTOR		SecurityDescriptor;
+	ULONG	BufferLength;
+	ULONG	BufferOffset;
+	ULONG	FileNameLength;
+	WCHAR	FileName[1];
 } SET_SECURITY_CONTEXT, *PSET_SECURITY_CONTEXT;
 
 
