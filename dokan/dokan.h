@@ -311,6 +311,12 @@ DokanResetTimeout(
 	ULONG				Timeout,	// timeout in millisecond
 	PDOKAN_FILE_INFO	DokanFileInfo);
 
+// Get the handle to Access Token
+// This method needs be called in CreateFile, OpenDirectory or CreateDirectly callback.
+// The caller must call CloseHandle for the returned handle.
+HANDLE DOKANAPI
+DokanOpenRequestorToken(
+	PDOKAN_FILE_INFO	DokanFileInfo);
 
 #ifdef __cplusplus
 }

@@ -495,6 +495,10 @@ Return Value:
 			status = DokanResetPendingIrpTimeout(DeviceObject, Irp);
 			break;
 
+		case IOCTL_GET_ACCESS_TOKEN:
+			status = DokanGetAccessToken(DeviceObject, Irp);
+			break;
+
 		default:
 			{
 				PrintUnknownDeviceIoctlCode(irpSp->Parameters.DeviceIoControl.IoControlCode);

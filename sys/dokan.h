@@ -38,7 +38,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
 #define DOKAN_DEBUG_DEFAULT 1
-#define USE_DBGPRINT 1
+//#define USE_DBGPRINT 1
 
 extern ULONG g_Debug;
 
@@ -322,6 +322,8 @@ DRIVER_DISPATCH DokanRegisterPendingIrpForService;
 DRIVER_DISPATCH DokanCompleteIrp;
 
 DRIVER_DISPATCH DokanResetPendingIrpTimeout;
+
+DRIVER_DISPATCH DokanGetAccessToken;
 
 NTSTATUS
 DokanEventRelease(

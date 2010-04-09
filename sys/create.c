@@ -344,6 +344,7 @@ Return Value:
 	PDokanCCB			ccb;
 	PWCHAR				fileName;
 	BOOLEAN				needBackSlashAfterRelatedFile = FALSE;
+	HANDLE				accessTokenHandle;
 
 	PAGED_CODE();
 

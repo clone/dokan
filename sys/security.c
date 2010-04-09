@@ -95,7 +95,7 @@ DokanDispatchQuerySecurity(
 			DDbgPrint("    LABEL_SECURITY_INFORMATION\n");
 			break;
 		default:
-			DDbgPrint("    Unknown Security information\n");
+			DDbgPrint("    Unknown Security information: %d\n", *securityInfo);
 			break;
 		}
 
@@ -287,7 +287,7 @@ DokanDispatchSetSecurity(
 			DDbgPrint("    LABEL_SECURITY_INFORMATION\n");
 			break;
 		default:
-			DDbgPrint("    Unknown Security information\n");
+			DDbgPrint("    Unknown Security information: %d\n", *securityInfo);
 			break;
 		}
 

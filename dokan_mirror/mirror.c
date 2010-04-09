@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 
 #include <windows.h>
+#include <winbase.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "dokan.h"
@@ -61,6 +62,40 @@ GetFilePath(
 }
 
 
+static void
+PrintUserName(PDOKAN_FILE_INFO	DokanFileInfo)
+{
+	HANDLE	handle;
+	UCHAR buffer[1024];
+	DWORD returnLength;
+	WCHAR accountName[256];
+	WCHAR domainName[256];
+	DWORD accountLength = sizeof(accountName) / sizeof(WCHAR);
+	DWORD domainLength = sizeof(domainName) / sizeof(WCHAR);
+	PTOKEN_USER tokenUser;
+	SID_NAME_USE snu;
+
+	handle = DokanOpenRequestorToken(DokanFileInfo);
+	if (handle == INVALID_HANDLE_VALUE) {
+		DbgPrint(L"  DokanOpenRequestorToken failed\n");
+		return;
+	}
+
+	if (!GetTokenInformation(handle, TokenUser, buffer, sizeof(buffer), &returnLength)) {
+		DbgPrint(L"  GetTokenInformaiton failed: %d\n", GetLastError());
+		CloseHandle(handle);
+		return;
+	}
+	
+	tokenUser = (PTOKEN_USER)buffer;
+	if (!LookupAccountSid(NULL, tokenUser->User.Sid, accountName, &accountLength, domainName, &domainLength, &snu)) {
+		DbgPrint(L"  LookupAccountSid failed: %d\n", GetLastError());
+		CloseHandle(handle);
+		return;
+	}
+	DbgPrint(L"  AccountName: %s, DomainName: %s\n", accountName, domainName);
+}
+
 #define MirrorCheckFlag(val, flag) if (val&flag) { DbgPrint(L"\t" L#flag L"\n"); }
 
 static int
@@ -79,7 +114,9 @@ MirrorCreateFile(
 	GetFilePath(filePath, MAX_PATH, FileName);
 
 	DbgPrint(L"CreateFile : %s\n", filePath);
-	
+
+	PrintUserName(DokanFileInfo);
+
 	if (CreationDisposition == CREATE_NEW)
 		DbgPrint(L"\tCREATE_NEW\n");
 	if (CreationDisposition == OPEN_ALWAYS)

@@ -15,3 +15,5 @@ DokanNetworkProviderInstall
 DokanNetworkProviderUninstall
 DokanSetDebugMode
 DokanMountControl
+DokanOpenRequestorToken
+
