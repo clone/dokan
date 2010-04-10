@@ -86,13 +86,16 @@ PrintUserName(PDOKAN_FILE_INFO	DokanFileInfo)
 		CloseHandle(handle);
 		return;
 	}
-	
+
+	CloseHandle(handle);
+
 	tokenUser = (PTOKEN_USER)buffer;
-	if (!LookupAccountSid(NULL, tokenUser->User.Sid, accountName, &accountLength, domainName, &domainLength, &snu)) {
+	if (!LookupAccountSid(NULL, tokenUser->User.Sid, accountName,
+			&accountLength, domainName, &domainLength, &snu)) {
 		DbgPrint(L"  LookupAccountSid failed: %d\n", GetLastError());
-		CloseHandle(handle);
 		return;
 	}
+
 	DbgPrint(L"  AccountName: %s, DomainName: %s\n", accountName, domainName);
 }
 
