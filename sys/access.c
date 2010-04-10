@@ -20,6 +20,8 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "dokan.h"
 
+extern POBJECT_TYPE * SeTokenObjectType;
+
 NTSTATUS
 DokanGetAccessToken(
    __in PDEVICE_OBJECT	DeviceObject,
@@ -32,14 +34,13 @@ DokanGetAccessToken(
 	PDokanVCB			vcb;
 	PEVENT_INFORMATION	eventInfo;
 	PACCESS_TOKEN		accessToken;
-	NTSTATUS			status;
+	NTSTATUS			status = STATUS_INVALID_PARAMETER;
 	HANDLE				handle;
 	PIO_STACK_LOCATION	irpSp = NULL;
 	BOOLEAN				hasLock = FALSE;
 	ULONG				outBufferLen;
 	ULONG				inBufferLen;
 	PACCESS_STATE		accessState;
-
 
 	DDbgPrint("==> DokanGetAccessToken\n");
 
@@ -91,13 +92,23 @@ DokanGetAccessToken(
 			accessState = irpEntry->IrpSp->Parameters.Create.SecurityContext->AccessState;
 			break;
 		}
+		KeReleaseSpinLock(&vcb->Dcb->PendingIrp.ListLock, oldIrql);
+		hasLock = FALSE;
+
 		if (accessState == NULL) {
 			DDbgPrint("  can't find pending Irp: %d\n", eventInfo->SerialNumber);
 			__leave;
 		}
 
 		accessToken = SeQuerySubjectContextToken(&accessState->SubjectSecurityContext);
-		status = ObOpenObjectByPointer(accessToken, 0, NULL, GENERIC_ALL, *SeTokenObjectType, KernelMode, &handle);
+		if (accessToken == NULL) {
+			DDbgPrint("  accessToken == NULL\n");
+			__leave;
+		}
+		// NOTE: Accessing *SeTokenObjectType while acquring sping lock causes
+		// BSOD on Windows XP.
+		status = ObOpenObjectByPointer(accessToken, 0, NULL, GENERIC_ALL,
+			*SeTokenObjectType, KernelMode, &handle);
 		if (!NT_SUCCESS(status)) {
 			DDbgPrint("  ObOpenObjectByPointer failed: 0x%x\n", status);
 			__leave;

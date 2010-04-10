@@ -38,7 +38,6 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
 #define DOKAN_DEBUG_DEFAULT 1
-//#define USE_DBGPRINT 1
 
 extern ULONG g_Debug;
 
@@ -73,17 +72,12 @@ extern ULONG g_Debug;
 
 #define DOKAN_KEEPALIVE_TIMEOUT		(1000 * 15) // in millisecond
 
-#ifdef USE_DBGPRINT
+#if _WIN32_NT > 0x501
 	#define DDbgPrint(...) \
-	if (g_Debug) { DbgPrint("[DokanFS] " __VA_ARGS__); }
-#else
-	#if _WIN32_WINNT >= 0x0501
-		#define DDbgPrint(...)	\
 		if (g_Debug) { KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_TRACE_LEVEL, "[DokanFS] " __VA_ARGS__ )); }
-	#else
-        #define DDbgPrint(...) \
-		if (g_Debug) { KdPrint(("[DokanFS] " __VA_ARGS__)); }
-	#endif
+#else
+	#define DDbgPrint(...) \
+		if (g_Debug) { DbgPrint("[DokanFS] " __VA_ARGS__); }
 #endif
 
 #if _WIN32_WINNT < 0x0501
