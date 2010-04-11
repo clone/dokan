@@ -440,7 +440,7 @@ Return Value:
 		if (controlCode != IOCTL_EVENT_WAIT &&
 			controlCode != IOCTL_EVENT_INFO &&
 			controlCode != IOCTL_KEEPALIVE) {
-		
+
 			DDbgPrint("==> DokanDispatchIoControl\n");
 			DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
 		}
@@ -520,7 +520,7 @@ Return Value:
 		if (controlCode != IOCTL_EVENT_WAIT &&
 			controlCode != IOCTL_EVENT_INFO &&
 			controlCode != IOCTL_KEEPALIVE) {
-		
+
 			DokanPrintNTStatus(status);
 			DDbgPrint("<== DokanDispatchIoControl\n");
 		}

@@ -124,6 +124,7 @@ RegisterPendingIrpMain(
     irpEntry = ExAllocatePool(sizeof(IRP_ENTRY));
 
     if (NULL == irpEntry) {
+		DDbgPrint("  can't allocate IRP_ENTRY\n");
         return  STATUS_INSUFFICIENT_RESOURCES;
     }
 
@@ -174,7 +175,6 @@ RegisterPendingIrpMain(
 
 	//DDbgPrint("<== DokanRegisterPendingIrpMain\n");
     return STATUS_PENDING;;
-
 }
 
 
@@ -189,6 +189,7 @@ DokanRegisterPendingIrp(
 	NTSTATUS status;
 
 	if (GetIdentifierType(vcb) != VCB) {
+		DbgPrint("  Type != VCB\n");
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -218,6 +219,7 @@ DokanRegisterPendingIrpForEvent(
 	PDokanVCB vcb = DeviceObject->DeviceExtension;
 
 	if (GetIdentifierType(vcb) != VCB) {
+		DbgPrint("  Type != VCB\n");
 		return STATUS_INVALID_PARAMETER;
 	}
 

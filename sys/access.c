@@ -20,8 +20,6 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "dokan.h"
 
-extern POBJECT_TYPE * SeTokenObjectType;
-
 NTSTATUS
 DokanGetAccessToken(
    __in PDEVICE_OBJECT	DeviceObject,
@@ -89,7 +87,9 @@ DokanGetAccessToken(
 			}
 
 			// this irp must be IRP_MJ_CREATE
-			accessState = irpEntry->IrpSp->Parameters.Create.SecurityContext->AccessState;
+			if (irpEntry->IrpSp->Parameters.Create.SecurityContext) {
+				accessState = irpEntry->IrpSp->Parameters.Create.SecurityContext->AccessState;
+			}
 			break;
 		}
 		KeReleaseSpinLock(&vcb->Dcb->PendingIrp.ListLock, oldIrql);
