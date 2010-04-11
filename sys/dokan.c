@@ -40,6 +40,8 @@ ULONG g_Debug = DOKAN_DEBUG_DEFAULT;
 	PFN_FSRTLTEARDOWNPERSTREAMCONTEXTS DokanFsRtlTeardownPerStreamContexts;
 #endif
 
+NPAGED_LOOKASIDE_LIST	DokanIrpEntryLookasideList;
+
 FAST_IO_CHECK_IF_POSSIBLE DokanFastIoCheckIfPossible;
 
 BOOLEAN
@@ -219,6 +221,10 @@ Return Value:
 	DriverObject->FastIoDispatch = fastIoDispatch;
 
 
+	ExInitializeNPagedLookasideList(
+		&DokanIrpEntryLookasideList, NULL, NULL, 0, sizeof(IRP_ENTRY), TAG, 0);
+
+
 #if _WIN32_WINNT < 0x0501
     RtlInitUnicodeString(&functionName, L"FsRtlTeardownPerStreamContexts");
     DokanFsRtlTeardownPerStreamContexts = MmGetSystemRoutineAddress(&functionName);
@@ -281,6 +287,8 @@ Return Value:
 		IoDeleteSymbolicLink(&symbolicLinkName);
 		IoDeleteDevice(deviceObject);
 	}
+
+	ExDeleteNPagedLookasideList(&DokanIrpEntryLookasideList);
 
 	DDbgPrint("<== DokanUnload\n");
 	return;
@@ -563,3 +571,4 @@ DokanAllocateMdl(
 	}
 	return STATUS_SUCCESS;
 }
+

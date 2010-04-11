@@ -84,6 +84,13 @@ extern ULONG g_Debug;
 	extern PFN_FSRTLTEARDOWNPERSTREAMCONTEXTS DokanFsRtlTeardownPerStreamContexts;
 #endif
 
+
+	
+extern NPAGED_LOOKASIDE_LIST	DokanIrpEntryLookasideList;
+#define DokanAllocateIrpEntry()		ExAllocateFromNPagedLookasideList(&DokanIrpEntryLookasideList)
+#define DokanFreeIrpEntry(IrpEntry)	ExFreeToNPagedLookasideList(&DokanIrpEntryLookasideList, IrpEntry)
+
+	
 //
 // FSD_IDENTIFIER_TYPE
 //
@@ -170,7 +177,6 @@ typedef struct _DokanDiskControlBlock {
 
 	// the thread to deal with timeout
 	PKTHREAD				TimeoutThread;
-
 	PKTHREAD				EventNotificationThread;
 
 	// When UseAltStream is 1, use Alternate stream
@@ -263,7 +269,6 @@ typedef struct _DokanContextControlBlock
 typedef struct _IRP_ENTRY {
 	LIST_ENTRY			ListEntry;
 	ULONG				SerialNumber;
-	PDokanDCB			Dcb;
 	PIRP				Irp;
 	PIO_STACK_LOCATION	IrpSp;
 	PFILE_OBJECT		FileObject;

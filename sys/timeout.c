@@ -170,7 +170,7 @@ ReleaseTimeoutPendingIrp(
 		if (irp == NULL) {
 			// this IRP has already been canceled
 			ASSERT(irpEntry->CancelRoutineFreeMemory == FALSE);
-			ExFreePool(irpEntry);
+			DokanFreeIrpEntry(irpEntry);
 			continue;
 		}
 
@@ -198,7 +198,7 @@ ReleaseTimeoutPendingIrp(
 		irp = irpEntry->Irp;
 		irp->IoStatus.Information = 0;
 		irp->IoStatus.Status = STATUS_INSUFFICIENT_RESOURCES;
-		ExFreePool(irpEntry);
+		DokanFreeIrpEntry(irpEntry);
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
 	}
 

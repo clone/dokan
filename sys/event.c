@@ -1,4 +1,4 @@
-/*
+/*I
   Dokan : user-mode file system library for Windows
 
   Copyright (C) 2008 Hiroki Asakawa info@dokan-dev.net
@@ -75,7 +75,7 @@ DokanIrpCancelRoutine(
 		if (irpEntry->CancelRoutineFreeMemory == FALSE) {
 			InitializeListHead(&irpEntry->ListEntry);
 		} else {
-			ExFreePool(irpEntry);
+			DokanFreeIrpEntry(irpEntry);
 			irpEntry = NULL;
 		}
 
@@ -121,7 +121,7 @@ RegisterPendingIrpMain(
     irpSp = IoGetCurrentIrpStackLocation(Irp);
  
     // Allocate a record and save all the event context.
-    irpEntry = ExAllocatePool(sizeof(IRP_ENTRY));
+    irpEntry = DokanAllocateIrpEntry();
 
     if (NULL == irpEntry) {
 		DDbgPrint("  can't allocate IRP_ENTRY\n");
@@ -134,7 +134,6 @@ RegisterPendingIrpMain(
 
 	irpEntry->SerialNumber		= SerialNumber;
     irpEntry->FileObject		= irpSp->FileObject;
-    irpEntry->Dcb				= DeviceObject->DeviceExtension;
     irpEntry->Irp				= Irp;
 	irpEntry->IrpSp				= irpSp;
 	irpEntry->IrpList			= IrpList;
@@ -152,7 +151,7 @@ RegisterPendingIrpMain(
 			//DDbgPrint("  Release IrpList.ListLock %d\n", __LINE__);
             KeReleaseSpinLock(&IrpList->ListLock, oldIrql);
 
-            ExFreePool(irpEntry);
+            DokanFreeIrpEntry(irpEntry);
 
             return STATUS_CANCELLED;
         }
@@ -314,7 +313,7 @@ DokanCompleteIrp(
 		if (irp == NULL) {
 			// this IRP is already canceled
 			ASSERT(irpEntry->CancelRoutineFreeMemory == FALSE);
-			ExFreePool(irpEntry);
+			DokanFreeIrpEntry(irpEntry);
 			irpEntry = NULL;
 			break;
 		}
@@ -379,7 +378,7 @@ DokanCompleteIrp(
 			break;
 		}		
 
-		ExFreePool(irpEntry);
+		DokanFreeIrpEntry(irpEntry);
 		irpEntry = NULL;
 
 		return STATUS_SUCCESS;
@@ -599,7 +598,7 @@ DokanEventWrite(
 		if (writeIrp == NULL) {
 			// this IRP has already been canceled
 			ASSERT(irpEntry->CancelRoutineFreeMemory == FALSE);
-			ExFreePool(irpEntry);
+			DokanFreeIrpEntry(irpEntry);
 			continue;
 		}
 

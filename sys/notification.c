@@ -187,7 +187,7 @@ ReleasePendingIrp(
 		if (irp == NULL) {
 			// this IRP has already been canceled
 			ASSERT(irpEntry->CancelRoutineFreeMemory == FALSE);
-			ExFreePool(irpEntry);
+			DokanFreeIrpEntry(irpEntry);
 			continue;
 		}
 
@@ -209,7 +209,7 @@ ReleasePendingIrp(
 		irp = irpEntry->Irp;
 		irp->IoStatus.Information = 0;
 		irp->IoStatus.Status = STATUS_SUCCESS;
-		ExFreePool(irpEntry);
+		DokanFreeIrpEntry(irpEntry);
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
 	}
 }
@@ -284,7 +284,7 @@ NotificationLoop(
 		if (irp == NULL) {
 			// this IRP has already been canceled
 			ASSERT(irpEntry->CancelRoutineFreeMemory == FALSE);
-			ExFreePool(irpEntry);
+			DokanFreeIrpEntry(irpEntry);
 			// push back
 			InsertTailList(&NotifyEvent->ListHead,
 							&driverEventContext->ListEntry);
@@ -347,7 +347,7 @@ NotificationLoop(
 			irp->IoStatus.Information = irpEntry->SerialNumber;
 			irp->IoStatus.Status = STATUS_SUCCESS;
 		}
-		ExFreePool(irpEntry);
+		DokanFreeIrpEntry(irpEntry);
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
 	}
 
