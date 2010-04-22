@@ -247,7 +247,8 @@ DokanCompleteRead(
 		status = EventInfo->Status;
 
 		if ((fileObject->Flags & FO_SYNCHRONOUS_IO) &&
-			!(irp->Flags & IRP_PAGING_IO)) {
+			!(irp->Flags & IRP_PAGING_IO) &&
+			status != STATUS_END_OF_FILE) {
 			// update current byte offset only when synchronous IO and not pagind IO
 			fileObject->CurrentByteOffset.QuadPart =
 				EventInfo->Read.CurrentByteOffset.QuadPart;

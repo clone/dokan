@@ -19,10 +19,6 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-/*++
-
---*/
-
 #include "dokan.h"
 
 
@@ -255,7 +251,6 @@ VOID
 DokanUnload(
 	__in PDRIVER_OBJECT DriverObject
 	)
-
 /*++
 
 Routine Description:
