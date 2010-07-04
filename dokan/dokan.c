@@ -210,6 +210,9 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	// wait for thread terminations
 	WaitForMultipleObjects(threadNum, threadIds, TRUE, INFINITE);
 
+	for (i = 0; i < threadNum; ++i) {
+		CloseHandle(threadIds[i]);
+	}
 
     CloseHandle(device);
 
@@ -258,7 +261,9 @@ DokanLoop(
 	if (device == INVALID_HANDLE_VALUE) {
 		DbgPrint("Dokan Error: CreateFile failed %ws: %d\n",
 			GetRawDeviceName(DokanInstance->DeviceName), GetLastError());
-		return -1;
+		result = -1;
+		_endthreadex(result);
+		return result;
 	}
 
 	while(1) {
