@@ -201,6 +201,10 @@ DispatchCreate(
 			break;
 		case ERROR_PRIVILEGE_NOT_HELD:
 			eventInfo->Status = STATUS_PRIVILEGE_NOT_HELD;
+			break;
+		case ERROR_NOT_READY:
+			eventInfo->Status = STATUS_DEVICE_NOT_READY;
+			break;
 		default:
 			eventInfo->Status = STATUS_INVALID_PARAMETER;
 			DbgPrint("Create got unknown error code %d\n", error);
