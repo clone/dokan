@@ -108,6 +108,10 @@ Return Value:
 
 		if (eventContext == NULL) {
 			//status = STATUS_INSUFFICIENT_RESOURCES;
+			DDbgPrint("   eventContext == NULL\n");
+			DDbgPrint("   Free CCB:%X\n", ccb);
+			DokanFreeCCB(ccb);
+			DokanFreeFCB(fcb);
 			status = STATUS_SUCCESS;
 			__leave;
 		}

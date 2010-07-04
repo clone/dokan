@@ -213,6 +213,11 @@ typedef struct _DokanVolumeControlBlock {
     PNOTIFY_SYNC				NotifySync;
     LIST_ENTRY					DirNotifyList;
 
+	ULONG						FcbAllocated;
+	ULONG						FcbFreed;
+	ULONG						CcbAllocated;
+	ULONG						CcbFreed;
+
 } DokanVCB, *PDokanVCB;
 
 

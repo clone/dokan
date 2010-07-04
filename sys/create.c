@@ -78,6 +78,8 @@ DokanAllocateFCB(
 	InitializeListHead(&fcb->NextCCB);
 	InsertTailList(&Vcb->NextFCB, &fcb->NextFCB);
 
+	InterlockedIncrement(&Vcb->FcbAllocated);
+
 	return fcb;
 }
 
@@ -147,11 +149,10 @@ DokanGetFCB(
 		ExFreePool(FileName);
 	}
 
-	InterlockedIncrement(&fcb->FileCount);
-
 	ExReleaseResourceLite(&Vcb->Resource);
 	KeLeaveCriticalRegion();
 
+	InterlockedIncrement(&fcb->FileCount);
 	return fcb;
 }
 
@@ -193,7 +194,8 @@ DokanFreeFCB(
 		ExDeleteResourceLite(&Fcb->Resource);
 		ExDeleteResourceLite(&Fcb->MainResource);
 		ExDeleteResourceLite(&Fcb->PagingIoResource);
-		
+
+		InterlockedIncrement(&vcb->FcbFreed);
 		ExFreePool(Fcb);
 
 	} else {
@@ -243,6 +245,7 @@ DokanAllocateCCB(
 
 	ccb->MountId = Dcb->MountId;
 
+	InterlockedIncrement(&Fcb->Vcb->CcbAllocated);
 	return ccb;
 }
 
@@ -274,6 +277,7 @@ DokanFreeCCB(
 	}
 
 	ExFreePool(ccb);
+	InterlockedIncrement(&fcb->Vcb->CcbFreed);
 
 	return STATUS_SUCCESS;
 }
@@ -629,6 +633,10 @@ DokanCompleteCreate(
 				DokanNotifyReportChange(fcb, FILE_NOTIFY_CHANGE_FILE_NAME, FILE_ACTION_ADDED);
 			}
 		}
+	} else {
+		DDbgPrint("   IRP_MJ_CREATE failed. Free CCB:%X\n", ccb);
+		DokanFreeCCB(ccb);
+		DokanFreeFCB(fcb);
 	}
 	
 	irp->IoStatus.Status = status;

@@ -658,6 +658,11 @@ DokanDeleteDeviceObject(
 
 	//IoUnregisterFileSystem(vcb->DeviceObject);
 
+	DDbgPrint("  FCB allocated: %d\n", vcb->FcbAllocated);
+	DDbgPrint("  FCB     freed: %d\n", vcb->FcbFreed);
+	DDbgPrint("  CCB allocated: %d\n", vcb->CcbAllocated);
+	DDbgPrint("  CCB     freed: %d\n", vcb->CcbFreed);
+
 	// delete diskDeviceObject
 	DDbgPrint("  Delete DeviceObject\n");
 	IoDeleteDevice(vcb->DeviceObject);
