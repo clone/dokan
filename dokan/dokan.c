@@ -78,6 +78,13 @@ DeleteDokanInstance(PDOKAN_INSTANCE Instance)
 	free(Instance);
 }
 
+BOOL
+IsValidDriveLetter(WCHAR DriveLetter)
+{
+	return (L'd' <= DriveLetter && DriveLetter <= L'z') ||
+		(L'D' <= DriveLetter && DriveLetter <= L'Z');
+}
+
 int
 CheckMountPoint(LPCWSTR	MountPoint)
 {
@@ -88,8 +95,7 @@ CheckMountPoint(LPCWSTR	MountPoint)
 		(length == 3 && MountPoint[1] == L':' && MountPoint[2] == L'\\')) {
 		WCHAR driveLetter = MountPoint[0];
 		
-		if ((L'd' <= driveLetter && driveLetter <= L'z') ||
-			(L'D' <= driveLetter && driveLetter <= L'Z')) {
+		if (IsValidDriveLetter(driveLetter)) {
 			return DOKAN_SUCCESS;
 		} else {
 			DokanDbgPrintW(L"Dokan Error: bad drive letter %s\n", MountPoint);
@@ -120,6 +126,7 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	HANDLE	threadIds[DOKAN_MAX_THREAD];
 	ULONG   returnedLength;
 	char	buffer[1024];
+	BOOL	useMountPoint = FALSE;
 	PDOKAN_INSTANCE instance;
 
 	g_DebugMode = DokanOptions->Options & DOKAN_OPTION_DEBUG;
@@ -145,9 +152,16 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 		DokanOptions->ThreadCount = DOKAN_MAX_THREAD-1;
 	}
 
-	error = CheckMountPoint(DokanOptions->MountPoint);
-	if (error != DOKAN_SUCCESS) {
-		return error;
+	if (DOKAN_MOUNT_POINT_SUPPORTED_VERSION <= DokanOptions->Version &&
+		DokanOptions->MountPoint) {
+		error = CheckMountPoint(DokanOptions->MountPoint);
+		if (error != DOKAN_SUCCESS) {
+			return error;
+		}
+		useMountPoint = TRUE;
+	} else if (!IsValidDriveLetter(DokanOptions->DriveLetter)) {
+		DokanDbgPrintW(L"Dokan Error: bad drive letter %wc\n", DokanOptions->DriveLetter);
+		return DOKAN_DRIVE_LETTER_ERROR;
 	}
 
 	device = CreateFile(
@@ -171,8 +185,14 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 	instance = NewDokanInstance();
 	instance->DokanOptions = DokanOptions;
 	instance->DokanOperations = DokanOperations;
-	wcscpy_s(instance->MountPoint, sizeof(instance->MountPoint) / sizeof(WCHAR),
-			DokanOptions->MountPoint);
+	if (useMountPoint) {
+		wcscpy_s(instance->MountPoint, sizeof(instance->MountPoint) / sizeof(WCHAR),
+				DokanOptions->MountPoint);
+	} else {
+		instance->MountPoint[0] = DokanOptions->DriveLetter;
+		instance->MountPoint[1] = L':';
+		instance->MountPoint[2] = L'\\';
+	}
 
 	if (!DokanStart(instance)) {
 		return DOKAN_START_ERROR;
@@ -570,7 +590,7 @@ DokanStart(PDOKAN_INSTANCE Instance)
 	ZeroMemory(&eventStart, sizeof(EVENT_START));
 	ZeroMemory(&driverInfo, sizeof(EVENT_DRIVER_INFO));
 
-	eventStart.UserVersion = DOKAN_VERSION;
+	eventStart.UserVersion = DOKAN_DRIVER_VERSION;
 	if (Instance->DokanOptions->Options & DOKAN_OPTION_ALT_STREAM) {
 		eventStart.Flags |= DOKAN_EVENT_ALTERNATIVE_STREAM_ON;
 	}
@@ -710,7 +730,7 @@ BOOL WINAPI DllMain(
 					PDOKAN_INSTANCE instance =
 						CONTAINING_RECORD(entry, DOKAN_INSTANCE, ListEntry);
 					
-					DokanUnmount(instance->MountPoint);
+					DokanRemoveMountPoint(instance->MountPoint);
 					free(instance);
 				}
 

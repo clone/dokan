@@ -159,7 +159,7 @@ Return Value:
 	FS_FILTER_CALLBACKS filterCallbacks;
 	PDOKAN_GLOBAL		dokanGlobal = NULL;
 
-	DDbgPrint("==> DriverEntry ver.%x, %s %s\n", DOKAN_VERSION, __DATE__, __TIME__);
+	DDbgPrint("==> DriverEntry ver.%x, %s %s\n", DOKAN_DRIVER_VERSION, __DATE__, __TIME__);
 
 	status = DokanCreateGlobalDiskDevice(DriverObject, &dokanGlobal);
 

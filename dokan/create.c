@@ -209,8 +209,11 @@ DispatchCreate(
 			eventInfo->Status = STATUS_INVALID_PARAMETER;
 			DbgPrint("Create got unknown error code %d\n", error);
 		}
-		
-		
+
+		// Needs to free openInfo because Close is never called.
+		free(openInfo);
+		eventInfo->Context = 0;
+
 	} else {
 		
 		//DbgPrint("status = %d\n", status);

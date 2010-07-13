@@ -24,7 +24,7 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "devioctl.h"
 
-#define DOKAN_VERSION	0x0000190
+#define DOKAN_DRIVER_VERSION	0x0000190
 
 #define EVENT_CONTEXT_MAX_SIZE		(1024*32)
 

@@ -84,7 +84,7 @@ int Unmount(LPCWSTR	MountPoint, BOOL ForceUnmount)
 		DokanMountControl(&control);
 
 		if (control.Status == DOKAN_CONTROL_SUCCESS) {
-			return DokanUnmount(control.MountPoint);
+			return DokanRemoveMountPoint(control.MountPoint);
 		} else {
 			fwprintf(stderr, L"Mount entry %d not found\n", control.Option);
 			return -1;
@@ -104,7 +104,7 @@ int Unmount(LPCWSTR	MountPoint, BOOL ForceUnmount)
 		}
 
 	} else {
-		return DokanUnmount(MountPoint);
+		return DokanRemoveMountPoint(MountPoint);
 	}
 }
 

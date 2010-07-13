@@ -207,7 +207,7 @@ DokanServiceInstall(
 	CloseServiceHandle(serviceHandle);
 	CloseServiceHandle(controlHandle);
 
-	DokanDbgPrintW(L"Service (%s) isntalled\n", ServiceName);
+	DokanDbgPrintW(L"Service (%s) installed\n", ServiceName);
 
 	if (DokanServiceControl(ServiceName, DOKAN_SERVICE_START)) {
 		DokanDbgPrintW(L"Service (%s) started\n", ServiceName);
@@ -235,9 +235,18 @@ DokanServiceDelete(
 }
 
 
-
 BOOL DOKANAPI
 DokanUnmount(
+	WCHAR	DriveLetter)
+{
+	WCHAR mountPoint[] = L"M:\\";
+	mountPoint[0] = DriveLetter;
+	return DokanRemoveMountPoint(mountPoint);
+}
+
+
+BOOL DOKANAPI
+DokanRemoveMountPoint(
 	LPCWSTR MountPoint)
 {
 	DOKAN_CONTROL control;
@@ -254,6 +263,7 @@ DokanUnmount(
 	}
 	return result;
 }
+
 
 BOOL
 DokanMount(

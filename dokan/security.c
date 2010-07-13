@@ -34,14 +34,15 @@ DispatchQuerySecurity(
 	ULONG	securityDescLength;
 	int		status = -1;
 	ULONG	lengthNeeded = 0;
-	
+
 	eventInfoLength = sizeof(EVENT_INFORMATION) - 8 + EventContext->Security.BufferLength;
 	CheckFileName(EventContext->Security.FileName);
 
 	eventInfo = DispatchCommon(EventContext, eventInfoLength, DokanInstance, &fileInfo, &openInfo);
 	
 
-	if (DokanInstance->DokanOperations->GetFileSecurity) {
+	if (DOKAN_SECURITY_SUPPORTED_VERSION <= DokanInstance->DokanOptions->Version &&
+		DokanInstance->DokanOperations->GetFileSecurity) {
 		status = DokanInstance->DokanOperations->GetFileSecurity(
 					EventContext->Security.FileName,
 					&EventContext->Security.SecurityInformation,
@@ -96,7 +97,8 @@ DispatchSetSecurity(
 	
 	securityDescriptor = (PCHAR)EventContext + EventContext->SetSecurity.BufferOffset;
 
-	if (DokanInstance->DokanOperations->SetFileSecurity) {
+	if (DOKAN_SECURITY_SUPPORTED_VERSION <= DokanInstance->DokanOptions->Version &&
+		DokanInstance->DokanOperations->SetFileSecurity) {
 		status = DokanInstance->DokanOperations->SetFileSecurity(
 					EventContext->SetSecurity.FileName,
 					&EventContext->SetSecurity.SecurityInformation,

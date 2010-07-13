@@ -90,7 +90,7 @@ GlobalDeviceControl(
 		break;
 	case IOCTL_TEST:
 		if (irpSp->Parameters.DeviceIoControl.OutputBufferLength >= sizeof(ULONG)) {
-			*(ULONG*)Irp->AssociatedIrp.SystemBuffer = DOKAN_VERSION;
+			*(ULONG*)Irp->AssociatedIrp.SystemBuffer = DOKAN_DRIVER_VERSION;
 			Irp->IoStatus.Information = sizeof(ULONG);
 			status = STATUS_SUCCESS;
 			break;

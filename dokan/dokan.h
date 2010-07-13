@@ -40,19 +40,24 @@ with this program. If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
+// The current Dokan version (ver 0.6.0). Please set this constant on DokanOptions->Version.
+#define DOKAN_VERSION		600
 
 #define DOKAN_OPTION_DEBUG		1 // ouput debug message
 #define DOKAN_OPTION_STDERR		2 // ouput debug message to stderr
 #define DOKAN_OPTION_ALT_STREAM	4 // use alternate stream
 #define DOKAN_OPTION_KEEP_ALIVE	8 // use auto unmount
-#define DOKAN_OPTION_NETWORK	16 // use network drive
+#define DOKAN_OPTION_NETWORK	16 // use network drive, you need to install Dokan network provider.
 #define DOKAN_OPTION_REMOVABLE	32 // use removable drive
 
 typedef struct _DOKAN_OPTIONS {
-	LPCWSTR	MountPoint; //  mount point "M:\" (drive letter) or "C:\mount\dokan" (path in NTFS)
+	WCHAR	DriveLetter; // drive letter to be mounted
 	USHORT	ThreadCount; // number of threads to be used
 	ULONG	Options;	 // combination of DOKAN_OPTIONS_*
 	ULONG64	GlobalContext; // FileSystem can use this variable
+	ULONG	Version;	// Supported Dokan Version, ex. "530" (Dokan ver 0.5.3)
+	LPCWSTR	MountPoint; //  mount point "M:\" (drive letter) or "C:\mount\dokan" (path in NTFS)
+						// Please set either DriveLetter or MountPoint.
 } DOKAN_OPTIONS, *PDOKAN_OPTIONS;
 
 typedef struct _DOKAN_FILE_INFO {
@@ -94,7 +99,6 @@ typedef struct _DOKAN_OPERATIONS {
 		DWORD,        // ShareMode
 		DWORD,        // CreationDisposition
 		DWORD,        // FlagsAndAttributes
-		//HANDLE,       // TemplateFile
 		PDOKAN_FILE_INFO);
 
 	int (DOKAN_CALLBACK *OpenDirectory) (
@@ -173,11 +177,12 @@ typedef struct _DOKAN_OPERATIONS {
 
 	// You should not delete file on DeleteFile or DeleteDirectory.
 	// When DeleteFile or DeleteDirectory, you must check whether
-	// you can delete or not, and return 0 (when you can delete it)
+	// you can delete the file or not, and return 0 (when you can delete it)
 	// or appropriate error codes such as -ERROR_DIR_NOT_EMPTY,
 	// -ERROR_SHARING_VIOLATION.
 	// When you return 0 (ERROR_SUCCESS), you get Cleanup with
-	// FileInfo->DeleteOnClose set TRUE, you delete the file.
+	// FileInfo->DeleteOnClose set TRUE and you have to delete the
+	// file in Close.
 	int (DOKAN_CALLBACK *DeleteFile) (
 		LPCWSTR, // FileName
 		PDOKAN_FILE_INFO);
@@ -220,22 +225,6 @@ typedef struct _DOKAN_OPERATIONS {
 		PDOKAN_FILE_INFO);
 
 
-	int (DOKAN_CALLBACK *GetFileSecurity) (
-		LPCWSTR, // FileName
-		PSECURITY_INFORMATION, // A pointer to SECURITY_INFORMATION value being requested
-		PSECURITY_DESCRIPTOR, // A pointer to SECURITY_DESCRIPTOR buffer to be filled
-		ULONG, // length of Security descriptor buffer
-		PULONG, // LengthNeeded
-		PDOKAN_FILE_INFO);
-
-	int (DOKAN_CALLBACK *SetFileSecurity) (
-		LPCWSTR, // FileName
-		PSECURITY_INFORMATION,
-		PSECURITY_DESCRIPTOR, // SecurityDescriptor
-		ULONG, // SecurityDescriptor length
-		PDOKAN_FILE_INFO);
-
-
 	// Neither GetDiskFreeSpace nor GetVolumeInformation
 	// save the DokanFileContext->Context.
 	// Before these methods are called, CreateFile may not be called.
@@ -264,6 +253,23 @@ typedef struct _DOKAN_OPERATIONS {
 	int (DOKAN_CALLBACK *Unmount) (
 		PDOKAN_FILE_INFO);
 
+
+	int (DOKAN_CALLBACK *GetFileSecurity) (
+		LPCWSTR, // FileName
+		PSECURITY_INFORMATION, // A pointer to SECURITY_INFORMATION value being requested
+		PSECURITY_DESCRIPTOR, // A pointer to SECURITY_DESCRIPTOR buffer to be filled
+		ULONG, // length of Security descriptor buffer
+		PULONG, // LengthNeeded
+		PDOKAN_FILE_INFO);
+
+	int (DOKAN_CALLBACK *SetFileSecurity) (
+		LPCWSTR, // FileName
+		PSECURITY_INFORMATION,
+		PSECURITY_DESCRIPTOR, // SecurityDescriptor
+		ULONG, // SecurityDescriptor length
+		PDOKAN_FILE_INFO);
+
+
 } DOKAN_OPERATIONS, *PDOKAN_OPERATIONS;
 
 
@@ -285,6 +291,10 @@ DokanMain(
 
 BOOL DOKANAPI
 DokanUnmount(
+	WCHAR	DriveLetter);
+
+BOOL DOKANAPI
+DokanRemoveMountPoint(
 	LPCWSTR MountPoint);
 
 

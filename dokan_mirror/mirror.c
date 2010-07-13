@@ -1050,6 +1050,7 @@ wmain(ULONG argc, PWCHAR argv[])
 	g_UseStdErr = FALSE;
 
 	ZeroMemory(dokanOptions, sizeof(DOKAN_OPTIONS));
+	dokanOptions->Version = DOKAN_VERSION;
 	dokanOptions->ThreadCount = 0; // use default
 
 	for (command = 1; command < argc; command++) {

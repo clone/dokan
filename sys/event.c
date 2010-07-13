@@ -437,8 +437,8 @@ DokanEventStart(
 	RtlCopyMemory(&eventStart, Irp->AssociatedIrp.SystemBuffer, sizeof(EVENT_START));
 	driverInfo = Irp->AssociatedIrp.SystemBuffer;
 
-	if (eventStart.UserVersion != DOKAN_VERSION) {
-		driverInfo->DriverVersion = DOKAN_VERSION;
+	if (eventStart.UserVersion != DOKAN_DRIVER_VERSION) {
+		driverInfo->DriverVersion = DOKAN_DRIVER_VERSION;
 		driverInfo->Status = DOKAN_START_FAILED;
 		Irp->IoStatus.Status = STATUS_SUCCESS;
 		Irp->IoStatus.Information = sizeof(EVENT_DRIVER_INFO);
@@ -500,7 +500,7 @@ DokanEventStart(
 	driverInfo->DeviceNumber = dokanGlobal->MountId;
 	driverInfo->MountId = dokanGlobal->MountId;
 	driverInfo->Status = DOKAN_MOUNTED;
-	driverInfo->DriverVersion = DOKAN_VERSION;
+	driverInfo->DriverVersion = DOKAN_DRIVER_VERSION;
 
 	// SymbolicName is \\DosDevices\\Global\\Volume{D6CC17C5-1734-4085-BCE7-964F1E9F5DE9}
 	// Finds the last '\' and copy into DeviceName.
