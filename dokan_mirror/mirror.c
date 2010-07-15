@@ -1114,7 +1114,7 @@ wmain(ULONG argc, PWCHAR argv[])
 	dokanOperations->DeleteDirectory = MirrorDeleteDirectory;
 	dokanOperations->MoveFile = MirrorMoveFile;
 	dokanOperations->SetEndOfFile = MirrorSetEndOfFile;
-	dokanOperations->SetAllocationSize = MirrorSetAllocationSize;
+	dokanOperations->SetAllocationSize = MirrorSetAllocationSize;	
 	dokanOperations->LockFile = MirrorLockFile;
 	dokanOperations->UnlockFile = MirrorUnlockFile;
 	dokanOperations->GetFileSecurity = MirrorGetFileSecurity;

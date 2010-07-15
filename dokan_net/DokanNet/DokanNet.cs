@@ -7,7 +7,7 @@ namespace Dokan
 {
     public class DokanOptions
     {
-        public char DriveLetter;
+        public ushort Version;
         public ushort ThreadCount;
         public bool DebugMode;
         public bool UseStdErr;
@@ -15,6 +15,7 @@ namespace Dokan
         public bool UseKeepAlive;
         public bool NetworkDrive;
         public string VolumeLabel;
+        public string MountPoint;
     }
 
 
@@ -45,15 +46,19 @@ namespace Dokan
         public Proxy.GetDiskFreeSpaceDelegate GetDiskFreeSpace;
         public Proxy.GetVolumeInformationDelegate GetVolumeInformation;
         public Proxy.UnmountDelegate Unmount;
+        public Proxy.GetFileSecurityDelegate GetFileSecurity;
+        public Proxy.SetFileSecurityDelegate SetFileSecurity;
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto, Pack = 4)]
     struct DOKAN_OPTIONS
     {
-        public char DriveLetter; // driver letter to be mounted
+        public ushort Version;
         public ushort ThreadCount; // number of threads to be used
         public uint Options;
         public ulong Dummy1;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string MountPoint;
     }
 
 
@@ -64,6 +69,9 @@ namespace Dokan
 
         [DllImport("dokan.dll")]
         public static extern int DokanUnmount(int driveLetter);
+
+        [DllImport("dokan.dll")]
+        public static extern int DokanRemoveMountPoint(string mountPoint);
 
         [DllImport("dokan.dll")]
         public static extern uint DokanVersion();
@@ -93,6 +101,8 @@ namespace Dokan
         public const int DOKAN_START_ERROR          = -4; // Driver something wrong
         public const int DOKAN_MOUNT_ERROR          = -5; // Can't assign drive letter
 
+        public const int DOKAN_VERSION = 600; // ver 0.6.0
+
         private const uint DOKAN_OPTION_DEBUG = 1;
         private const uint DOKAN_OPTION_STDERR = 2;
         private const uint DOKAN_OPTION_ALT_STREAM = 4;
@@ -110,13 +120,14 @@ namespace Dokan
 
             DOKAN_OPTIONS dokanOptions = new DOKAN_OPTIONS();
 
-            dokanOptions.DriveLetter = options.DriveLetter;
+            dokanOptions.Version = options.Version;
             dokanOptions.ThreadCount = options.ThreadCount;
             dokanOptions.Options |= options.DebugMode ? DOKAN_OPTION_DEBUG : 0;
             dokanOptions.Options |= options.UseStdErr ? DOKAN_OPTION_STDERR : 0;
             dokanOptions.Options |= options.UseAltStream ? DOKAN_OPTION_ALT_STREAM : 0;
             dokanOptions.Options |= options.UseKeepAlive ? DOKAN_OPTION_KEEP_ALIVE : 0;
             dokanOptions.Options |= options.NetworkDrive ? DOKAN_OPTION_NETWORK : 0;
+            dokanOptions.MountPoint = options.MountPoint;
 
             DOKAN_OPERATIONS dokanOperations = new DOKAN_OPERATIONS();
             dokanOperations.CreateFile = proxy.CreateFileProxy;
@@ -151,6 +162,10 @@ namespace Dokan
             return Dokan.DokanUnmount(driveLetter);
         }
 
+        public static int DokanRemoveMountPoint(string mountPoint)
+        {
+            return Dokan.DokanRemoveMountPoint(mountPoint);
+        }
 
         public static uint DokanVersion()
         {

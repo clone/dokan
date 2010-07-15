@@ -159,8 +159,9 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 			return error;
 		}
 		useMountPoint = TRUE;
-	} else if (!IsValidDriveLetter(DokanOptions->DriveLetter)) {
-		DokanDbgPrintW(L"Dokan Error: bad drive letter %wc\n", DokanOptions->DriveLetter);
+	} else if (!IsValidDriveLetter((WCHAR)DokanOptions->Version)) {
+		// Older versions use the first 2 bytes of DokanOptions struct as DriveLetter.
+		DokanDbgPrintW(L"Dokan Error: bad drive letter %wc\n", (WCHAR)DokanOptions->Version);
 		return DOKAN_DRIVE_LETTER_ERROR;
 	}
 
@@ -189,7 +190,8 @@ DokanMain(PDOKAN_OPTIONS DokanOptions, PDOKAN_OPERATIONS DokanOperations)
 		wcscpy_s(instance->MountPoint, sizeof(instance->MountPoint) / sizeof(WCHAR),
 				DokanOptions->MountPoint);
 	} else {
-		instance->MountPoint[0] = DokanOptions->DriveLetter;
+		// Older versions use the first 2 bytes of DokanOptions struct as DriveLetter.
+		instance->MountPoint[0] = (WCHAR)DokanOptions->Version;
 		instance->MountPoint[1] = L':';
 		instance->MountPoint[2] = L'\\';
 	}

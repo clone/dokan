@@ -39,6 +39,30 @@ namespace Dokan
         public byte WriteToEndOfFile;
     }
 
+    [Flags]
+    enum SECURITY_INFORMATION : uint
+    {
+        OWNER_SECURITY_INFORMATION = 0x00000001,
+        GROUP_SECURITY_INFORMATION = 0x00000002,
+        DACL_SECURITY_INFORMATION = 0x00000004,
+        SACL_SECURITY_INFORMATION = 0x00000008,
+        UNPROTECTED_SACL_SECURITY_INFORMATION = 0x10000000,
+        UNPROTECTED_DACL_SECURITY_INFORMATION = 0x20000000,
+        PROTECTED_SACL_SECURITY_INFORMATION = 0x40000000,
+        PROTECTED_DACL_SECURITY_INFORMATION = 0x80000000
+    }
+
+    [StructLayoutAttribute(LayoutKind.Sequential, Pack = 4)]
+    struct SECURITY_DESCRIPTOR
+    {
+        public byte revision;
+        public byte size;
+        public short control;
+        public IntPtr owner;
+        public IntPtr group;
+        public IntPtr sacl;
+        public IntPtr dacl;
+    }
 
     class Proxy
     {
@@ -644,7 +668,7 @@ namespace Dokan
         }
 
 
-      ////
+        ////
 
         public delegate int SetFileAttributesDelegate(
             IntPtr rawFileName,
@@ -769,7 +793,7 @@ namespace Dokan
             }
         }
 
-       ////
+        ////
 
         public delegate int MoveFileDelegate(
             IntPtr rawFileName,
@@ -828,7 +852,7 @@ namespace Dokan
             }
         }
 
-       ////
+        ////
 
         public delegate int UnlockFileDelegate(
             IntPtr rawFileName,
@@ -936,6 +960,42 @@ namespace Dokan
                 Console.Error.WriteLine(e.ToString());
                 return -1;
             }
+        }
+
+        public delegate int GetFileSecurityDelegate(
+            IntPtr rawFileName,
+            ref SECURITY_INFORMATION rawRequestedInformation,
+            ref SECURITY_DESCRIPTOR rawSecurityDescriptor,
+            uint rawSecurityDescriptorLength,
+            ref uint rawSecurityDescriptorLengthNeeded,
+            ref DOKAN_FILE_INFO rawFileInfo);
+
+        public int GetFileSecurity(
+            IntPtr rawFileName,
+            ref SECURITY_INFORMATION rawRequestedInformation,
+            ref SECURITY_DESCRIPTOR rawSecurityDescriptor,
+            uint rawSecurityDescriptorLength,
+            ref uint rawSecurityDescriptorLengthNeeded,
+            ref DOKAN_FILE_INFO rawFileInfo)
+        {
+            return -1;
+        }
+
+        public delegate int SetFileSecurityDelegate(
+            IntPtr rawFileName,
+            ref SECURITY_INFORMATION rawSecurityInformation,
+            ref SECURITY_DESCRIPTOR rawSecurityDescriptor,
+            uint rawSecurityDescriptorLength,
+            ref DOKAN_FILE_INFO rawFileInfo);
+
+        public int SetFileSecurity(
+            IntPtr rawFileName,
+            ref SECURITY_INFORMATION rawSecurityInformation,
+            ref SECURITY_DESCRIPTOR rawSecurityDescriptor,
+            ref uint rawSecurityDescriptorLengthNeeded,
+            ref DOKAN_FILE_INFO rawFileInfo)
+        {
+            return -1;
         }
     }
 }

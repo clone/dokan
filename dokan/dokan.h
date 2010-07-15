@@ -51,13 +51,11 @@ extern "C" {
 #define DOKAN_OPTION_REMOVABLE	32 // use removable drive
 
 typedef struct _DOKAN_OPTIONS {
-	WCHAR	DriveLetter; // drive letter to be mounted
+	USHORT	Version; // Supported Dokan Version, ex. "530" (Dokan ver 0.5.3)
 	USHORT	ThreadCount; // number of threads to be used
 	ULONG	Options;	 // combination of DOKAN_OPTIONS_*
 	ULONG64	GlobalContext; // FileSystem can use this variable
-	ULONG	Version;	// Supported Dokan Version, ex. "530" (Dokan ver 0.5.3)
 	LPCWSTR	MountPoint; //  mount point "M:\" (drive letter) or "C:\mount\dokan" (path in NTFS)
-						// Please set either DriveLetter or MountPoint.
 } DOKAN_OPTIONS, *PDOKAN_OPTIONS;
 
 typedef struct _DOKAN_FILE_INFO {
