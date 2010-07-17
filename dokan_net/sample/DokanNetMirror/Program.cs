@@ -215,9 +215,34 @@ namespace DokaNetMirror
         {
             DokanOptions opt = new DokanOptions();
             opt.DebugMode = true;
-            opt.DriveLetter = 'n';
+            opt.MountPoint = "n:\\";
             opt.ThreadCount = 5;
-            DokanNet.DokanMain(opt, new Mirror("C:"));
+            int status = DokanNet.DokanMain(opt, new Mirror("C:"));
+            switch (status)
+            {
+                case DokanNet.DOKAN_DRIVE_LETTER_ERROR:
+                    Console.WriteLine("Drvie letter error");
+                    break;
+                case DokanNet.DOKAN_DRIVER_INSTALL_ERROR:
+                    Console.WriteLine("Driver install error");
+                    break;
+                case DokanNet.DOKAN_MOUNT_ERROR:
+                    Console.WriteLine("Mount error");
+                    break;
+                case DokanNet.DOKAN_START_ERROR:
+                    Console.WriteLine("Start error");
+                    break;
+                case DokanNet.DOKAN_ERROR:
+                    Console.WriteLine("Unknown error");
+                    break;
+                case DokanNet.DOKAN_SUCCESS:
+                    Console.WriteLine("Success");
+                    break;
+                default:
+                    Console.WriteLine("Unknown status: %d", status);
+                    break;
+                       
+            }
         }
     }
 }

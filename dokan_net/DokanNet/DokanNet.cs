@@ -123,6 +123,10 @@ namespace Dokan
             DOKAN_OPTIONS dokanOptions = new DOKAN_OPTIONS();
 
             dokanOptions.Version = options.Version;
+            if (dokanOptions.Version == 0)
+            {
+                dokanOptions.Version = DOKAN_VERSION;
+            }
             dokanOptions.ThreadCount = options.ThreadCount;
             dokanOptions.Options |= options.DebugMode ? DOKAN_OPTION_DEBUG : 0;
             dokanOptions.Options |= options.UseStdErr ? DOKAN_OPTION_STDERR : 0;
