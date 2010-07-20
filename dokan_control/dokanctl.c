@@ -75,6 +75,7 @@ int ShowUsage()
 
 int Unmount(LPCWSTR	MountPoint, BOOL ForceUnmount)
 {
+	int status = 0;
 	DOKAN_CONTROL control;
 	ZeroMemory(&control, sizeof(DOKAN_CONTROL));
 
@@ -84,10 +85,10 @@ int Unmount(LPCWSTR	MountPoint, BOOL ForceUnmount)
 		DokanMountControl(&control);
 
 		if (control.Status == DOKAN_CONTROL_SUCCESS) {
-			return DokanRemoveMountPoint(control.MountPoint);
+			status = DokanRemoveMountPoint(control.MountPoint);
 		} else {
 			fwprintf(stderr, L"Mount entry %d not found\n", control.Option);
-			return -1;
+			status = -1;
 		}
 	} else if (ForceUnmount) {
 		control.Type = DOKAN_CONTROL_UNMOUNT;
@@ -97,15 +98,18 @@ int Unmount(LPCWSTR	MountPoint, BOOL ForceUnmount)
 
 		if (control.Status == DOKAN_CONTROL_SUCCESS) {
 			fwprintf(stderr, L"Unmount success: %s", MountPoint);
-			return 0;
+			status = 0;
 		} else {
 			fwprintf(stderr, L"Unmount failed: %s", MountPoint);
-			return -1;
+			status = -1;
 		}
 
 	} else {
-		return DokanRemoveMountPoint(MountPoint);
+		status = DokanRemoveMountPoint(MountPoint);
 	}
+
+	fwprintf(stderr, L"Unmount status = %d\n", status);
+	return status;
 }
 
 #define GetOption(argc, argv, index) \

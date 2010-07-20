@@ -83,7 +83,7 @@ namespace DokanSSHFS
 
             opt.DebugMode = DokanSSHFS.DokanDebug;
             opt.UseAltStream = true;
-            opt.DriveLetter = 'n';
+            opt.MountPoint = "n:\\";
             opt.ThreadCount = 0;
             opt.UseKeepAlive = true;
 
@@ -122,7 +122,8 @@ namespace DokanSSHFS
                 if (!('e' <= letter && letter <= 'z'))
                     message += "Drive letter is invalid\n";
 
-                opt.DriveLetter = letter;
+                opt.MountPoint = string.Format("{0}:\\", letter);
+                unmount.Text = "Unmount (" + opt.MountPoint + ")";
             }
 
             opt.ThreadCount = DokanSSHFS.DokanThread;
@@ -179,16 +180,24 @@ namespace DokanSSHFS
 
         private void Unmount()
         {
-            Debug.WriteLine(string.Format("SSHFS Trying unmount : {0}", opt.DriveLetter));
-
-            if (DokanNet.DokanUnmount(opt.DriveLetter) < 0)
+            if (opt != null && sshfs != null)
             {
-                // If DokanUmount failed, call sshfs.Unmount to disconnect.
-                ;// sshfs.Unmount(null);
+                Debug.WriteLine(string.Format("SSHFS Trying unmount : {0}", opt.MountPoint));
+
+                if (DokanNet.DokanRemoveMountPoint(opt.MountPoint) < 0)
+                {
+                    Debug.WriteLine("DokanReveMountPoint failed\n");
+                    // If DokanUmount failed, call sshfs.Unmount to disconnect.
+                    ;// sshfs.Unmount(null);
+                }
+                else
+                {
+                    Debug.WriteLine("DokanReveMountPoint success\n");
+                }
+                // This should be called from Dokan, but not called.
+                // Call here explicitly.
+                sshfs.Unmount(null);
             }
-            // This should be called from Dokan, but not called.
-            // Call here explicitly.
-            sshfs.Unmount(null); 
             unmount.Visible = false;
             mount.Visible = true;
         }
@@ -233,6 +242,7 @@ namespace DokanSSHFS
                     MessageBox.Show(msg, "Error");
                     Application.Exit();
                 }
+                Debug.WriteLine("DokanNet.Main end");
             }
         }
 
@@ -251,13 +261,14 @@ namespace DokanSSHFS
 
             Debug.WriteLine("SSHFS Thread Waitting");
 
-            if (dokan.IsAlive)
+            if (dokan != null && dokan.IsAlive)
             {
                 Debug.WriteLine("doka.Join");
                 dokan.Join();
             }
             
             Debug.WriteLine("SSHFS Thread End");
+
             Application.Exit();
         }
 

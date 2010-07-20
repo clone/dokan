@@ -256,10 +256,14 @@ DokanRemoveMountPoint(
 	control.Type = DOKAN_CONTROL_UNMOUNT;
 	wcscpy_s(control.MountPoint, sizeof(control.MountPoint) / sizeof(WCHAR), MountPoint);
 
+	DbgPrintW(L"DokanRemoveMountPoint %ws\n", MountPoint);
+
 	result = DokanMountControl(&control);
 	if (result) {
 		DbgPrint("DokanControl recieved DeviceName:%ws\n", control.DeviceName);
 		SendReleaseIRP(control.DeviceName);
+	} else {
+		DbgPrint("DokanRemoveMountPoint failed\n");
 	}
 	return result;
 }

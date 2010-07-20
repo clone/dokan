@@ -72,7 +72,8 @@ namespace Dokan
         public static extern int DokanUnmount(int driveLetter);
 
         [DllImport("dokan.dll")]
-        public static extern int DokanRemoveMountPoint(string mountPoint);
+        public static extern int DokanRemoveMountPoint(
+            [MarshalAs(UnmanagedType.LPWStr)] string mountPoint);
 
         [DllImport("dokan.dll")]
         public static extern uint DokanVersion();

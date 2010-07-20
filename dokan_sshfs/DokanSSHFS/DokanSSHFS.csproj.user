@@ -3,8 +3,7 @@
     <StartArguments>-sd</StartArguments>
   </PropertyGroup>
   <PropertyGroup>
-    <PublishUrlHistory>
-    </PublishUrlHistory>
+    <PublishUrlHistory>publish\</PublishUrlHistory>
     <InstallUrlHistory>
     </InstallUrlHistory>
     <SupportUrlHistory>

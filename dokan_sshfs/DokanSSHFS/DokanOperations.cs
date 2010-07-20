@@ -973,21 +973,27 @@ namespace DokanSSHFS
         public int Unmount(
             DokanFileInfo info)
         {
-            GetChannel().exit();
-
-            Debug("disconnection...");
-
-            Thread.Sleep(1000 * 1);
-
-            foreach(KeyValuePair<int, ChannelSftp> kv in channels_)
+            try
             {
-                kv.Value.disconnect();
+                Debug("disconnection...");
+
+                GetChannel().exit();
+
+                Thread.Sleep(1000 * 1);
+
+                foreach (KeyValuePair<int, ChannelSftp> kv in channels_)
+                {
+                    kv.Value.disconnect();
+                }
+
+                session_.disconnect();
+
+                Debug("disconnected");
             }
-
-            session_.disconnect();
-
-            Debug("disconnected");
-
+            catch (Exception e)
+            {
+                Debug(e.ToString());
+            }
             return 0;
         }
     }

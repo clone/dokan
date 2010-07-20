@@ -20,9 +20,13 @@ namespace DokanSSHFS
             foreach (string arg in args)
             {
                 if (arg == "-sd")
+                {
                     SSHDebug = true;
+                }
                 if (arg == "-dd")
+                {
                     DokanDebug = true;
+                }
                 if (arg.Length >= 3 &&
                     arg[0] == '-' &&
                     arg[1] == 't')
@@ -30,7 +34,9 @@ namespace DokanSSHFS
                     DokanThread = ushort.Parse(arg.Substring(2));
                 }
                 if (arg == "-no")
+                {
                     UseOffline = false;
+                }
             }
 
             Application.EnableVisualStyles();
