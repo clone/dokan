@@ -246,13 +246,21 @@ wildcard matching.
 Mounting
 ========
 
-   typedef struct _DOKAN_OPTIONS {
-       WCHAR   DriveLetter; // drive letter to be mounted
-       ULONG   ThreadCount; // number of threads to be used
-       UCHAR   DebugMode; // ouput debug message
-       UCHAR   UseStdErr; // ouput debug message to stderr
-       UCHAR   UseAltStream; // use alternate streams
+   #define DOKAN_OPTION_DEBUG       1 // ouput debug message
+   #define DOKAN_OPTION_STDERR      2 // ouput debug message to stderr
+   #define DOKAN_OPTION_ALT_STREAM  4 // use alternate stream
+   #define DOKAN_OPTION_KEEP_ALIVE  8 // use auto unmount
+   #define DOKAN_OPTION_NETWORK    16 // use network drive,
+                                      //you need to install Dokan network provider.
+   #define DOKAN_OPTION_REMOVABLE  32 // use removable drive
 
+   typedef struct _DOKAN_OPTIONS {
+       USHORT  Version;  // Supported Dokan Version, ex. "530" (Dokan ver 0.5.3)
+       ULONG   ThreadCount;  // number of threads to be used
+       ULONG   Options;  // combination of DOKAN_OPTIONS_*
+       ULONG64 GlobalContext;  // FileSystem can use this variable
+       LPCWSTR MountPoint;  // mount point "M:\" (drive letter) or
+                            // "C:\mount\dokan" (path in NTFS)
    } DOKAN_OPTIONS, *PDOKAN_OPTIONS;
 
    int DOKANAPI DokanMain(
@@ -271,20 +279,24 @@ different execution contexts.
 
 Dokan options are as follows:
 
-  DriveLetter : name of the drive letter to be mounted
-
-  ThreadCount : number of threads internaly used by the Dokan
-  library. If this value is set to 0, the default value will be
-  used. When debugging the file system, file system application should
-  set this value to 1 to avoid nondeterministic behaviors of
-  multithreading.
-
-  DebugMode : if set to 1, debug messages will be printed to Debug output.
-
-  UseStdErr : if set to 1, debug messages will be output to standard error
-
-  UseAltStream: use Alternate Streams
-
+  Version :
+    The version of Dokan library. You have to set a supported version.
+    Dokan library may change the behavior based on this version number.
+    ie. 530 (Dokan 0.5.3)
+  ThreadCount :
+    The number of threads internaly used by the Dokan library.
+    If this value is set to 0, the default value will be used.
+    When debugging the file system, file system application should
+    set this value to 1 to avoid nondeterministic behaviors of
+    multithreading.
+  Options :
+    A Combination of DOKAN_OPTION_* constants.
+  GlobalContext :
+    Your filrsystem can use this variable to store a mount specific
+    structure.
+  MountPoint :
+    A mount point. "M:\" drive letter or "C:\mount\dokan" a directory
+    (needs empty) in NTFS
 
 If the mount operation succeeded, the return value is DOKAN_SUCCESS,
 otherwise, the following error code is returned.
@@ -294,8 +306,8 @@ otherwise, the following error code is returned.
    #define DOKAN_DRIVE_LETTER_ERROR    -2 /* Bad Drive letter */
    #define DOKAN_DRIVER_INSTALL_ERROR  -3 /* Can't install driver */
    #define DOKAN_START_ERROR           -4 /* Driver something wrong */
-   #define DOKAN_MOUNT_ERROR           -5 /* Can't assign a drive letter */
-
+   #define DOKAN_MOUNT_ERROR           -5 /* Can't assign a drive letter or mount point */
+   #define DOKAN_MOUNT_POINT_ERROR     -6 /* Mount point is invalid */
 
 
 Unmounting
