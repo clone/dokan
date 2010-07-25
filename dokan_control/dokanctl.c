@@ -151,8 +151,8 @@ wmain(int argc, PWCHAR argv[])
 
 	if (GetOption(argc, argv, 1) == L'v') {
 		fprintf(stderr, "dokanctl : %s %s\n", __DATE__, __TIME__);
-		fprintf(stderr, "Dokan version : %X\n", DokanVersion());
-		fprintf(stderr, "Dokan driver version : %X\n", DokanDriverVersion());
+		fprintf(stderr, "Dokan version : %d\n", DokanVersion());
+		fprintf(stderr, "Dokan driver version : 0x%X\n", DokanDriverVersion());
 		return 0;
 	
 	} else if (GetOption(argc, argv, 1) == L'm') {
