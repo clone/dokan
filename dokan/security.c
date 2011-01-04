@@ -32,7 +32,7 @@ DispatchQuerySecurity(
 	PDOKAN_OPEN_INFO	openInfo;
 	ULONG	eventInfoLength;
 	ULONG	securityDescLength;
-	int		status = -1;
+	int		status = -ERROR_CALL_NOT_IMPLEMENTED;
 	ULONG	lengthNeeded = 0;
 
 	eventInfoLength = sizeof(EVENT_INFORMATION) - 8 + EventContext->Security.BufferLength;
@@ -57,6 +57,12 @@ DispatchQuerySecurity(
 		if (error == ERROR_INSUFFICIENT_BUFFER && lengthNeeded > 0) {
 			eventInfo->Status = STATUS_BUFFER_OVERFLOW;
 			eventInfo->BufferLength = lengthNeeded;
+		} else if (error == ERROR_ACCESS_DENIED) {
+			eventInfo->Status = STATUS_ACCESS_DENIED;
+			eventInfo->BufferLength = 0;
+		} else if (error == ERROR_CALL_NOT_IMPLEMENTED) {
+			eventInfo->Status = STATUS_NOT_IMPLEMENTED;
+			eventInfo->BufferLength = 0;
 		} else {
 			eventInfo->Status = STATUS_INVALID_PARAMETER;
 			eventInfo->BufferLength = 0;
