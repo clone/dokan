@@ -210,9 +210,12 @@ DispatchCreate(
 			DbgPrint("Create got unknown error code %d\n", error);
 		}
 
-		// Needs to free openInfo because Close is never called.
-		free(openInfo);
-		eventInfo->Context = 0;
+
+		if (eventInfo->Status != STATUS_SUCCESS) {
+			// Needs to free openInfo because Close is never called.
+			free(openInfo);
+			eventInfo->Context = 0;
+		}
 
 	} else {
 		
