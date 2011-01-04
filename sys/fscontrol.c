@@ -172,6 +172,7 @@ DokanUserFsRequest(
 
 	case FSCTL_GET_REPARSE_POINT:
 		DDbgPrint("    FSCTL_GET_REPARSE_POINT\n");
+		status = STATUS_NOT_A_REPARSE_POINT;
 		break;
 
 	case FSCTL_DELETE_REPARSE_POINT:

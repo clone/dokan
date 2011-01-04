@@ -78,25 +78,20 @@ DokanDispatchQuerySecurity(
 		bufferLength = irpSp->Parameters.QuerySecurity.Length;
 		securityInfo = &irpSp->Parameters.QuerySecurity.SecurityInformation;
 
-		switch (*securityInfo) {
-		case DACL_SECURITY_INFORMATION:
-			DDbgPrint("    DACL_SECURITY_INFORMATION\n");
-			break;
-		case GROUP_SECURITY_INFORMATION:
-			DDbgPrint("    GROUP_SECURITY_INFORMATION\n");
-			break;
-		case OWNER_SECURITY_INFORMATION:
+		if (*securityInfo & OWNER_SECURITY_INFORMATION) {
 			DDbgPrint("    OWNER_SECURITY_INFORMATION\n");
-			break;
-		case SACL_SECURITY_INFORMATION:
+		}
+		if (*securityInfo & GROUP_SECURITY_INFORMATION) {
+			DDbgPrint("    GROUP_SECURITY_INFORMATION\n");
+		}
+		if (*securityInfo & DACL_SECURITY_INFORMATION) {
+			DDbgPrint("    DACL_SECURITY_INFORMATION\n");
+		}
+		if (*securityInfo & SACL_SECURITY_INFORMATION) {
 			DDbgPrint("    SACL_SECURITY_INFORMATION\n");
-			break;
-		case LABEL_SECURITY_INFORMATION:
+		}
+		if (*securityInfo & LABEL_SECURITY_INFORMATION) {
 			DDbgPrint("    LABEL_SECURITY_INFORMATION\n");
-			break;
-		default:
-			DDbgPrint("    Unknown Security information: %d\n", *securityInfo);
-			break;
 		}
 
 		eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
@@ -185,7 +180,7 @@ DokanCompleteQuerySecurity(
 
 	} else {
 		info = 0;
-		status = STATUS_INVALID_PARAMETER;
+		status = EventInfo->Status;
 	}
 
 	if (irp->MdlAddress != NULL) {
@@ -270,25 +265,20 @@ DokanDispatchSetSecurity(
 
 		securityInfo = &irpSp->Parameters.SetSecurity.SecurityInformation;
 
-		switch (*securityInfo) {
-		case DACL_SECURITY_INFORMATION:
-			DDbgPrint("    DACL_SECURITY_INFORMATION\n");
-			break;
-		case GROUP_SECURITY_INFORMATION:
-			DDbgPrint("    GROUP_SECURITY_INFORMATION\n");
-			break;
-		case OWNER_SECURITY_INFORMATION:
+		if (*securityInfo & OWNER_SECURITY_INFORMATION) {
 			DDbgPrint("    OWNER_SECURITY_INFORMATION\n");
-			break;
-		case SACL_SECURITY_INFORMATION:
+		}
+		if (*securityInfo & GROUP_SECURITY_INFORMATION) {
+			DDbgPrint("    GROUP_SECURITY_INFORMATION\n");
+		}
+		if (*securityInfo & DACL_SECURITY_INFORMATION) {
+			DDbgPrint("    DACL_SECURITY_INFORMATION\n");
+		}
+		if (*securityInfo & SACL_SECURITY_INFORMATION) {
 			DDbgPrint("    SACL_SECURITY_INFORMATION\n");
-			break;
-		case LABEL_SECURITY_INFORMATION:
+		}
+		if (*securityInfo & LABEL_SECURITY_INFORMATION) {
 			DDbgPrint("    LABEL_SECURITY_INFORMATION\n");
-			break;
-		default:
-			DDbgPrint("    Unknown Security information: %d\n", *securityInfo);
-			break;
 		}
 
 		securityDescriptor = irpSp->Parameters.SetSecurity.SecurityDescriptor;
