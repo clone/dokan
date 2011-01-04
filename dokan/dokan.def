@@ -16,4 +16,5 @@ DokanNetworkProviderUninstall
 DokanSetDebugMode
 DokanMountControl
 DokanOpenRequestorToken
+DokanRemoveMountPoint
 
