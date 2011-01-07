@@ -226,7 +226,6 @@ DokanFillNamesInfo(
 }
 
 
-
 ULONG
 DokanFillDirectoryInformation(
 	FILE_INFORMATION_CLASS	DirectoryInfo,
@@ -262,13 +261,8 @@ DokanFillDirectoryInformation(
 		break;
 	}
 
-	// fit in 4 bytes boundary
-	thisEntrySize = LongAlign(thisEntrySize);
-
-	// fit in 8 bytes boundary (already fit in 4 bytes boundary)
-	if (! IsPtrQuadAligned((PCHAR)(Buffer) + thisEntrySize) ){
-		thisEntrySize += sizeof(ULONG);
-	}
+	// Must be align on a 8-byte boundary.
+	thisEntrySize = QuadAlign(thisEntrySize);
 
 	// no more memory, don't fill any more
 	if (*LengthRemaining < thisEntrySize) {
@@ -313,8 +307,9 @@ DokanFillFileData(
 	PDOKAN_FILE_INFO	FileInfo)
 {
 	PLIST_ENTRY listHead = ((PDOKAN_OPEN_INFO)FileInfo->DokanContext)->DirListHead;
-	PDOKAN_FIND_DATA	findData = malloc(sizeof(DOKAN_FIND_DATA));
+	PDOKAN_FIND_DATA	findData;
 	
+	findData = malloc(sizeof(DOKAN_FIND_DATA));
 	ZeroMemory(findData, sizeof(DOKAN_FIND_DATA));
 	InitializeListHead(&findData->ListEntry);
 

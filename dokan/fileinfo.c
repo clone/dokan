@@ -223,6 +223,25 @@ DokanFillNetworkOpenInfo(
 }
 
 
+ULONG
+DokanFillInternalInfo(
+	PFILE_INTERNAL_INFORMATION	InternalInfo,
+	PBY_HANDLE_FILE_INFORMATION	FileInfo,
+	PULONG						RemainingLength)
+{
+	if (*RemainingLength < sizeof(FILE_INTERNAL_INFORMATION)) {
+		return STATUS_BUFFER_OVERFLOW;
+	}
+
+	InternalInfo->IndexNumber.HighPart = FileInfo->nFileIndexHigh;
+	InternalInfo->IndexNumber.LowPart = FileInfo->nFileIndexLow;
+
+	*RemainingLength -= sizeof(FILE_INTERNAL_INFORMATION);
+
+	return STATUS_SUCCESS;
+}
+
+
 VOID
 DispatchQueryInformation(
 	HANDLE				Handle,
@@ -276,7 +295,8 @@ DispatchQueryInformation(
 			break;
 
 		case FileInternalInformation:
-			status = STATUS_NOT_IMPLEMENTED;
+			status = DokanFillInternalInfo((PVOID)eventInfo->Buffer,
+											&byHandleFileInfo, &remainingLength);
 			break;
 
 		case FileEaInformation:
