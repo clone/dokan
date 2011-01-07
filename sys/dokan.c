@@ -37,6 +37,7 @@ ULONG g_Debug = DOKAN_DEBUG_DEFAULT;
 #endif
 
 NPAGED_LOOKASIDE_LIST	DokanIrpEntryLookasideList;
+UNICODE_STRING			FcbFileNameNull;
 
 FAST_IO_CHECK_IF_POSSIBLE DokanFastIoCheckIfPossible;
 
@@ -567,3 +568,15 @@ DokanAllocateMdl(
 	return STATUS_SUCCESS;
 }
 
+
+VOID
+DokanFreeMdl(
+	__in PIRP	Irp
+	)
+{
+	if (Irp->MdlAddress != NULL) {
+		MmUnlockPages(Irp->MdlAddress);
+		IoFreeMdl(Irp->MdlAddress);
+		Irp->MdlAddress = NULL;
+	}
+}

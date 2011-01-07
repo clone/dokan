@@ -101,6 +101,7 @@ RegisterPendingIrpMain(
     __in PIRP			Irp,
 	__in ULONG			SerialNumber,
 	__in PIRP_LIST		IrpList,
+	__in ULONG			Flags,
 	__in ULONG			CheckMount
     )
 {
@@ -137,6 +138,7 @@ RegisterPendingIrpMain(
     irpEntry->Irp				= Irp;
 	irpEntry->IrpSp				= irpSp;
 	irpEntry->IrpList			= IrpList;
+	irpEntry->Flags				= Flags;
 
 	DokanUpdateTimeout(&irpEntry->TickCount, DOKAN_IRP_PENDING_TIMEOUT);
 
@@ -181,7 +183,8 @@ NTSTATUS
 DokanRegisterPendingIrp(
     __in PDEVICE_OBJECT DeviceObject,
     __in PIRP			Irp,
-	__in PEVENT_CONTEXT	EventContext
+	__in PEVENT_CONTEXT	EventContext,
+	__in ULONG			Flags
     )
 {
 	PDokanVCB vcb = DeviceObject->DeviceExtension;
@@ -197,6 +200,7 @@ DokanRegisterPendingIrp(
 		Irp,
 		EventContext->SerialNumber,
 		&vcb->Dcb->PendingIrp,
+		Flags,
 		TRUE);
 
 	if (status == STATUS_PENDING) {
@@ -229,6 +233,7 @@ DokanRegisterPendingIrpForEvent(
 		Irp,
 		0, // SerialNumber
 		&vcb->Dcb->PendingEvent,
+		0, // Flags
 		TRUE);
 }
 
@@ -253,6 +258,7 @@ DokanRegisterPendingIrpForService(
 		Irp,
 		0, // SerialNumber
 		&dokanGlobal->PendingService,
+		0, // Flags
 		FALSE);
 }
 

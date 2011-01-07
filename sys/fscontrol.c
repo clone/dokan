@@ -37,26 +37,32 @@ DokanUserFsRequest(
 
 	case FSCTL_REQUEST_OPLOCK_LEVEL_1:
 		DDbgPrint("    FSCTL_REQUEST_OPLOCK_LEVEL_1\n");
+		status = STATUS_SUCCESS;
 		break;
 
 	case FSCTL_REQUEST_OPLOCK_LEVEL_2:
 		DDbgPrint("    FSCTL_REQUEST_OPLOCK_LEVEL_2\n");
+		status = STATUS_SUCCESS;
 		break;
 
 	case FSCTL_REQUEST_BATCH_OPLOCK:
 		DDbgPrint("    FSCTL_REQUEST_BATCH_OPLOCK\n");
+		status = STATUS_SUCCESS;
 		break;
 
 	case FSCTL_OPLOCK_BREAK_ACKNOWLEDGE:
 		DDbgPrint("    FSCTL_OPLOCK_BREAK_ACKNOWLEDGE\n");
+		status = STATUS_SUCCESS;
 		break;
 
 	case FSCTL_OPBATCH_ACK_CLOSE_PENDING:
 		DDbgPrint("    FSCTL_OPBATCH_ACK_CLOSE_PENDING\n");
+		status = STATUS_SUCCESS;
 		break;
 
 	case FSCTL_OPLOCK_BREAK_NOTIFY:
 		DDbgPrint("    FSCTL_OPLOCK_BREAK_NOTIFY\n");
+		status = STATUS_SUCCESS;
 		break;
 
 	case FSCTL_LOCK_VOLUME:

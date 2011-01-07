@@ -97,7 +97,7 @@ Return Value:
 		}
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 		DDbgPrint("  ByteCount:%d ByteOffset:%d\n", bufferLength, byteOffset);
 
 		if (bufferLength == 0) {
@@ -165,7 +165,7 @@ Return Value:
 
 
 		// register this IRP to pending IPR list and make it pending status
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);		
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);		
 	} __finally {
 
 		// if IRP status is not pending, must complete current IRP

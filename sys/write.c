@@ -65,7 +65,7 @@ DokanDispatchWrite(
 		}
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		ccb			= fileObject->FsContext2;
 		ASSERT(ccb != NULL);
@@ -176,7 +176,7 @@ DokanDispatchWrite(
 			Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT] = 0;
 
 			// register this IRP to IRP waiting list and make it pending status
-			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);
 
 		// Resuests bigger memory
 		// eventContext will be freed later using Irp->Tail.Overlay.DriverContext[DRIVER_CONTEXT_EVENT]
@@ -206,7 +206,7 @@ DokanDispatchWrite(
 			requestContext->Write.RequestLength = eventLength;
 
 			// regiters this IRP to IRP wainting list and make it pending status
-			status = DokanRegisterPendingIrp(DeviceObject, Irp, requestContext);
+			status = DokanRegisterPendingIrp(DeviceObject, Irp, requestContext, 0);
 		}
 
 	} __finally {

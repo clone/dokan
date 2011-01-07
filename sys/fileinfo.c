@@ -60,7 +60,7 @@ DokanDispatchQueryInformation(
 			__leave;
 		}
 
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		/*
 		if (fileObject->FsContext2 == NULL &&
@@ -196,7 +196,7 @@ DokanDispatchQueryInformation(
 						fcb->FileName.Length);
 
 		// register this IRP to pending IPR list
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);
 
 	} __finally {
 
@@ -342,7 +342,7 @@ DokanDispatchSetInformation(
 		ASSERT(fcb != NULL);
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		buffer = Irp->AssociatedIrp.SystemBuffer;
 
@@ -467,7 +467,7 @@ DokanDispatchSetInformation(
 						fcb->FileName.Length);
 
 		// register this IRP to waiting IRP list and make it pending status
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);
 
 	} __finally {
 

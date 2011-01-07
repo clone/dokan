@@ -64,7 +64,7 @@ DokanDispatchQueryVolumeInformation(
 		}
 
 
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DDbgPrint("  FileName: %wZ\n", &fileObject->FileName);
 
 		ccb = fileObject->FsContext2;
 
@@ -160,7 +160,7 @@ DokanDispatchQueryVolumeInformation(
 			eventContext->Volume.BufferLength = irpSp->Parameters.QueryVolume.Length;
 
 
-			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+			status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);
 		}
 
 	} __finally {

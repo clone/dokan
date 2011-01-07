@@ -41,6 +41,7 @@ DokanDispatchQuerySecurity(
 	PDokanCCB			ccb;
 	ULONG				eventLength;
 	PEVENT_CONTEXT		eventContext;
+	ULONG				flags = 0;
 
 	__try {
 		FsRtlEnterFileSystem();
@@ -65,7 +66,7 @@ DokanDispatchQuerySecurity(
 		dcb = vcb->Dcb;
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		ccb = fileObject->FsContext2;
 		if (ccb == NULL) {
@@ -110,6 +111,7 @@ DokanDispatchQuerySecurity(
 					ExFreePool(eventContext);
 					__leave;
 				}
+				flags = DOKAN_MDL_ALLOCATED;
 			}
 		}
 
@@ -121,7 +123,7 @@ DokanDispatchQuerySecurity(
 		RtlCopyMemory(eventContext->Security.FileName,
 				fcb->FileName.Buffer, fcb->FileName.Length);
 
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, flags);
 
 	} __finally {
 
@@ -183,10 +185,9 @@ DokanCompleteQuerySecurity(
 		status = EventInfo->Status;
 	}
 
-	if (irp->MdlAddress != NULL) {
-		MmUnlockPages(irp->MdlAddress);
-		IoFreeMdl(irp->MdlAddress);
-		irp->MdlAddress = NULL;
+	if (IrpEntry->Flags & DOKAN_MDL_ALLOCATED) {
+		DokanFreeMdl(irp);
+		IrpEntry->Flags &= ~DOKAN_MDL_ALLOCATED;
 	}
 
 	fileObject = IrpEntry->FileObject;
@@ -253,7 +254,7 @@ DokanDispatchSetSecurity(
 		dcb = vcb->Dcb;
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		ccb = fileObject->FsContext2;
 		if (ccb == NULL) {
@@ -314,7 +315,7 @@ DokanDispatchSetSecurity(
 		eventContext->SetSecurity.FileNameLength = fcb->FileName.Length;
 		RtlCopyMemory(eventContext->SetSecurity.FileName, fcb->FileName.Buffer, fcb->FileName.Length);
 
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);
 
 	} __finally {
 

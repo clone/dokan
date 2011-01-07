@@ -73,7 +73,7 @@ Return Value:
 		}
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		vcb = DeviceObject->DeviceExtension;
 
@@ -130,7 +130,7 @@ Return Value:
 
 		// Close can not be pending status
 		// don't register this IRP
-		//status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber);
+		//status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext->SerialNumber, 0);
 
 		// inform it to user-mode
 		DokanEventNotification(&vcb->Dcb->NotifyEvent, eventContext);

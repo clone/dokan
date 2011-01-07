@@ -409,7 +409,9 @@ Return Value:
 			fileObject->Vpb = dcb->DeviceObject->Vpb;
 		}
 
-		if (relatedFileObject == NULL && fileObject->FileName.Length == 0) {
+		if ((relatedFileObject == NULL || relatedFileObject->FileName.Length == 0) &&
+			fileObject->FileName.Length == 0) {
+
 			DDbgPrint("   request for FS device\n");
 
 			if (irpSp->Parameters.Create.Options & FILE_DIRECTORY_FILE) {
@@ -533,7 +535,7 @@ Return Value:
 		eventContext->Create.ShareAccess    = irpSp->Parameters.Create.ShareAccess;
 
 		// register this IRP to waiting IPR list
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);
 
 	} __finally {
 

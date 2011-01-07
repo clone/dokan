@@ -62,7 +62,7 @@ DokanDispatchFlush(
 		}
 
 
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		ccb = fileObject->FsContext2;
 		ASSERT(ccb != NULL);
@@ -89,7 +89,7 @@ DokanDispatchFlush(
 		//fileObject->Flags &= FO_CLEANUP_COMPLETE;
 
 		// register this IRP to waiting IRP list and make it pending status
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);
 
 	} __finally {
 

@@ -66,7 +66,7 @@ Return Value:
 		fileObject = irpSp->FileObject;
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		// Cleanup must be success in any case
 		if (fileObject == NULL) {
@@ -112,7 +112,7 @@ Return Value:
 		RtlCopyMemory(eventContext->Cleanup.FileName, fcb->FileName.Buffer, fcb->FileName.Length);
 
 		// register this IRP to pending IRP list
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);
 
 	} __finally {
 

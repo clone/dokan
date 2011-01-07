@@ -61,7 +61,7 @@ DokanDispatchLock(
 		}
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		switch(irpSp->MinorFunction) {
 		case IRP_MN_LOCK:
@@ -112,7 +112,7 @@ DokanDispatchLock(
 		eventContext->Lock.Key = irpSp->Parameters.LockControl.Key;
 
 		// register this IRP to waiting IRP list and make it pending status
-		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+		status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, 0);
 
 	} __finally {
 

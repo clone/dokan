@@ -57,6 +57,8 @@ extern ULONG g_Debug;
 
 #define TAG (ULONG)'AKOD'
 
+#define DOKAN_MDL_ALLOCATED		0x1
+
 
 #ifdef ExAllocatePool
 #undef ExAllocatePool
@@ -72,9 +74,9 @@ extern ULONG g_Debug;
 
 #define DOKAN_KEEPALIVE_TIMEOUT		(1000 * 15) // in millisecond
 
-#if _WIN32_NT > 0x501
+#if _WIN32_WINNT > 0x501
 	#define DDbgPrint(...) \
-		if (g_Debug) { KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_TRACE_LEVEL, "[DokanFS] " __VA_ARGS__ )); }
+	if (g_Debug) { KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_TRACE_LEVEL, "[DokanFS] " __VA_ARGS__ )); }
 #else
 	#define DDbgPrint(...) \
 		if (g_Debug) { DbgPrint("[DokanFS] " __VA_ARGS__); }
@@ -83,6 +85,15 @@ extern ULONG g_Debug;
 #if _WIN32_WINNT < 0x0501
 	extern PFN_FSRTLTEARDOWNPERSTREAMCONTEXTS DokanFsRtlTeardownPerStreamContexts;
 #endif
+
+extern UNICODE_STRING	FcbFileNameNull;
+#define DokanPrintFileName(FileObject) \
+	DDbgPrint("  FileName: %wZ FCB.FileName: %wZ\n", \
+		&FileObject->FileName, \
+		FileObject->FsContext2 ? \
+			(((PDokanCCB)FileObject->FsContext2)->Fcb ? \
+				&((PDokanCCB)FileObject->FsContext2)->Fcb->FileName : &FcbFileNameNull) : \
+			&FcbFileNameNull)
 
 
 	
@@ -278,6 +289,7 @@ typedef struct _IRP_ENTRY {
 	PIO_STACK_LOCATION	IrpSp;
 	PFILE_OBJECT		FileObject;
 	BOOLEAN				CancelRoutineFreeMemory;
+	ULONG				Flags;
 	LARGE_INTEGER		TickCount;
 	PIRP_LIST			IrpList;
 } IRP_ENTRY, *PIRP_ENTRY;
@@ -360,7 +372,8 @@ NTSTATUS
 DokanRegisterPendingIrp(
     __in PDEVICE_OBJECT DeviceObject,
     __in PIRP			Irp,
-	__in PEVENT_CONTEXT	EventContext);
+	__in PEVENT_CONTEXT	EventContext,
+	__in ULONG			Flags);
 
 
 VOID
@@ -441,12 +454,12 @@ DokanCompleteSetSecurity(
 
 VOID
 DokanNoOpRelease (
-    IN PVOID Fcb);
+    __in PVOID Fcb);
 
 BOOLEAN
 DokanNoOpAcquire(
-    IN PVOID Fcb,
-    IN BOOLEAN Wait);
+    __in PVOID Fcb,
+    __in BOOLEAN Wait);
 
 NTSTATUS
 DokanCreateGlobalDiskDevice(
@@ -551,6 +564,11 @@ NTSTATUS
 DokanAllocateMdl(
 	__in PIRP	Irp,
 	__in ULONG	Length);
+
+VOID
+DokanFreeMdl(
+	__in PIRP	Irp);
+
 
 #endif // _DOKAN_H_
 

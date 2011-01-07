@@ -69,7 +69,7 @@ DokanDispatchDirectoryControl(
 		}
 
 		DDbgPrint("  ProcessId %lu\n", IoGetRequestorProcessId(Irp));
-		DDbgPrint("  FileName:%wZ\n", &fileObject->FileName);
+		DokanPrintFileName(fileObject);
 
 		if (irpSp->MinorFunction == IRP_MN_QUERY_DIRECTORY) {
 			status = DokanQueryDirectory(DeviceObject, Irp);
@@ -116,6 +116,7 @@ DokanQueryDirectory(
 	PEVENT_CONTEXT		eventContext;
 	ULONG				index;
 	BOOLEAN				initial;
+	ULONG				flags = 0;
 
 	irpSp		= IoGetCurrentIrpStackLocation(Irp);
 	fileObject	= irpSp->FileObject;
@@ -175,6 +176,7 @@ DokanQueryDirectory(
 		if (!NT_SUCCESS(status)) {
 			return status;
 		}
+		flags = DOKAN_MDL_ALLOCATED;
 	}
 
 	
@@ -268,7 +270,7 @@ DokanQueryDirectory(
 	}
 
 
-	status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext);
+	status = DokanRegisterPendingIrp(DeviceObject, Irp, eventContext, flags);
 
 	return status;
 }
@@ -400,12 +402,10 @@ DokanCompleteDirectoryControl(
 	}
 
 
-	if (irp->MdlAddress != NULL) {
-		MmUnlockPages(irp->MdlAddress);
-		IoFreeMdl(irp->MdlAddress);
-		irp->MdlAddress = NULL;
+	if (IrpEntry->Flags & DOKAN_MDL_ALLOCATED) {
+		DokanFreeMdl(irp);
+		IrpEntry->Flags &= ~DOKAN_MDL_ALLOCATED;
 	}
-
 
 	irp->IoStatus.Status = status;
 	irp->IoStatus.Information = info;
