@@ -549,9 +549,9 @@ DokanAllocateMdl(
 	)
 {
 	if (Irp->MdlAddress == NULL) {
-		PMDL mdl = IoAllocateMdl(Irp->UserBuffer, Length, FALSE, FALSE, Irp);
+		Irp->MdlAddress = IoAllocateMdl(Irp->UserBuffer, Length, FALSE, FALSE, Irp);
 
-		if (mdl == NULL) {
+		if (Irp->MdlAddress == NULL) {
 			DDbgPrint("    IoAllocateMdl returned NULL\n");
 			return STATUS_INSUFFICIENT_RESOURCES;
 		}

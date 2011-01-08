@@ -87,7 +87,6 @@ DokanDispatchDirectoryControl(
 			Irp->IoStatus.Status = status;
 			Irp->IoStatus.Information = 0;
 			IoCompleteRequest(Irp, IO_NO_INCREMENT);
-			DokanPrintNTStatus(status);
 		}
 
 		DokanPrintNTStatus(status);
@@ -180,13 +179,14 @@ DokanQueryDirectory(
 	}
 
 	
-	// size of EVENT_CONTEXT is sum of it's length and file name length
+	// size of EVENT_CONTEXT is sum of its length and file name length
 	eventLength = sizeof(EVENT_CONTEXT) + fcb->FileName.Length;
 
-	initial = ccb->SearchPattern == NULL && !(ccb->Flags & DOKAN_DIR_MATCH_ALL);
+	initial = (BOOLEAN)(ccb->SearchPattern == NULL && !(ccb->Flags & DOKAN_DIR_MATCH_ALL));
 
 	// this is an initial query
 	if (initial) {
+		DDbgPrint("    initial query\n");
 		// and search pattern is provided
 		if (irpSp->Parameters.QueryDirectory.FileName) {
 			// free current search pattern stored in CCB
@@ -228,10 +228,11 @@ DokanQueryDirectory(
 	//DDbgPrint("   get Context %X\n", (ULONG)ccb->UserContext);
 
 	// index which specified index-1 th directory entry has been returned
-	// this time, 'index'th entry should be returneds
-	index = irpSp->Parameters.QueryDirectory.FileIndex;
+	// this time, 'index'th entry should be returned
+	index = 0;
 
 	if (irpSp->Flags & SL_INDEX_SPECIFIED) {
+		index = irpSp->Parameters.QueryDirectory.FileIndex;
 		DDbgPrint("    using FileIndex %d\n", index);
 		
 	} else if (FlagOn(irpSp->Flags, SL_RESTART_SCAN)) {
