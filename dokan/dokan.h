@@ -252,6 +252,7 @@ typedef struct _DOKAN_OPERATIONS {
 		PDOKAN_FILE_INFO);
 
 
+	// Suported since 0.6.0. You must specify the version at DOKAN_OPTIONS.Version.
 	int (DOKAN_CALLBACK *GetFileSecurity) (
 		LPCWSTR, // FileName
 		PSECURITY_INFORMATION, // A pointer to SECURITY_INFORMATION value being requested

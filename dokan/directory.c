@@ -571,10 +571,19 @@ DispatchDirectoryInformation(
 #define DOS_QM                          (L'>')
 #define DOS_DOT                         (L'"')
 
-
 // check whether Name matches Expression
 // Expression can contain "?"(any one character) and "*" (any string)
 // when IgnoreCase is TRUE, do case insenstive matching
+//
+// http://msdn.microsoft.com/en-us/library/ff546850(v=VS.85).aspx
+// * (asterisk) Matches zero or more characters.
+// ? (question mark) Matches a single character.
+// DOS_DOT Matches either a period or zero characters beyond the name string.
+// DOS_QM Matches any single character or, upon encountering a period or end
+//        of name string, advances the expression to the end of the set of
+//        contiguous DOS_QMs.
+// DOS_STAR Matches zero or more characters until encountering and matching
+//          the final . in the name.
 BOOL DOKANAPI
 DokanIsNameInExpression(
 	LPCWSTR		Expression, // matching pattern
@@ -599,7 +608,7 @@ DokanIsNameInExpression(
 
 		} else if (Expression[ei] == DOS_STAR) {
 
-			ULONG p = ni + 1;
+			ULONG p = ni;
 			ULONG lastDot = 0;
 			ei++;
 			
