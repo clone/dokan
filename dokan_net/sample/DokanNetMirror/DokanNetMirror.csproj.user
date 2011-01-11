@@ -21,4 +21,7 @@
     <FallbackCulture>ja-JP</FallbackCulture>
     <VerifyUploadedFiles>false</VerifyUploadedFiles>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <RemoteDebugMachine>VMDebug@xp-vm</RemoteDebugMachine>
+  </PropertyGroup>
 </Project>
