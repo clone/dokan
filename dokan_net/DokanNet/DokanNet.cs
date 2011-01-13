@@ -16,6 +16,7 @@ namespace Dokan
         public bool NetworkDrive;
         public bool RemovableDrive;
         public string VolumeLabel;
+        public string FileSystemName;
         public string MountPoint;
     }
 
@@ -118,7 +119,11 @@ namespace Dokan
             {
                 options.VolumeLabel = "DOKAN";
             }
-            
+            if (options.FileSystemName == null)
+            {
+                options.FileSystemName = "Dokan";
+            }
+
             Proxy proxy = new Proxy(options, operations);
 
             DOKAN_OPTIONS dokanOptions = new DOKAN_OPTIONS();

@@ -165,7 +165,12 @@ namespace Dokan
         private const uint FILE_ATTRIBUTE_SYSTEM = 0x00000004;
         private const uint FILE_ATTRIBUTE_TEMPORARY = 0x00000100;
 
-        
+        private const uint FILE_FLAG_WRITE_THROUGH = 0x80000000;
+        private const uint FILE_FLAG_OVERLAPPED = 0x40000000;
+        private const uint FILE_FLAG_RANDOM_ACCESS = 0x10000000;
+        private const uint FILE_FLAG_SEQUENTIAL_SCAN = 0x08000000;
+        private const uint FILE_FLAG_DELETE_ON_CLOSE = 0x04000000;
+
         public delegate int CreateFileDelegate(
             IntPtr rawFilName,
             uint rawAccessMode,
@@ -220,6 +225,32 @@ namespace Dokan
                 {
                     share |= FileShare.Delete;
                 }
+
+                if ((rawFlagsAndAttributes & FILE_FLAG_DELETE_ON_CLOSE) != 0)
+                {
+                    options |= FileOptions.DeleteOnClose;
+                }
+
+                if ((rawFlagsAndAttributes & FILE_FLAG_WRITE_THROUGH) != 0)
+                {
+                    options |= FileOptions.WriteThrough;
+                }
+
+                if ((rawFlagsAndAttributes & FILE_FLAG_SEQUENTIAL_SCAN) != 0)
+                {
+                    options |= FileOptions.SequentialScan;
+                }
+
+                if ((rawFlagsAndAttributes & FILE_FLAG_RANDOM_ACCESS) != 0)
+                {
+                    options |= FileOptions.RandomAccess;
+                }
+
+                if ((rawFlagsAndAttributes & FILE_FLAG_OVERLAPPED) != 0)
+                {
+                    options |= FileOptions.Asynchronous;
+                }
+                // TODO: supports FileOptions.Encrypted
 
                 switch (rawCreationDisposition)
                 {
@@ -939,7 +970,7 @@ namespace Dokan
             // FILE_UNICODE_ON_DISK
             rawFileSystemFlags = 7;
 
-            byte[] sys = System.Text.Encoding.Unicode.GetBytes("DOKAN");
+            byte[] sys = System.Text.Encoding.Unicode.GetBytes(options_.FileSystemName);
             Marshal.Copy(sys, 0, rawFileSystemNameBuffer, Math.Min((int)rawFileSystemNameSize, sys.Length));
             return 0;
         }
