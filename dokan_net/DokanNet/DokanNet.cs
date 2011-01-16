@@ -103,6 +103,7 @@ namespace Dokan
         public const int DOKAN_DRIVER_INSTALL_ERROR = -3; // Can't install driver
         public const int DOKAN_START_ERROR          = -4; // Driver something wrong
         public const int DOKAN_MOUNT_ERROR          = -5; // Can't assign drive letter
+        public const int DOKAN_MOUNT_POINT_ERROR    = -6; // Mount point is invalid 
 
         public const int DOKAN_VERSION = 600; // ver 0.6.0
 
