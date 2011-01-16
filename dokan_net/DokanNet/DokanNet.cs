@@ -80,7 +80,7 @@ namespace Dokan
         public static extern uint DokanVersion();
 
         [DllImport("dokan.dll")]
-        public static extern uint DokanDriveVersion();
+        public static extern uint DokanDriverVersion();
 
         [DllImport("dokan.dll")]
         public static extern bool DokanResetTimeout(uint timeout, ref DOKAN_FILE_INFO rawFileInfo);
@@ -187,7 +187,7 @@ namespace Dokan
 
         public static uint DokanDriverVersion()
         {
-            return Dokan.DokanDriveVersion();
+            return Dokan.DokanDriverVersion();
         }
 
         public static bool DokanResetTimeout(uint timeout, DokanFileInfo fileinfo)
