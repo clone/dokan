@@ -188,9 +188,11 @@ Section "Uninstall"
   ; Remove registry keys
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DokanLibrary"
 
-  MessageBox MB_YESNO "A reboot is required to finish the uninstallation. Do you wish to reboot now?" IDNO noreboot
+  IfSilent noreboot
+    MessageBox MB_YESNO "A reboot is required to finish the uninstallation. Do you wish to reboot now?" IDNO noreboot
     Reboot
   noreboot:
+
 
 SectionEnd
 
@@ -252,6 +254,8 @@ Function .onInit
 FunctionEnd
 
 Function .onInstSuccess
-  ExecShell "open" "$PROGRAMFILES32\Dokan\DokanLibrary"
+  IfSilent noshellopen
+    ExecShell "open" "$PROGRAMFILES32\Dokan\DokanLibrary"
+  noshellopen:
 FunctionEnd
 
